@@ -1,0 +1,18 @@
+{
+  "include": ["backend"],
+  "extraPaths": [
+    "C:\\Python311\\Lib\\site-packages",
+    "C:\\Users\\kenta\\AppData\\Roaming\\Python\\Python311\\site-packages",
+    "backend"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "backend",
+      "extraPaths": [
+        "C:\\Python311\\Lib\\site-packages",
+        "C:\\Users\\kenta\\AppData\\Roaming\\Python\\Python311\\site-packages",
+        "backend"
+      ]
+    }
+  ]
+}

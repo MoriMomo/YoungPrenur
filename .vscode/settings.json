@@ -1,0 +1,13 @@
+{
+  "python.defaultInterpreterPath": "C:\\Python311\\python.exe",
+  "python.analysis.extraPaths": [
+    "C:\\Python311\\Lib\\site-packages",
+    "C:\\Users\\kenta\\AppData\\Roaming\\Python\\Python311\\site-packages",
+    "${workspaceFolder}\\backend"
+  ],
+  "python.autoComplete.extraPaths": [
+    "C:\\Python311\\Lib\\site-packages",
+    "C:\\Users\\kenta\\AppData\\Roaming\\Python\\Python311\\site-packages",
+    "${workspaceFolder}\\backend"
+  ]
+}

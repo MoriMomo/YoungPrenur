@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  --nav-bg: #0c1a2d;
+  --nav-surface: #142842;
+  --nav-hover: #1e395c;
+  --nav-text: #cad8e8;
+  --nav-muted: #7890a8;
+  --canvas-bg: #f4f7fb;
+  --panel-bg: #ffffff;
+  --panel-border: #e2eaf3;
+  --ink-primary: #101e30;
+  --ink-secondary: #536780;
+  --ink-muted: #8295ab;
+  --accent-blue: #2563eb;
+  --accent-blue-light: #eff6ff;
+  --accent-cyan: #0891b2;
+  --accent-cyan-light: #ecfeff;
+  --status-normal: #0d9263;
+  --status-normal-light: #e6f7f0;
+  --status-warn: #d97706;
+  --status-warn-light: #fef3c7;
+  --status-alert: #dc2626;
+  --status-alert-light: #fee2e2;
+  --shadow-sm: 0 1px 3px rgba(12, 26, 45, 0.05);
+  --shadow-card: 0 4px 16px rgba(12, 26, 45, 0.06), 0 1px 2px rgba(12, 26, 45, 0.04);
+  --shadow-hover: 0 8px 28px rgba(12, 26, 45, 0.10), 0 2px 4px rgba(12, 26, 45, 0.05);
+  --shadow-modal: 0 24px 60px rgba(12, 26, 45, 0.22), 0 6px 16px rgba(12, 26, 45, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--canvas-bg);
+  color: var(--ink-primary);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Monospace Utilities */
+.font-mono-numbers {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* Pulsing Status Dot */
+.pulsing-dot {
+  position: relative;
+}
+.pulsing-dot::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.4;
+  animation: pulse-ring 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+/* Telemetry Ticker Marquee */
+.ticker-track {
+  animation: ticker-scroll 40s linear infinite;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
