@@ -1,0 +1,7 @@
+﻿WBS_Code,Activity_Name,Planned_Duration_Days,Actual_Forecast_Days,Critical_Path,Risk_Score,Assigned_Work_Center,Owner,Dependency,Status
+WBS-1.1,Raw Ingot Delivery & Ingestion,4,4,False,0.15,CNC Precision Lathe Cell B,Dedi K.,None,Completed
+WBS-1.2,CNC 5-Axis Rough Machining,6,8,True,0.72,CNC Milling Cell A (Makino D800Z),Bambang S.,WBS-1.1,In Progress
+WBS-1.3,Heat Treatment & Stress Relieving,3,3,False,0.22,Sub-Assembly Cleanroom,Siti M.,WBS-1.2,Pending
+WBS-1.4,Final Stamping & Tooling FAT,5,7,True,0.84,Stamping Press Bay P-07,Agus H.,WBS-1.3,Pending
+WBS-1.5,CMM Quality Inspection & FAT,2,2,True,0.18,CMM Metrology Lab,Siti M.,WBS-1.4,Pending
+WBS-1.6,Packaging & Expedited Logistics,1,1,False,0.10,Logistics Dock A,Rian T.,WBS-1.5,Pending

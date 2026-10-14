@@ -22,7 +22,14 @@ import {
   CreditCard,
   Cpu,
   Sparkles,
-  Search
+  Search,
+  Eye,
+  Sliders,
+  CheckCircle2,
+  AlertTriangle,
+  Layers,
+  Check,
+  Maximize2
 } from "lucide-react";
 
 type IRoomTab = "material" | "progress" | "drawing" | "quotation" | "operations";
@@ -44,12 +51,25 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   const [operations, setOperations] = useState<OperationTrackerItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // CAD Blueprint Inspector State
+  const [selectedDwgId, setSelectedDwgId] = useState<string>("dwg-01");
+  const [activeRevision, setActiveRevision] = useState<"Rev 2.0" | "Rev 3.1">("Rev 3.1");
+  const [showGdtOverlay, setShowGdtOverlay] = useState<boolean>(true);
+
   useEffect(() => {
     fetchIRoomMaterials().then(setMaterials);
     fetchIRoomProjects().then(setProjects);
     fetchIRoomDrawings().then(setDrawings);
     fetchIRoomQuotations().then(setQuotations);
     fetchIRoomOperations().then(setOperations);
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab") as IRoomTab;
+      if (tabParam && ["material", "progress", "drawing", "quotation", "operations"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
   }, []);
 
   const tabs = [
@@ -269,63 +289,346 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
           </div>
         )}
 
-        {/* 3. Drawing Approval Tab */}
+        {/* 3. Drawing Approval Tab with Interactive CAD Blueprint & GD&T Inspector */}
         {activeTab === "drawing" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[10px]">
-                  <th className="py-2.5 px-3">Drawing Document</th>
-                  <th className="py-2.5 px-3">Revision</th>
-                  <th className="py-2.5 px-3">Tooling Engineer</th>
-                  <th className="py-2.5 px-3">Submission Timestamp</th>
-                  <th className="py-2.5 px-3">Approval Gate</th>
-                  <th className="py-2.5 px-3 text-right">AI Copilot Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {drawings
-                  .filter(d => d.dwgNumber.toLowerCase().includes(searchQuery.toLowerCase()) || d.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                  .map((dwg) => (
-                    <tr key={dwg.id} className="hover:bg-[#f8fafc] transition-colors">
-                      <td className="py-3 px-3">
-                        <div className="font-extrabold text-[#15243a] flex items-center gap-1.5">
-                          <span>{dwg.dwgNumber}</span>
-                          {dwg.criticalDwg && (
-                            <span className="px-1.5 py-0.2 bg-[#fee2e2] text-[#dc2626] font-bold text-[9px] rounded">
-                              CRITICAL
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-[#64748b]">{dwg.title}</div>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-[#1e293b] font-bold">{dwg.revision}</td>
-                      <td className="py-3 px-3 text-[#334155]">{dwg.engineer} ({dwg.department})</td>
-                      <td className="py-3 px-3 text-[#64748b] font-mono-numbers">{dwg.submittedDate}</td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-bold border ${
-                          dwg.status === "Approved"
-                            ? "bg-[#dcfce7] text-[#15803d] border-[#86efac]"
-                            : dwg.status === "Pending Review"
-                            ? "bg-[#ffedd5] text-[#c2410c] border-[#fdba74]"
-                            : "bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]"
-                        }`}>
-                          {dwg.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => handleInspectWithAI(dwg.dwgNumber, `Drawing title: ${dwg.title}, status: ${dwg.status}, engineer: ${dwg.engineer}`)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-[11px] font-bold transition shadow-sm cursor-pointer"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          <span>Check GD&T</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+          <div className="space-y-5">
+            {/* Interactive Blueprint Canvas Viewer */}
+            <div className="bg-[#06142a] rounded-2xl p-4 sm:p-5 border border-[#1a3356] text-white shadow-xl relative overflow-hidden">
+              {/* Blueprint Topbar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 mb-3 border-b border-[#1b3457]">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#2563eb] text-white font-mono-numbers">
+                      CAD BLUEPRINT &amp; GD&amp;T INSPECTOR
+                    </span>
+                    <span className="text-[11px] text-[#38bdf8] font-mono-numbers">
+                      DWG-2026-04-REV-C · Upper Stamping Punch Geometry
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                    <span>Orthographic Tooling Blueprint (ISO 2768-m / AS9100)</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#d97706] border border-[#fde68a]">
+                      Gate 3 Tooling Review
+                    </span>
+                  </h3>
+                </div>
+
+                {/* Revision Diff Toggle & AI Overlay Switches */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center bg-[#0c1e38] p-1 rounded-xl border border-[#244570]">
+                    <button
+                      type="button"
+                      onClick={() => setActiveRevision("Rev 2.0")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        activeRevision === "Rev 2.0"
+                          ? "bg-[#ef4444] text-white shadow-sm"
+                          : "text-[#94a3b8] hover:text-white"
+                      }`}
+                    >
+                      Rev 2.0 (Baseline)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveRevision("Rev 3.1")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        activeRevision === "Rev 3.1"
+                          ? "bg-[#10b981] text-white shadow-sm"
+                          : "text-[#94a3b8] hover:text-white"
+                      }`}
+                    >
+                      Rev 3.1 (Compensated)
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowGdtOverlay(!showGdtOverlay)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      showGdtOverlay
+                        ? "bg-[#2563eb] text-white border-[#3b82f6]"
+                        : "bg-[#0c1e38] text-[#94a3b8] border-[#244570]"
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>GD&amp;T AI Overlay: {showGdtOverlay ? "ON" : "OFF"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Technical SVG Blueprint Canvas */}
+              <div className="relative w-full rounded-xl bg-[#040e1e] border border-[#162d4e] overflow-hidden p-2">
+                <svg
+                  viewBox="0 0 760 300"
+                  className="w-full h-auto block select-none"
+                  role="img"
+                  aria-label="CAD Technical Drawing Blueprint"
+                >
+                  {/* Subtle Technical Drafting Grid */}
+                  <defs>
+                    <pattern id="cad-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0e2340" strokeWidth="0.6" />
+                    </pattern>
+                  </defs>
+                  <rect width="760" height="300" fill="url(#cad-grid)" />
+
+                  {/* Corner Drafting Target Marks */}
+                  <g stroke="#244570" strokeWidth="1">
+                    <path d="M 15 25 L 15 15 L 25 15" fill="none" />
+                    <path d="M 745 25 L 745 15 L 735 15" fill="none" />
+                    <path d="M 15 275 L 15 285 L 25 285" fill="none" />
+                    <path d="M 745 275 L 745 285 L 735 285" fill="none" />
+                  </g>
+
+                  {/* Drafting Title Box (Bottom Right) */}
+                  <rect x="520" y="225" width="225" height="65" fill="#06142a" stroke="#244570" strokeWidth="1" rx="4" />
+                  <text x="530" y="242" fill="#94a3b8" fontSize="9" fontFamily="monospace">PART: UPPER STAMPING PUNCH</text>
+                  <text x="530" y="257" fill="#38bdf8" fontSize="10" fontWeight="bold" fontFamily="monospace">DWG-2026-04-REV-C</text>
+                  <text x="530" y="272" fill="#94a3b8" fontSize="9" fontFamily="monospace">MAT: SKD11 (HRC 58-60) · {activeRevision}</text>
+                  <text x="530" y="284" fill="#64748b" fontSize="8" fontFamily="monospace">BINUS RTT &amp; IMAJIN R&amp;D LAB</text>
+
+                  {/* View A: Front Elevation (Circular Flange with 6 Bolt Holes) */}
+                  <g transform="translate(170, 150)">
+                    {/* Drafting Centerlines */}
+                    <line x1="-120" y1="0" x2="120" y2="0" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="8 3 2 3" opacity="0.6" />
+                    <line x1="0" y1="-120" x2="0" y2="120" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="8 3 2 3" opacity="0.6" />
+
+                    {/* Outer Flange Circle */}
+                    <circle cx="0" cy="0" r="105" fill="none" stroke="#e2e8f0" strokeWidth="2.5" />
+                    {/* Pitch Circle Diameter (PCD) */}
+                    <circle cx="0" cy="0" r="82" fill="none" stroke="#38bdf8" strokeWidth="1" strokeDasharray="4 4" opacity="0.7" />
+
+                    {/* 6 Bolt Holes on PCD */}
+                    {[0, 60, 120, 180, 240, 300].map((deg) => {
+                      const rad = (deg * Math.PI) / 180;
+                      const hx = 82 * Math.cos(rad);
+                      const hy = 82 * Math.sin(rad);
+                      return (
+                        <circle key={deg} cx={hx} cy={hy} r="6.5" fill="#040e1e" stroke="#38bdf8" strokeWidth="1.5" />
+                      );
+                    })}
+
+                    {/* Precision Central Bore (Critical Tolerance Zone) */}
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r="40"
+                      fill={activeRevision === "Rev 3.1" ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.12)"}
+                      stroke={activeRevision === "Rev 3.1" ? "#10b981" : "#ef4444"}
+                      strokeWidth="2.5"
+                    />
+
+                    {/* AI GD&T Tolerance Bounding Box Overlay */}
+                    {showGdtOverlay && (
+                      <g>
+                        <rect
+                          x="-52"
+                          y="-52"
+                          width="104"
+                          height="104"
+                          rx="6"
+                          fill="none"
+                          stroke={activeRevision === "Rev 3.1" ? "#10b981" : "#ef4444"}
+                          strokeWidth="2"
+                          strokeDasharray="5 3"
+                        />
+                        <circle cx="0" cy="0" r="50" fill="none" stroke="#ef4444" opacity="0.2" className="animate-ping" />
+                      </g>
+                    )}
+
+                    <text x="0" y="-112" fill="#94a3b8" fontSize="9" textAnchor="middle" fontFamily="monospace">
+                      VIEW A: FLANGE ELEVATION (PCD Ø 164)
+                    </text>
+                  </g>
+
+                  {/* View B: Side Cross-Section Profile */}
+                  <g transform="translate(380, 150)">
+                    {/* Centerline */}
+                    <line x1="-30" y1="0" x2="110" y2="0" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="8 3 2 3" opacity="0.6" />
+
+                    {/* Stepped Tooling Cross Section */}
+                    <path
+                      d={
+                        activeRevision === "Rev 3.1"
+                          ? "M 0 -105 L 26 -105 L 26 -40 L 95 -40 L 95 40 L 26 40 L 26 105 L 0 105 Z"
+                          : "M 0 -105 L 20 -105 L 20 -40 L 90 -40 L 90 40 L 20 40 L 20 105 L 0 105 Z"
+                      }
+                      fill="rgba(56, 189, 248, 0.06)"
+                      stroke="#e2e8f0"
+                      strokeWidth="2"
+                    />
+
+                    {/* Chamfer Details */}
+                    <line x1="95" y1="-40" x2="90" y2="-35" stroke="#38bdf8" strokeWidth="1.5" />
+                    <line x1="95" y1="40" x2="90" y2="35" stroke="#38bdf8" strokeWidth="1.5" />
+
+                    {/* Flange Thickness Dimension Line */}
+                    <line x1="0" y1="-120" x2={activeRevision === "Rev 3.1" ? "26" : "20"} y2="-120" stroke="#38bdf8" strokeWidth="1" />
+                    <line x1="0" y1="-124" x2="0" y2="-116" stroke="#38bdf8" strokeWidth="1" />
+                    <line x1={activeRevision === "Rev 3.1" ? "26" : "20"} y1="-124" x2={activeRevision === "Rev 3.1" ? "26" : "20"} y2="-116" stroke="#38bdf8" strokeWidth="1" />
+                    <text x={activeRevision === "Rev 3.1" ? "13" : "10"} y="-124" fill="#38bdf8" fontSize="9" textAnchor="middle" fontFamily="monospace">
+                      {activeRevision === "Rev 3.1" ? "t=22.0mm" : "t=18.5mm"}
+                    </text>
+
+                    <text x="45" y="125" fill="#94a3b8" fontSize="9" textAnchor="middle" fontFamily="monospace">
+                      SECTION B-B: SLEEVE PROFILE
+                    </text>
+                  </g>
+
+                  {/* AI GD&T Callout Lead Line & Flag HUD */}
+                  {showGdtOverlay && (
+                    <g>
+                      {/* Leader Line from Bore to HUD */}
+                      <polyline points="210,135 270,75 490,75" fill="none" stroke="#ef4444" strokeWidth="1.5" />
+                      <circle cx="210" cy="135" r="3" fill="#ef4444" />
+
+                      {/* AI Callout Banner Box */}
+                      <rect x="490" y="35" width="255" height="78" rx="8" fill="#081b33" stroke={activeRevision === "Rev 3.1" ? "#10b981" : "#ef4444"} strokeWidth="1.5" />
+
+                      <text x="502" y="52" fill={activeRevision === "Rev 3.1" ? "#34d399" : "#f87171"} fontSize="10" fontWeight="bold" fontFamily="sans-serif">
+                        {activeRevision === "Rev 3.1"
+                          ? "✓ GD&T COMPENSATED: PASS"
+                          : "⚠ GD&T DEVIATION: BORE -0.040mm"}
+                      </text>
+
+                      <text x="502" y="68" fill="#e2e8f0" fontSize="9" fontFamily="monospace">
+                        Nominal: Ø 84.000 H7 (+0.035 / 0.000)
+                      </text>
+                      <text x="502" y="82" fill={activeRevision === "Rev 3.1" ? "#a7f3d0" : "#fca5a5"} fontSize="9" fontFamily="monospace">
+                        {activeRevision === "Rev 3.1"
+                          ? "Measured: Ø 84.015mm (+Tool Offset applied)"
+                          : "Measured: Ø 83.960mm (Thermal Spindle Drift)"}
+                      </text>
+                      <text x="502" y="98" fill="#94a3b8" fontSize="8" fontFamily="sans-serif">
+                        {activeRevision === "Rev 3.1"
+                          ? "Resolved on Makino D800Z · Ready for WBS-1.2"
+                          : "Root Cause: Cell A Spindle drift (+1.8°C)"}
+                      </text>
+                    </g>
+                  )}
+                </svg>
+              </div>
+
+              {/* Action Ribbon below Blueprint */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3 pt-3 border-t border-[#1b3457]">
+                <div className="text-xs text-[#94a3b8] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+                  <span>
+                    Linked Work Center: <strong className="text-white">CNC Milling Cell A (WBS-1.2)</strong>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleInspectWithAI(
+                        "DWG-2026-04-REV-C",
+                        "GD&T Bore deviation -0.040mm vs ISO 2768-m. Rev 3.1 compensation offset +0.040mm evaluated."
+                      );
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-[#1e3a63] hover:bg-[#25497d] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#38bdf8]" />
+                    <span>Send CAD GD&amp;T to AI Copilot</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onToast?.("Drawing DWG-2026-04 Rev C.2 approved for production gate.");
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Authorize Gate 3 Approval</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawing Registry Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[10px]">
+                    <th className="py-2.5 px-3">Drawing Document</th>
+                    <th className="py-2.5 px-3">Revision</th>
+                    <th className="py-2.5 px-3">Tooling Engineer</th>
+                    <th className="py-2.5 px-3">Submission Timestamp</th>
+                    <th className="py-2.5 px-3">Approval Gate</th>
+                    <th className="py-2.5 px-3 text-right">Interactive CAD Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f1f5f9]">
+                  {drawings
+                    .filter(
+                      (d) =>
+                        d.dwgNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        d.title.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((dwg) => (
+                      <tr
+                        key={dwg.id}
+                        onClick={() => setSelectedDwgId(dwg.id)}
+                        className={`transition-colors cursor-pointer ${
+                          selectedDwgId === dwg.id ? "bg-[#eff6ff]" : "hover:bg-[#f8fafc]"
+                        }`}
+                      >
+                        <td className="py-3 px-3">
+                          <div className="font-extrabold text-[#15243a] flex items-center gap-1.5">
+                            <span>{dwg.dwgNumber}</span>
+                            {dwg.criticalDwg && (
+                              <span className="px-1.5 py-0.2 bg-[#fee2e2] text-[#dc2626] font-bold text-[9px] rounded">
+                                CRITICAL
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-[#64748b]">{dwg.title}</div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-[#1e293b] font-bold">
+                          {dwg.revision}
+                        </td>
+                        <td className="py-3 px-3 text-[#334155]">
+                          {dwg.engineer} ({dwg.department})
+                        </td>
+                        <td className="py-3 px-3 text-[#64748b] font-mono-numbers">
+                          {dwg.submittedDate}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-bold border ${
+                              dwg.status === "Approved"
+                                ? "bg-[#dcfce7] text-[#15803d] border-[#86efac]"
+                                : dwg.status === "Pending Review"
+                                ? "bg-[#ffedd5] text-[#c2410c] border-[#fdba74]"
+                                : "bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]"
+                            }`}
+                          >
+                            {dwg.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDwgId(dwg.id);
+                              handleInspectWithAI(
+                                dwg.dwgNumber,
+                                `Drawing title: ${dwg.title}, status: ${dwg.status}, engineer: ${dwg.engineer}`
+                              );
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-[11px] font-bold transition shadow-sm cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>Inspect CAD Blueprint</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

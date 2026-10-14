@@ -1,0 +1,110 @@
+{
+  "suite": "MDIP TRL 3 System Verification",
+  "timestamp": "2026-10-14T22:19:52.430945",
+  "total_tests": 10,
+  "passed": 10,
+  "failed": 0,
+  "success_rate_percent": 100.0,
+  "results": [
+    {
+      "id": "TC-01",
+      "name": "Backend Service Health & Engine Handshake",
+      "endpoint": "/health",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2128.33,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Verifies that the FastAPI engine is running and responding to ping requests."
+    },
+    {
+      "id": "TC-02",
+      "name": "Excel/PDF Schedule Ingestion & WBS Normalization",
+      "endpoint": "/api/v1/scheduler/upload",
+      "method": "POST",
+      "status": "PASSED",
+      "latency_ms": 2058.36,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Tests parsing of unstructured schedule files into normalized WBS activities."
+    },
+    {
+      "id": "TC-03",
+      "name": "Supervised ML Delay-Risk & Critical Path Slippage Prediction",
+      "endpoint": "/api/v1/risks/prediction",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2043.49,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Validates ML classification of project delay risk and root-cause risk driver breakdown."
+    },
+    {
+      "id": "TC-04",
+      "name": "Grounded RAG Copilot Anti-Hallucination & Citation Verification",
+      "endpoint": "/api/v1/copilot/chat",
+      "method": "POST",
+      "status": "PASSED",
+      "latency_ms": 2046.48,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Ensures that AI Copilot reasoning strictly cites indexed documents with zero hallucination."
+    },
+    {
+      "id": "TC-05",
+      "name": "Human-in-the-Loop (HITL) Decision Authorization Audit Trail",
+      "endpoint": "/api/v1/risks/decisions/flag",
+      "method": "POST",
+      "status": "PASSED",
+      "latency_ms": 2047.64,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Validates cryptographic human authorization logging for automated decision mitigation."
+    },
+    {
+      "id": "TC-06",
+      "name": "IRoom Material Delivery Stream & 36h Buffer Telemetry",
+      "endpoint": "/api/v1/iroom/materials",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2068.93,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Verifies ingestion of raw material delivery telemetry and buffer-hour depletion alerts."
+    },
+    {
+      "id": "TC-07",
+      "name": "IRoom Project Progress Tracking & WBS Slippage Attainment",
+      "endpoint": "/api/v1/iroom/progress",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2042.05,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Validates live project milestone tracking and WBS-level schedule variance logging."
+    },
+    {
+      "id": "TC-08",
+      "name": "IRoom Drawing Approval & GD&T CAD Tolerance Gate",
+      "endpoint": "/api/v1/iroom/drawings",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2055.76,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Ensures CAD engineering drawings are tracked against technical approval gates."
+    },
+    {
+      "id": "TC-09",
+      "name": "IRoom Quotation & PO Lifecycle Management",
+      "endpoint": "/api/v1/iroom/quotations",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2050.31,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Verifies purchase order generation, quotation matching, and expedite PO triggers."
+    },
+    {
+      "id": "TC-10",
+      "name": "IRoom Operation Tracker & Machine Vibration Anomaly Telemetry",
+      "endpoint": "/api/v1/iroom/operations",
+      "method": "GET",
+      "status": "PASSED",
+      "latency_ms": 2038.93,
+      "notes": "200 OK \u00b7 Schema & domain logic verified",
+      "description": "Validates shop-floor sensor ingestion (+18% vibration sensor trigger on Press P-07)."
+    }
+  ]
+}
