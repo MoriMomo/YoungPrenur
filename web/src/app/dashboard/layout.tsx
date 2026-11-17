@@ -1,28 +1,49 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, Suspense, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { Toast } from "@/components/ui/Toast";
 import { ReviewModal } from "@/components/ui/ReviewModal";
 import { ChatDrawer } from "@/features/copilot/ChatDrawer";
-import { ManufacturingRole, DecisionAction, ChatMessage } from "@/types";
-import { INITIAL_ACTIONS, ROLES } from "@/lib/mock-data";
-import { checkApiHealth, flagDecisionAction } from "@/lib/api";
-import { Sparkles } from "lucide-react";
+import {
+  ManufacturingRole,
+  DecisionAction,
+  ChatMessage,
+  DeploymentMode,
+  AuditLogEntry,
+} from "@/types";
+import { INITIAL_ACTIONS, INITIAL_AUDIT_LOG, ROLES } from "@/lib/mock-data";
+import {
+  checkApiHealth,
+  flagDecisionAction,
+  askManufacturingCopilot,
+  fetchDecisionActions,
+} from "@/lib/api";
 
 interface DashboardContextType {
   selectedRole: ManufacturingRole;
   setSelectedRole: (role: ManufacturingRole) => void;
+  deploymentMode: DeploymentMode;
+  setDeploymentMode: (mode: DeploymentMode) => void;
   isApiLive: boolean;
   showToast: (msg: string) => void;
   openCopilot: () => void;
+  askCopilotWithPrompt: (query: string) => Promise<void>;
   actions: DecisionAction[];
   setActions: React.Dispatch<React.SetStateAction<DecisionAction[]>>;
+  auditLog: AuditLogEntry[];
   reviewingAction: DecisionAction | null;
   setReviewingAction: (act: DecisionAction | null) => void;
-  handleFlagAction: (actionId: string) => Promise<void>;
+  handleDecisionReview: (
+    actionId: string,
+    decision: "AUTHORIZED" | "OVERRIDDEN",
+    notes: string
+  ) => Promise<void>;
+  chatMessages: ChatMessage[];
+  isChatLoading: boolean;
+  sendChatQuery: (query: string) => Promise<void>;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -36,26 +57,48 @@ export function useDashboard() {
 }
 
 function SearchParamsSync({
-  onRoleChange,
+  onRoleInit,
   onOpenChat,
 }: {
-  onRoleChange: (role: ManufacturingRole) => void;
+  onRoleInit: (role: ManufacturingRole) => void;
   onOpenChat: () => void;
 }) {
   const searchParams = useSearchParams();
+  const lastSearchRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const currentSearch = searchParams.toString();
+    if (lastSearchRef.current === currentSearch) return;
+    lastSearchRef.current = currentSearch;
+
     const roleParam = searchParams.get("role") as ManufacturingRole;
     if (roleParam && ROLES.includes(roleParam)) {
-      onRoleChange(roleParam);
+      onRoleInit(roleParam);
     }
     if (searchParams.get("chat") === "open") {
       onOpenChat();
     }
-  }, [searchParams, onRoleChange, onOpenChat]);
+  }, [searchParams, onRoleInit, onOpenChat]);
 
   return null;
 }
+
+const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
+  {
+    id: "initial-msg",
+    sender: "copilot",
+    text: "Hello. I am the MDIP Manufacturing Copilot. Ask about WBS critical path slippage, IRoom material/sensor alerts, or SOP compliance clauses.",
+    citations: [
+      {
+        doc_code: "SOP-SCM-12",
+        clause: "Clause 2.1: Buffer Inventory Warning",
+        title: "Critical Component Shortage & Express Procurement",
+        excerpt: "When buffer stock falls below 48 hours and supplier lead time exceeds 48 hours, trigger express air freight.",
+      },
+    ],
+    timestamp: "08:30 WIB",
+  },
+];
 
 export default function DashboardLayout({
   children,
@@ -63,64 +106,45 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [selectedRole, setSelectedRole] = useState<ManufacturingRole>("Operations Manager");
+  const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>("saas");
   const [isApiLive, setIsApiLive] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Decision actions state
   const [actions, setActions] = useState<DecisionAction[]>(INITIAL_ACTIONS);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOG);
   const [reviewingAction, setReviewingAction] = useState<DecisionAction | null>(null);
 
-  // Chat copilot state
-  const [isChatOpen, setIsChatOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return window.location.search.includes("chat=open");
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
+
+  const syncTelemetry = async (announce = false) => {
+    const live = await checkApiHealth();
+    setIsApiLive(live);
+    if (live) {
+      const remoteActions = await fetchDecisionActions();
+      if (remoteActions && remoteActions.length > 0) {
+        setActions(remoteActions);
+      }
     }
-    return false;
-  });
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("chat=open")) {
-      return [
-        {
-          id: "msg-user-1",
-          sender: "you",
-          text: "Bagaimana mitigasi deviasi keterlambatan pada WBS-1.2 CNC Rough Machining?",
-          timestamp: "09:12 AM"
-        },
-        {
-          id: "msg-ai-1",
-          sender: "copilot",
-          text: "Berdasarkan analisis telemetri IRoom aktif dan dokumen SOP manufaktur terverifikasi:\n\nAktivitas WBS-1.2 (CNC Rough Machining) memiliki probabilitas deviasi keterlambatan 72% akibat akumulasi variansi +2 hari pada Cell A dan ketergantungan material Alloy AL7075-T6. Disarankan melakukan otorisasi lembur operator 3.5 jam untuk memulihkan 80% jalur kritis.",
-          citations: [
-            {
-              doc_code: "SCH-IMAJIN-04",
-              clause: "WBS Section 1.2",
-              title: "Master Manufacturing Schedule Rev 3",
-              excerpt: "Upstream plate delivery variance logged at +2.0 days."
-            },
-            {
-              doc_code: "SOP-PROD-02",
-              clause: "Section 4.1 (Bottleneck Remediation)",
-              title: "Standard Operating Procedure CNC Milling",
-              excerpt: "When spindle utilization exceeds 90%, load balancing or overtime authorization is recommended."
-            }
-          ],
-          timestamp: "09:12 AM"
-        }
-      ];
+    if (announce) {
+      showToast(
+        live
+          ? "Telemetry refreshed from FastAPI PoC backend."
+          : "Telemetry refreshed from TRL 4 simulation sandbox."
+      );
     }
-    return [
-      {
-        id: "initial-msg",
-        sender: "copilot",
-        text: "Halo! Saya Copilot Manufaktur MDIP. Saya dapat membantu menganalisis anomali operasional, prioritas keputusan lintas departemen, dan prosedur teknis SOP terverifikasi.",
-        timestamp: "08:30 AM",
-      },
-    ];
-  });
+  };
 
   useEffect(() => {
-    checkApiHealth().then((live) => setIsApiLive(live));
+    let active = true;
+    checkApiHealth().then((live) => {
+      if (active) setIsApiLive(live);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -129,98 +153,196 @@ export default function DashboardLayout({
 
   const handleRoleChange = (newRole: ManufacturingRole) => {
     setSelectedRole(newRole);
+    if (typeof window !== "undefined" && window.location.search.includes("role=")) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("role", newRole);
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
     showToast(`Context updated for ${newRole}`);
   };
 
-  const handleFlagAction = async (actionId: string) => {
-    const updated = actions.map((a) =>
-      a.id === actionId ? { ...a, flagged: true } : a
+  const handleDeploymentModeChange = (mode: DeploymentMode) => {
+    setDeploymentMode(mode);
+    showToast(
+      mode === "internal"
+        ? "Switched to On-Premise VPC mode (CAD IP isolated)"
+        : "Switched to Managed B2B SaaS mode"
     );
-    setActions(updated);
-    if (reviewingAction && reviewingAction.id === actionId) {
-      setReviewingAction({ ...reviewingAction, flagged: true });
-    }
-    await flagDecisionAction(actionId, selectedRole);
-    showToast("Action authorized and recorded in human audit log.");
   };
+
+  const handleDecisionReview = async (
+    actionId: string,
+    decision: "AUTHORIZED" | "OVERRIDDEN",
+    notes: string
+  ) => {
+    const target = actions.find((a) => a.id === actionId);
+    const nextStatus = decision === "OVERRIDDEN" ? "overridden" : "authorized";
+
+    setActions((prev) =>
+      prev.map((a) =>
+        a.id === actionId
+          ? {
+              ...a,
+              flagged: true,
+              status: nextStatus,
+              overrideReason: decision === "OVERRIDDEN" ? notes : a.overrideReason,
+            }
+          : a
+      )
+    );
+
+    if (reviewingAction && reviewingAction.id === actionId) {
+      setReviewingAction({
+        ...reviewingAction,
+        flagged: true,
+        status: nextStatus,
+        overrideReason: decision === "OVERRIDDEN" ? notes : reviewingAction.overrideReason,
+      });
+    }
+
+    const newEntry: AuditLogEntry = {
+      id: `AUD-${Date.now().toString().slice(-4)}`,
+      actionId,
+      actionTitle: target?.title || actionId,
+      decision,
+      reviewerRole: selectedRole,
+      notes: notes.trim() || (decision === "AUTHORIZED" ? "Checklist verified by supervisor." : "Schedule change overridden."),
+      sopRef: target?.sourceDoc || "SOP-MDIP",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
+    };
+
+    setAuditLog((prev) => [newEntry, ...prev]);
+    await flagDecisionAction(actionId, selectedRole, decision, notes);
+    showToast(
+      decision === "OVERRIDDEN"
+        ? "Override reason recorded in ISO 9001 audit log."
+        : "Action authorized and recorded in human audit log."
+    );
+  };
+
+  const sendChatQuery = async (rawQuery: string) => {
+    const query = rawQuery.trim();
+    if (!query || isChatLoading) return;
+
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB";
+    const userMsg: ChatMessage = {
+      id: `usr-${Date.now()}`,
+      sender: "you",
+      text: query,
+      timestamp: now,
+    };
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setIsChatLoading(true);
+
+    try {
+      const response = await askManufacturingCopilot(query, selectedRole);
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        sender: "copilot",
+        text: response.reply,
+        citations: response.citations,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
+      };
+      setChatMessages((prev) => [...prev, aiMsg]);
+    } catch {
+      const fallbackMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        sender: "copilot",
+        text: "Backend connection unavailable. Showing grounded guidance from local SOP index.",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
+      };
+      setChatMessages((prev) => [...prev, fallbackMsg]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  const askCopilotWithPrompt = async (query: string) => {
+    setIsChatOpen(true);
+    await sendChatQuery(query);
+  };
+
+  const pendingActionsCount = actions.filter((a) => !a.flagged).length;
 
   return (
     <DashboardContext.Provider
       value={{
         selectedRole,
         setSelectedRole: handleRoleChange,
+        deploymentMode,
+        setDeploymentMode: handleDeploymentModeChange,
         isApiLive,
         showToast,
         openCopilot: () => setIsChatOpen(true),
+        askCopilotWithPrompt,
         actions,
         setActions,
+        auditLog,
         reviewingAction,
         setReviewingAction,
-        handleFlagAction,
+        handleDecisionReview,
+        chatMessages,
+        isChatLoading,
+        sendChatQuery,
       }}
     >
       <Suspense fallback={null}>
         <SearchParamsSync
-          onRoleChange={handleRoleChange}
+          onRoleInit={setSelectedRole}
           onOpenChat={() => setIsChatOpen(true)}
         />
       </Suspense>
 
       <div className="flex min-h-screen bg-[#f4f7fb]">
-        {/* 1. Global Navigation Sidebar */}
         <Sidebar
           isOpenMobile={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
-          onOpenCopilot={() => setIsChatOpen(true)}
+          pendingActionsCount={pendingActionsCount}
+          isApiLive={isApiLive}
         />
 
-        {/* 2. Main Workspace Viewport */}
         <div className="flex-1 flex flex-col min-w-0">
           <Topbar
             selectedRole={selectedRole}
             onSelectRole={handleRoleChange}
+            deploymentMode={deploymentMode}
+            onChangeDeploymentMode={handleDeploymentModeChange}
             onRefresh={() => {
-              handleRoleChange(selectedRole);
-              showToast("Dashboard refreshed with latest project telemetry");
+              void syncTelemetry(true);
             }}
             isApiLive={isApiLive}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             onOpenCopilot={() => setIsChatOpen(true)}
           />
 
-          {/* Child Page View */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
             {children}
           </main>
         </div>
 
-        {/* Floating Action Button (FAB) for AI Copilot */}
-        <button
-          onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-[#102238] hover:bg-[#1a385c] text-white rounded-full shadow-[0_8px_30px_rgba(16,34,56,0.25)] border border-[#2b4865] hover:scale-105 active:scale-95 transition-all text-xs sm:text-sm font-semibold cursor-pointer"
-          aria-label="Ask Manufacturing AI"
-        >
-          <Sparkles className="w-4 h-4 text-[#38bdf8]" />
-          <span>Ask Manufacturing AI</span>
-        </button>
-
-        {/* Global Copilot Chat Drawer */}
         <ChatDrawer
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
           activeRole={selectedRole}
           messages={chatMessages}
-          onSendMessage={(newMsg) => setChatMessages((prev) => [...prev, newMsg])}
+          isLoading={isChatLoading}
+          onSendQuery={sendChatQuery}
+          onReviewFirstPending={() => {
+            const nextPending = actions.find((a) => !a.flagged) || actions[0];
+            if (nextPending) {
+              setIsChatOpen(false);
+              setReviewingAction(nextPending);
+            }
+          }}
         />
 
-        {/* Global Human-in-the-Loop Review Modal */}
         <ReviewModal
           action={reviewingAction}
           onClose={() => setReviewingAction(null)}
-          onFlagAction={handleFlagAction}
+          onSubmitDecision={handleDecisionReview}
         />
 
-        {/* Global Toast Notification */}
         <Toast message={toastMessage} onClear={() => setToastMessage(null)} />
       </div>
     </DashboardContext.Provider>

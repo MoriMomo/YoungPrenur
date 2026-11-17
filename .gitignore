@@ -1,0 +1,18 @@
+# Python caches & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Local tooling / OS artifacts
+.commandcode/
+.DS_Store
+Thumbs.db
+.env*

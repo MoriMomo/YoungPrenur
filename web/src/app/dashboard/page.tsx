@@ -9,18 +9,19 @@ import { RisksMonitor } from "@/features/risks/RisksMonitor";
 import { PerformanceChart } from "@/features/dashboard/PerformanceChart";
 import { ProductionLineStatus } from "@/features/dashboard/ProductionLineStatus";
 import { DisclaimerBanner } from "@/components/layout/DisclaimerBanner";
-import { ROLE_PRESETS, RISKS_AND_OPPORTUNITIES } from "@/lib/mock-data";
+import { ROLE_PRESETS, RISKS_AND_OPPORTUNITIES, PILOT_CHECKS } from "@/lib/mock-data";
 import { downloadOperationalExport } from "@/lib/api";
-import { Sparkles, Download, CalendarClock, ArrowRight, Layers } from "lucide-react";
+import { Download, CalendarClock, CheckCircle2, Clock } from "lucide-react";
 import gsap from "gsap";
 
 export default function DashboardOverviewPage() {
   const {
     selectedRole,
+    deploymentMode,
     actions,
+    auditLog,
     setReviewingAction,
-    openCopilot,
-    showToast
+    showToast,
   } = useDashboard();
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -30,15 +31,22 @@ export default function DashboardOverviewPage() {
     if (contentRef.current) {
       gsap.fromTo(
         contentRef.current,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
+        { opacity: 0.4, y: 6 },
+        { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }
       );
     }
   }, [selectedRole]);
 
+  // Prioritize actions matching the active role's department first
+  const sortedActions = [...actions].sort((a, b) => {
+    const aMatch = a.department === currentRolePreset.priorityDepartment ? 0 : 1;
+    const bMatch = b.department === currentRolePreset.priorityDepartment ? 0 : 1;
+    return aMatch - bMatch;
+  });
+
   const handleExportSummary = () => {
-    downloadOperationalExport(selectedRole);
-    showToast(`Operational brief exported for ${selectedRole}.`);
+    downloadOperationalExport(selectedRole, actions, auditLog);
+    showToast(`Exported operational brief (.txt) for ${selectedRole}.`);
   };
 
   return (
@@ -46,121 +54,162 @@ export default function DashboardOverviewPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-bold text-[#2563eb] uppercase tracking-widest mb-1">
-            Manufacturing Decision Intelligence · Live Cockpit
+          <div className="text-xs font-mono-numbers text-[#64748b] mb-1">
+            MDIP Operations Cockpit · {currentRolePreset.buyingCenterRole} ·{" "}
+            {deploymentMode === "internal" ? "On-Prem VPC (CAD Isolated)" : "Managed SaaS"}
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-[#101e30] tracking-tight">
+          <h1 className="text-2xl font-medium text-[#111827] tracking-tight">
             {currentRolePreset.title}
           </h1>
-          <p className="text-xs sm:text-sm text-[#536780]">
-            {currentRolePreset.sub}
-          </p>
+          <p className="text-xs sm:text-sm text-[#4b5565] mt-0.5">{currentRolePreset.sub}</p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
+            type="button"
             onClick={handleExportSummary}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#cbd5e1] rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer"
+            className="h-9 flex items-center gap-1.5 px-3.5 bg-white hover:bg-[#f9fafb] text-[#374151] border border-[#e5e7eb] rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4 text-[#64748b]" />
-            <span>Export Summary</span>
+            <Download className="w-4 h-4 text-[#64748b]" strokeWidth={1.5} />
+            <span>Export Brief (.txt)</span>
           </button>
 
-          <button
-            onClick={openCopilot}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm hover:shadow-md transition cursor-pointer"
+          <Link
+            href="/dashboard/scheduler"
+            className="h-9 flex items-center gap-1.5 px-4 bg-[#111827] hover:bg-[#1f2937] text-white rounded-lg text-xs sm:text-sm font-medium transition-colors"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Ask Manufacturing AI</span>
-          </button>
+            <CalendarClock className="w-4 h-4 text-[#9ca3af]" strokeWidth={1.5} />
+            <span>Open WBS Schedule</span>
+          </Link>
         </div>
       </div>
 
-      {/* 4 Dynamic Role KPI Cards */}
+      {/* 4 Role KPI Cards */}
       <KpiCards kpis={currentRolePreset.kpis} />
 
-      {/* Primary Analytics Grid: Operational Performance + AI Decision Brief */}
+      {/* Primary Analytics Grid: Operational Chart + Role-Sorted Decision Brief */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-7">
           <PerformanceChart />
         </div>
         <div className="lg:col-span-5">
           <DecisionBrief
-            actions={actions}
+            actions={sortedActions}
+            priorityDepartment={currentRolePreset.priorityDepartment}
             onReviewAction={(act) => setReviewingAction(act)}
           />
         </div>
       </div>
 
-      {/* Quick Access Dual Hub: WBS Scheduler & IRoom Telemetry */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Hub Card 1: WBS Scheduler */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#0c1a2d] to-[#142842] border border-[#1e3450] text-white flex items-center justify-between gap-4 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#2563eb] flex items-center justify-center font-bold text-white shrink-0">
-              <CalendarClock className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="text-sm font-bold tracking-tight">
-                AI Project Scheduler & WBS
-              </div>
-              <div className="text-xs text-[#9cb5ce]">
-                CPM deviation tracking · <strong>3.5d delay risk</strong> detected
-              </div>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/scheduler"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold shadow-sm transition whitespace-nowrap"
-          >
-            <span>Open WBS</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {/* Hub Card 2: IRoom System Hub */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#102238] to-[#1b354f] border border-[#2b4865] text-white flex items-center justify-between gap-4 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#38bdf8] to-[#0284c7] flex items-center justify-center font-bold text-white shrink-0">
-              <Layers className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="text-sm font-bold tracking-tight">
-                IRoom System Telemetry (5 Streams)
-              </div>
-              <div className="text-xs text-[#9cb5ce]">
-                Materials, Progress, Drawings, POs & Operations
-              </div>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/iroom"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-semibold shadow-sm transition whitespace-nowrap"
-          >
-            <span>Open IRoom</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Secondary Operations Grid: Production Line Status + Risks & Opportunities */}
+      {/* Shop-Floor Work Centers & Risk Monitor */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-7">
           <ProductionLineStatus
             onSelectLine={(line) => {
-              showToast(`Selected line ${line.name} for deep telemetry review.`);
+              showToast(`Opening IRoom Operation Tracker for ${line.name}`);
             }}
           />
         </div>
         <div className="lg:col-span-5">
           <RisksMonitor
             risks={RISKS_AND_OPPORTUNITIES}
-            onSeeAllToast={() => showToast("Opening full cross-module risk register")}
+            onSeeAllToast={() => showToast("Viewing active cross-module risk register")}
           />
         </div>
       </div>
 
-      {/* Disclaimer Banner */}
+      {/* HITL Audit Trail & Pilot Validation Checks (ISO 9001 Cl. 7.5 + BMC Table VI) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Audit Log */}
+        <div className="lg:col-span-6 bg-white rounded-xl border border-[#e5e7eb] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-[15px] font-medium text-[#111827]">
+                Human-in-the-Loop Decision Audit Log
+              </h2>
+              <p className="text-xs text-[#64748b]">
+                ISO 9001 Cl. 7.5 / AS9100D record control for accepted and overridden changes
+              </p>
+            </div>
+            <span className="font-mono-numbers text-xs text-[#64748b]">
+              {auditLog.length} logged
+            </span>
+          </div>
+
+          <div className="divide-y divide-[#f1f5f9] text-xs max-h-60 overflow-y-auto">
+            {auditLog.map((entry) => (
+              <div key={entry.id} className="py-2.5 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[11px] font-medium font-mono-numbers ${
+                        entry.decision === "AUTHORIZED"
+                          ? "bg-[#f0fdf4] text-[#16a34a]"
+                          : "bg-[#fffbeb] text-[#b45309]"
+                      }`}
+                    >
+                      {entry.decision}
+                    </span>
+                    <span className="font-medium text-[#111827] truncate">
+                      {entry.actionTitle}
+                    </span>
+                  </div>
+                  <p className="text-[#4b5565] mt-1">{entry.notes}</p>
+                  <div className="text-[11px] text-[#64748b] mt-0.5 font-mono-numbers">
+                    {entry.reviewerRole} · Ref:{" "}
+                    <Link
+                      href={`/dashboard/knowledge?doc=${encodeURIComponent(entry.sopRef)}`}
+                      className="text-[#2563eb] hover:underline"
+                    >
+                      {entry.sopRef}
+                    </Link>
+                  </div>
+                </div>
+                <span className="text-[11px] font-mono-numbers text-[#64748b] shrink-0">
+                  {entry.timestamp}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pilot Validation Checks (BMC Table VI) */}
+        <div className="lg:col-span-6 bg-white rounded-xl border border-[#e5e7eb] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-[15px] font-medium text-[#111827]">
+                TRL 4 → TRL 6 Pilot Validation Checklist (BMC Table VI)
+              </h2>
+              <p className="text-xs text-[#64748b]">
+                Benchmarking criteria for the planned 8-week IMAJIN pilot &amp; n=15 user evaluation
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            {PILOT_CHECKS.map((chk) => (
+              <div
+                key={chk.id}
+                className="p-2.5 rounded-lg bg-[#fafafa] border border-[#e5e7eb] space-y-1"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-[#111827] truncate">{chk.check}</span>
+                  {chk.status === "pass" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a] shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Clock className="w-3.5 h-3.5 text-[#d97706] shrink-0" strokeWidth={1.5} />
+                  )}
+                </div>
+                <div className="text-[11px] text-[#4b5565]">Target: {chk.target}</div>
+                <div className="text-[11px] font-mono-numbers text-[#2563eb]">
+                  Status: {chk.currentSim}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <DisclaimerBanner />
     </div>
   );

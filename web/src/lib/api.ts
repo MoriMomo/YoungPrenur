@@ -17,6 +17,7 @@ import {
 import {
   ManufacturingRole,
   DecisionAction,
+  AuditLogEntry,
   WbsTask,
   DelayRiskPrediction,
   PerformanceMetricKey,
@@ -31,19 +32,23 @@ import {
 interface BackendWbsTask {
   code: string;
   task: string;
+  start_day?: number;
   planned_days: number;
   actual_days: number;
+  float_days?: number;
   critical: boolean;
   delay_risk: number;
   status: string;
   variance_days?: number;
+  work_center?: string;
+  owner?: string;
 }
 
 interface BackendDecisionAction {
   id: string;
   title: string;
-  urgency: "Urgent" | "High" | "Medium";
-  urgency_badge: "red" | "warn";
+  urgency: string;
+  urgency_badge: string;
   department: string;
   confidence: number;
   description: string;
@@ -52,9 +57,46 @@ interface BackendDecisionAction {
   due: string;
   source_doc: string;
   flagged: boolean;
+  status?: "pending" | "authorized" | "overridden";
+  checklist?: string[];
 }
 
-const API_BASE = "http://localhost:8000/api/v1";
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = `${API_ORIGIN}/api/v1`;
+
+function mapBackendWbs(tasks: BackendWbsTask[]): WbsTask[] {
+  let cursor = 0;
+  return tasks.map((t) => {
+    const startDay = typeof t.start_day === "number" ? t.start_day : cursor;
+    cursor += Math.max(1, Math.floor(t.planned_days * 0.7));
+    return {
+      code: t.code,
+      task: t.task,
+      startDay,
+      plannedDays: t.planned_days,
+      actualDays: t.actual_days,
+      floatDays: typeof t.float_days === "number" ? t.float_days : t.critical ? 0 : 2,
+      critical: t.critical,
+      delayRisk: t.delay_risk,
+      status: t.status,
+      varianceDays: t.variance_days ?? Math.max(0, t.actual_days - t.planned_days),
+      workCenter: t.work_center,
+      owner: t.owner,
+    };
+  });
+}
+
+function normalizeUrgency(urgency: string): DecisionAction["urgency"] {
+  const low = urgency.toLowerCase();
+  if (low.includes("urgent") || low.includes("kritis")) return "Urgent";
+  if (low.includes("high") || low.includes("tinggi")) return "High";
+  return "Medium";
+}
+
+function normalizeUrgencyBadge(badge: string): DecisionAction["urgencyBadge"] {
+  const low = badge.toLowerCase();
+  return low === "red" || low === "critical" ? "red" : "warn";
+}
 
 /**
  * Checks if the FastAPI backend service is reachable.
@@ -62,7 +104,7 @@ const API_BASE = "http://localhost:8000/api/v1";
 export async function checkApiHealth(): Promise<boolean> {
   if (typeof window === "undefined") return false;
   try {
-    const res = await fetch("http://localhost:8000/api/health", {
+    const res = await fetch(`${API_ORIGIN}/api/health`, {
       signal: AbortSignal.timeout(1500),
     });
     return res.ok;
@@ -83,7 +125,7 @@ export async function fetchOverview(role: ManufacturingRole) {
       return await res.json();
     }
   } catch {
-    // Fallback
+    // Fallback to calibrated sandbox dataset
   }
   const preset = ROLE_PRESETS[role] || ROLE_PRESETS["Operations Manager"];
   return {
@@ -111,16 +153,7 @@ export async function fetchWbsSchedule(): Promise<WbsTask[]> {
     });
     if (res.ok) {
       const data: BackendWbsTask[] = await res.json();
-      return data.map((t: BackendWbsTask) => ({
-        code: t.code,
-        task: t.task,
-        plannedDays: t.planned_days,
-        actualDays: t.actual_days,
-        critical: t.critical,
-        delayRisk: t.delay_risk,
-        status: t.status,
-        varianceDays: t.variance_days
-      }));
+      return mapBackendWbs(data);
     }
   } catch {
     // Fallback
@@ -140,7 +173,11 @@ export async function uploadScheduleFile(filename: string = "master_project_sche
       signal: AbortSignal.timeout(3000),
     });
     if (res.ok) {
-      return await res.json();
+      const json = await res.json();
+      if (Array.isArray(json.tasks)) {
+        json.tasks = mapBackendWbs(json.tasks);
+      }
+      return json;
     }
   } catch {
     // Fallback
@@ -165,7 +202,21 @@ export async function fetchDelayRiskPrediction(): Promise<DelayRiskPrediction> {
       signal: AbortSignal.timeout(2000),
     });
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      return {
+        project_name: data.project_name,
+        overall_delay_probability: data.overall_delay_probability,
+        critical_path_tasks_count: data.critical_path_tasks_count,
+        high_risk_tasks_count: data.high_risk_tasks_count,
+        estimated_project_slippage_days: data.estimated_project_slippage_days,
+        risk_drivers: (data.risk_drivers || []).map((d: { factor: string; weight?: string; impact: string; severity?: string }) => ({
+          factor: d.factor,
+          weight: d.weight || d.severity || "HIGH",
+          impact: d.impact,
+        })),
+        tasks: Array.isArray(data.tasks) ? mapBackendWbs(data.tasks) : WBS_TASKS,
+        methodology: data.methodology || "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)",
+      };
     }
   } catch {
     // Fallback
@@ -178,7 +229,7 @@ export async function fetchDelayRiskPrediction(): Promise<DelayRiskPrediction> {
     estimated_project_slippage_days: 3.5,
     risk_drivers: RISK_DRIVERS,
     tasks: WBS_TASKS,
-    methodology: "CPM + Supervised XGBoost (BINUS RTT)"
+    methodology: "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)"
   };
 }
 
@@ -192,11 +243,11 @@ export async function fetchDecisionActions(): Promise<DecisionAction[]> {
     });
     if (res.ok) {
       const data: BackendDecisionAction[] = await res.json();
-      return data.map((d: BackendDecisionAction) => ({
+      return data.map((d) => ({
         id: d.id,
         title: d.title,
-        urgency: d.urgency,
-        urgencyBadge: d.urgency_badge,
+        urgency: normalizeUrgency(d.urgency),
+        urgencyBadge: normalizeUrgencyBadge(d.urgency_badge),
         department: d.department,
         confidence: d.confidence,
         description: d.description,
@@ -204,7 +255,9 @@ export async function fetchDecisionActions(): Promise<DecisionAction[]> {
         owner: d.owner,
         due: d.due,
         sourceDoc: d.source_doc,
-        flagged: d.flagged
+        flagged: d.flagged,
+        status: d.status || (d.flagged ? "authorized" : "pending"),
+        checklist: d.checklist,
       }));
     }
   } catch {
@@ -214,14 +267,24 @@ export async function fetchDecisionActions(): Promise<DecisionAction[]> {
 }
 
 /**
- * Flags an action for human review.
+ * Records a human-in-the-loop review decision (Authorized or Overridden).
  */
-export async function flagDecisionAction(actionId: string, reviewerRole: string = "Operations Manager") {
+export async function flagDecisionAction(
+  actionId: string,
+  reviewerRole: string = "Operations Manager",
+  decision: "AUTHORIZED" | "OVERRIDDEN" = "AUTHORIZED",
+  notes: string = ""
+) {
   try {
     const res = await fetch(`${API_BASE}/risks/decisions/flag`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action_id: actionId, reviewer_role: reviewerRole }),
+      body: JSON.stringify({
+        action_id: actionId,
+        reviewer_role: reviewerRole,
+        decision,
+        notes,
+      }),
       signal: AbortSignal.timeout(2000),
     });
     if (res.ok) {
@@ -233,14 +296,18 @@ export async function flagDecisionAction(actionId: string, reviewerRole: string 
   return {
     success: true,
     action_id: actionId,
+    decision,
+    notes,
     status: "FLAGGED_LOCALLY",
     reviewer: reviewerRole,
-    message: "Action registered for human review."
+    message: decision === "OVERRIDDEN"
+      ? "Action override recorded locally in human audit log."
+      : "Action authorized locally in human audit log."
   };
 }
 
 /**
- * Queries the grounded RAG Copilot.
+ * Queries the grounded RAG Copilot with local deterministic retrieval fallback.
  */
 export async function askManufacturingCopilot(message: string, activeRole: ManufacturingRole) {
   try {
@@ -254,55 +321,136 @@ export async function askManufacturingCopilot(message: string, activeRole: Manuf
       return await res.json();
     }
   } catch {
-    // Fallback
+    // Fallback to grounded local SOP lookup
   }
 
-  // Grounded local simulation fallback
   const qLower = message.toLowerCase();
-  for (const doc of KNOWLEDGE_DOCS) {
-    if (doc.keywords.some(kw => qLower.includes(kw))) {
-      const sec = doc.sections[0];
-      return {
-        success: true,
-        reply: `Berdasarkan dokumen acuan ${doc.code} (${doc.title}):\n\n${sec.content}`,
-        citations: [
-          {
-            doc_code: doc.code,
-            clause: sec.clause,
-            title: doc.title,
-            excerpt: sec.content
-          }
-        ],
-        confidence: 0.92,
-        is_grounded: true,
-        source_documents_indexed: KNOWLEDGE_DOCS.length
-      };
+  const scoredDocs = KNOWLEDGE_DOCS.map((doc) => {
+    let score = 0;
+    if (qLower.includes(doc.code.toLowerCase())) score += 3;
+    if (doc.code === "SOP-ENG-02" && (qLower.includes("dwg-") || qLower.includes("drawing") || qLower.includes("blueprint"))) {
+      score += 2;
     }
+    for (const kw of doc.keywords) {
+      if (qLower.includes(kw)) score += 1;
+    }
+    return { doc, score };
+  })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (scoredDocs.length > 0) {
+    const { doc } = scoredDocs[0];
+    const sec = doc.sections[0];
+    const sec2 = doc.sections[1];
+    return {
+      success: true,
+      reply: `Grounded guidance from ${doc.code} (${doc.title}) for ${activeRole}:\n\n1. ${sec.clause}: ${sec.content}${sec2 ? `\n2. ${sec2.clause}: ${sec2.content}` : ""}`,
+      citations: scoredDocs.slice(0, 2).map(({ doc: d }) => ({
+        doc_code: d.code,
+        clause: d.sections[0].clause,
+        title: d.title,
+        excerpt: d.sections[0].content,
+      })),
+      confidence: 0.92,
+      is_grounded: true,
+      source_documents_indexed: KNOWLEDGE_DOCS.length
+    };
+  }
+
+  if (qLower.includes("wbs") || qLower.includes("delay") || qLower.includes("cnc") || qLower.includes("slip")) {
+    return {
+      success: true,
+      reply: `CPM & Heuristic Schedule Analysis (${activeRole} view): WBS-1.2 (Raw Material Procurement) carries 85% risk score (+2d variance) and WBS-3.1 (Cell 02 Sub-Assembly) carries 79% risk score (+2d variance), driving +3.5d overall project slippage. Verify INGOT-AL7075-T6 air-freight authorization (SOP-SCM-12) and Cell 02 operator shift transfer (SOP-LINE2-OPT).`,
+      citations: [
+        {
+          doc_code: "SOP-SCM-12",
+          clause: "Clause 2.1: Buffer Inventory Warning",
+          title: "Critical Component Shortage & Express Procurement",
+          excerpt: "When buffer stock falls below 48 hours and supplier lead time exceeds 48 hours, trigger express air freight."
+        },
+        {
+          doc_code: "SOP-LINE2-OPT",
+          clause: "Clause 1.4: Throughput Variance Trigger",
+          title: "Assembly Cell Line Balancing & Operator Reallocation",
+          excerpt: "If cell attainment falls below 90% of shift target for >2h, transfer one cross-trained operator."
+        }
+      ],
+      confidence: 0.91,
+      is_grounded: true,
+      source_documents_indexed: KNOWLEDGE_DOCS.length
+    };
   }
 
   return {
     success: true,
-    reply: `Prioritas operasional ${activeRole}: 1. Atasi risiko lead-time Alloy M-204 segera (36h cover tersisa). 2. Lakukan inspeksi vibrasi Press P-07 (+18%) sebelum batch stamping sore. 3. Otorisasi pergeseran operator Cell 02 untuk memulihkan 120 unit.`,
+    reply: `Top operational priorities for ${activeRole}:\n1. Mitigate Alloy M-204 / INGOT-AL7075-T6 stock cover (36h left vs 3-day vendor lead time; protects Rp 480M PO-089 & PO-092).\n2. Inspect Press P-07 hydraulic seal before next stamping cycle (+18% vibration vs baseline, exceeding +15% threshold in SOP-PRS-04).\n3. Rebalance Cell 02 shift staffing to recover ~120 units/shift under SOP-LINE2-OPT.`,
     citations: [
       {
-        doc_code: "MDIP-OP-BRIEF",
-        clause: `Role Focus: ${activeRole}`,
-        title: "Cross-Functional Decision Priority Matrix",
-        excerpt: `Calibrated operational priorities for ${activeRole}.`
+        doc_code: "SOP-SCM-12",
+        clause: "Clause 5.3: Commercial Penalty Protection",
+        title: "Critical Component Shortage & Express Procurement",
+        excerpt: "Expedited shipping up to Rp 25,000,000 is pre-approved when mitigating penalties exceeding Rp 100,000,000."
+      },
+      {
+        doc_code: "SOP-PRS-04",
+        clause: "Clause 3.2: Vibration Thresholds",
+        title: "Hydraulic Stamping & Press P-07 Operating Protocol",
+        excerpt: "If vibration index exceeds baseline by >15%, condition inspection of seals and bearings is mandatory."
       }
     ],
-    confidence: 0.95,
+    confidence: 0.94,
     is_grounded: true,
     source_documents_indexed: KNOWLEDGE_DOCS.length
   };
 }
 
 /**
- * Downloads operational summary text file.
+ * Generates and downloads an operational summary .txt brief client-side (per MDIP_DRD Sec. 5.3).
  */
-export function downloadOperationalExport(role: string) {
-  const url = `${API_BASE}/dashboard/export?role=${encodeURIComponent(role)}`;
-  window.open(url, "_blank");
+export function downloadOperationalExport(
+  role: ManufacturingRole,
+  actions: DecisionAction[] = INITIAL_ACTIONS,
+  auditLog: AuditLogEntry[] = []
+) {
+  const preset = ROLE_PRESETS[role] || ROLE_PRESETS["Operations Manager"];
+  const timestamp = new Date().toISOString();
+  const lines = [
+    "MDIP: AI MANUFACTURING DECISION INTELLIGENCE PLATFORM",
+    "TRL 4 PROTOTYPE OPERATIONAL BRIEF (SIMULATED SAMPLE DATA)",
+    "================================================================",
+    `Generated At : ${timestamp}`,
+    `Active Role  : ${role} (${preset.buyingCenterRole})`,
+    `Research Ref : BINUS RTT D1521 & PT IMAJIN (IRoom System)`,
+    "",
+    "1. ROLE KPI SNAPSHOT",
+    ...preset.kpis.map(k => `   - ${k.title}: ${k.value} (${k.trend}, ${k.subtle})`),
+    "",
+    "2. PRIORITIZED AI DECISION BRIEF",
+    ...actions.map((a, idx) =>
+      `   ${idx + 1}. [${a.urgency.toUpperCase()}] ${a.title} | Status: ${(a.status || "pending").toUpperCase()} | Ref: ${a.sourceDoc}\n      Impact: ${a.impact} | Owner: ${a.owner} | Due: ${a.due}`
+    ),
+    "",
+    "3. HUMAN-IN-THE-LOOP AUDIT LOG (ISO 9001 Cl. 7.5)",
+    ...(auditLog.length > 0
+      ? auditLog.map(e => `   - [${e.timestamp}] ${e.decision}: ${e.actionTitle} by ${e.reviewerRole} (${e.sopRef}) | Notes: ${e.notes || "Verified"}`)
+      : ["   - No actions authorized or overridden in this session yet."]),
+    "",
+    "INTEGRITY NOTICE:",
+    "All telemetry figures, delay-risk heuristics, and recommendations in this export",
+    "are TRL 4 simulated data. Validate against physical ERP/MES/IRoom records and",
+    "obtain supervisor sign-off before shop-floor execution.",
+  ];
+
+  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `mdip-brief-${role.toLowerCase().replace(/\s+/g, "-")}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**

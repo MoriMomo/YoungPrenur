@@ -1,31 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --nav-bg: #0c1a2d;
-  --nav-surface: #142842;
-  --nav-hover: #1e395c;
-  --nav-text: #cad8e8;
-  --nav-muted: #7890a8;
-  --canvas-bg: #f4f7fb;
+  --nav-bg: #0d131c;
+  --nav-surface: #151d2a;
+  --nav-hover: #1c2636;
+  --nav-text: #eef0f5;
+  --nav-muted: #7a8296;
+  --canvas-bg: #f6f7f9;
   --panel-bg: #ffffff;
-  --panel-border: #e2eaf3;
-  --ink-primary: #101e30;
-  --ink-secondary: #536780;
-  --ink-muted: #8295ab;
+  --panel-border: #e5e7eb;
+  --ink-primary: #111827;
+  --ink-secondary: #4b5565;
+  --ink-muted: #64748b;
   --accent-blue: #2563eb;
   --accent-blue-light: #eff6ff;
   --accent-cyan: #0891b2;
   --accent-cyan-light: #ecfeff;
-  --status-normal: #0d9263;
-  --status-normal-light: #e6f7f0;
+  --status-normal: #16a34a;
+  --status-normal-light: #f0fdf4;
   --status-warn: #d97706;
-  --status-warn-light: #fef3c7;
+  --status-warn-light: #fffbeb;
   --status-alert: #dc2626;
-  --status-alert-light: #fee2e2;
-  --shadow-sm: 0 1px 3px rgba(12, 26, 45, 0.05);
-  --shadow-card: 0 4px 16px rgba(12, 26, 45, 0.06), 0 1px 2px rgba(12, 26, 45, 0.04);
-  --shadow-hover: 0 8px 28px rgba(12, 26, 45, 0.10), 0 2px 4px rgba(12, 26, 45, 0.05);
-  --shadow-modal: 0 24px 60px rgba(12, 26, 45, 0.22), 0 6px 16px rgba(12, 26, 45, 0.12);
+  --status-alert-light: #fef2f2;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -62,41 +62,4 @@ html, body {
 .font-mono-numbers {
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-feature-settings: "tnum" 1, "zero" 1;
-}
-
-/* Pulsing Status Dot */
-.pulsing-dot {
-  position: relative;
-}
-.pulsing-dot::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 9999px;
-  background: currentColor;
-  opacity: 0.4;
-  animation: pulse-ring 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
-}
-
-@keyframes pulse-ring {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  50% { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(0.95); opacity: 0; }
-}
-
-/* Telemetry Ticker Marquee */
-.ticker-track {
-  animation: ticker-scroll 40s linear infinite;
-}
-.ticker-track:hover {
-  animation-play-state: paused;
-}
-@keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ticker-track {
-    animation: none;
-  }
 }

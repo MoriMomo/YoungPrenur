@@ -1,37 +1,51 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Menu, RotateCcw, ChevronDown, Sparkles } from "lucide-react";
-import { ManufacturingRole } from "@/types";
+import { usePathname } from "next/navigation";
+import { Menu, RotateCcw, ChevronDown, MessageSquareText, Shield } from "lucide-react";
+import { ManufacturingRole, DeploymentMode } from "@/types";
 import { ROLES } from "@/lib/mock-data";
 import gsap from "gsap";
 
 interface TopbarProps {
-  currentTitle?: string;
   selectedRole: ManufacturingRole;
   onSelectRole: (role: ManufacturingRole) => void;
+  deploymentMode: DeploymentMode;
+  onChangeDeploymentMode: (mode: DeploymentMode) => void;
   onRefresh: () => void;
   isApiLive: boolean;
   onOpenMobileMenu: () => void;
   onOpenCopilot: () => void;
 }
 
+const ROUTE_TITLES: Record<string, string> = {
+  "/dashboard": "Overview Cockpit",
+  "/dashboard/iroom": "IRoom Telemetry Hub",
+  "/dashboard/scheduler": "AI Project Scheduler (WBS)",
+  "/dashboard/knowledge": "Knowledge Base & SOPs",
+  "/dashboard/copilot": "AI Copilot Console",
+};
+
 export const Topbar: React.FC<TopbarProps> = ({
-  currentTitle = "Workspace",
   selectedRole,
   onSelectRole,
+  deploymentMode,
+  onChangeDeploymentMode,
   onRefresh,
   isApiLive,
   onOpenMobileMenu,
   onOpenCopilot,
 }) => {
+  const pathname = usePathname();
   const refreshIconRef = useRef<SVGSVGElement>(null);
+
+  const currentTitle = ROUTE_TITLES[pathname] || "Workspace";
 
   const handleRefreshClick = () => {
     if (refreshIconRef.current) {
       gsap.to(refreshIconRef.current, {
         rotation: "+=360",
-        duration: 0.6,
+        duration: 0.5,
         ease: "power2.inOut",
       });
     }
@@ -39,46 +53,76 @@ export const Topbar: React.FC<TopbarProps> = ({
   };
 
   return (
-    <header className="h-16 bg-white border-b border-[#e2eaf3] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_3px_rgba(12,26,45,0.03)]">
-      {/* Left: Mobile trigger & Breadcrumbs */}
+    <header className="h-14 bg-white border-b border-[#e5e7eb] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+      {/* Left: Mobile trigger & Route Breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         <button
+          type="button"
           onClick={onOpenMobileMenu}
-          className="lg:hidden p-2 text-[#536780] hover:text-[#101e30] hover:bg-[#f1f5f9] rounded-lg transition"
+          className="lg:hidden p-1.5 text-[#4b5565] hover:text-[#111827] hover:bg-[#f3f4f6] rounded-lg transition-colors cursor-pointer"
           aria-label="Open navigation menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4" strokeWidth={1.5} />
         </button>
 
-        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-[#536780] min-w-0 truncate">
+        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-[#4b5565] min-w-0 truncate">
           <span className="hidden sm:inline font-medium">MDIP</span>
-          <span className="hidden sm:inline text-[#94a3b8]">/</span>
-          <span className="font-semibold text-[#101e30] tracking-tight truncate">
+          <span className="hidden sm:inline text-[#9ca3af]">/</span>
+          <span className="font-medium text-[#111827] truncate">
             {currentTitle}
           </span>
         </div>
       </div>
 
-      {/* Right: API status, Role switcher, Refresh, Copilot */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* API Status Pill */}
+      {/* Right: API Status, Deployment Mode, Role Switcher, Refresh, Copilot */}
+      <div className="flex items-center gap-2 sm:gap-2.5">
+        {/* Truthful API / Sandbox Indicator */}
         <div
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+          className="hidden xl:flex items-center gap-1.5 px-2 text-xs font-mono-numbers text-[#64748b]"
+          title={
             isApiLive
-              ? "bg-[#e6f7f0] text-[#0d9263] border border-[#a7f3d0]"
-              : "bg-[#f8fafc] text-[#64748b] border border-[#e2e8f0]"
-          }`}
-          title={isApiLive ? "FastAPI backend live at http://localhost:8000" : "Standalone mode using verified local dataset"}
+              ? "FastAPI PoC service responding"
+              : "Offline mode: running calibrated TRL 4 sample dataset"
+          }
         >
           <span
             className={`w-1.5 h-1.5 rounded-full ${
-              isApiLive ? "bg-[#10b981] pulsing-dot" : "bg-[#94a3b8]"
+              isApiLive ? "bg-[#16a34a]" : "bg-[#d97706]"
             }`}
           />
-          <span className="hidden md:inline">
-            {isApiLive ? "API Connected" : "Client Fallback Mode"}
-          </span>
-          <span className="md:hidden">{isApiLive ? "Live" : "Mock"}</span>
+          <span>{isApiLive ? "API Connected" : "TRL 4 Sandbox"}</span>
+        </div>
+
+        {/* SaaS vs On-Premise VPC Toggle */}
+        <div
+          className="hidden md:flex items-center h-8 bg-[#f3f4f6] p-0.5 rounded-lg border border-[#e5e7eb] text-xs"
+          role="group"
+          aria-label="Deployment architecture mode"
+        >
+          <button
+            type="button"
+            onClick={() => onChangeDeploymentMode("saas")}
+            className={`h-7 px-2.5 rounded-md font-medium transition-colors cursor-pointer ${
+              deploymentMode === "saas"
+                ? "bg-white text-[#111827] shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                : "text-[#4b5565] hover:text-[#111827]"
+            }`}
+          >
+            SaaS
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeDeploymentMode("internal")}
+            className={`flex items-center gap-1 h-7 px-2.5 rounded-md font-medium transition-colors cursor-pointer ${
+              deploymentMode === "internal"
+                ? "bg-[#111827] text-white"
+                : "text-[#4b5565] hover:text-[#111827]"
+            }`}
+            title="Isolates CAD drawings and PO data inside plant VPC (UU PDP / IP safety)"
+          >
+            <Shield className="w-3.5 h-3.5" strokeWidth={1.5} />
+            <span>On-Prem VPC</span>
+          </button>
         </div>
 
         {/* Role Selector */}
@@ -86,7 +130,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <select
             value={selectedRole}
             onChange={(e) => onSelectRole(e.target.value as ManufacturingRole)}
-            className="appearance-none bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#101e30] text-xs sm:text-sm font-medium border border-[#cbd5e1] hover:border-[#94a3b8] rounded-lg pl-3 pr-8 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 transition-all shadow-sm"
+            className="h-8 appearance-none bg-white hover:bg-[#f9fafb] text-[#111827] text-xs font-medium border border-[#e5e7eb] hover:border-[#d1d5db] rounded-lg pl-3 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 transition-colors"
             aria-label="Select manufacturing role"
           >
             {ROLES.map((role) => (
@@ -95,27 +139,29 @@ export const Topbar: React.FC<TopbarProps> = ({
               </option>
             ))}
           </select>
-          <ChevronDown className="w-3.5 h-3.5 text-[#64748b] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <ChevronDown className="w-3.5 h-3.5 text-[#64748b] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
         </div>
 
-        {/* Refresh Button with GSAP rotation */}
+        {/* Refresh */}
         <button
+          type="button"
           onClick={handleRefreshClick}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-[#334155] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] rounded-lg transition-all shadow-sm hover:text-[#0f172a]"
-          title="Refresh project telemetry data"
+          className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium text-[#374151] bg-white hover:bg-[#f9fafb] border border-[#e5e7eb] rounded-lg transition-colors cursor-pointer"
+          title="Check backend health and refresh telemetry"
           aria-label="Refresh telemetry data"
         >
-          <RotateCcw ref={refreshIconRef} className="w-3.5 h-3.5 text-[#64748b]" />
+          <RotateCcw ref={refreshIconRef} className="w-3.5 h-3.5 text-[#64748b]" strokeWidth={1.5} />
           <span className="hidden sm:inline">Refresh</span>
         </button>
 
-        {/* Copilot Header Button */}
+        {/* Single Global Copilot Trigger */}
         <button
+          type="button"
           onClick={onOpenCopilot}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-xs font-semibold shadow-sm transition"
-          aria-label="Open AI Copilot"
+          className="h-8 flex items-center gap-1.5 px-3 bg-[#111827] hover:bg-[#1f2937] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          aria-label="Open Manufacturing Copilot"
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <MessageSquareText className="w-3.5 h-3.5 text-[#9ca3af]" strokeWidth={1.5} />
           <span className="hidden sm:inline">Copilot</span>
         </button>
       </div>

@@ -6,6 +6,11 @@ export type ManufacturingRole =
   | "Quality Manager"
   | "Supply Chain Lead";
 
+export type BuyingCenterRole =
+  | "Economic Buyer"
+  | "Operational Buyer"
+  | "Technical Evaluator";
+
 export interface KpiItem {
   title: string;
   value: string;
@@ -18,6 +23,8 @@ export interface KpiItem {
 export interface RolePreset {
   title: string;
   sub: string;
+  buyingCenterRole: BuyingCenterRole;
+  priorityDepartment: string;
   kpis: KpiItem[];
 }
 
@@ -34,6 +41,30 @@ export interface DecisionAction {
   due: string;
   sourceDoc: string;
   flagged: boolean;
+  status?: "pending" | "authorized" | "overridden";
+  overrideReason?: string;
+  checklist?: string[];
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actionId: string;
+  actionTitle: string;
+  decision: "AUTHORIZED" | "OVERRIDDEN";
+  reviewerRole: ManufacturingRole;
+  notes: string;
+  sopRef: string;
+  timestamp: string;
+}
+
+export interface PilotCheckItem {
+  id: string;
+  check: string;
+  measure: string;
+  target: string;
+  currentSim: string;
+  blockTested: string;
+  status: "pass" | "pending";
 }
 
 export interface RiskItem {
@@ -51,12 +82,16 @@ export interface RiskItem {
 export interface WbsTask {
   code: string;
   task: string;
+  startDay: number;
   plannedDays: number;
   actualDays: number;
+  floatDays: number;
   critical: boolean;
   delayRisk: number;
   status: string;
   varianceDays?: number;
+  workCenter?: string;
+  owner?: string;
 }
 
 export interface KnowledgeClause {

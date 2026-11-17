@@ -2,7 +2,6 @@
 
 import React from "react";
 import { RiskItem } from "@/types";
-import { AlertCircle, Activity, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface RisksMonitorProps {
   risks: RiskItem[];
@@ -10,55 +9,45 @@ interface RisksMonitorProps {
 }
 
 export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast }) => {
-  const getBadgeClass = (badgeClass: RiskItem["badgeClass"]) => {
+  const getDotColor = (badgeClass: RiskItem["badgeClass"]) => {
     switch (badgeClass) {
       case "red":
-        return "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]";
+        return "bg-[#dc2626]";
       case "warn":
-        return "bg-[#fef3c7] text-[#d97706] border border-[#fde68a]";
+        return "bg-[#d97706]";
       case "lower":
       default:
-        return "bg-[#e6f7f0] text-[#0d9263] border border-[#a7f3d0]";
+        return "bg-[#16a34a]";
     }
   };
 
-  const getSymbolIcon = (type: "risk" | "opportunity", symbol: string) => {
-    if (type === "opportunity") {
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#e6f7f0] text-[#0d9263] flex items-center justify-center shrink-0">
-          <TrendingUp className="w-4 h-4" />
-        </div>
-      );
+  const getBadgeText = (badgeClass: RiskItem["badgeClass"]) => {
+    switch (badgeClass) {
+      case "red":
+        return "text-[#dc2626]";
+      case "warn":
+        return "text-[#b45309]";
+      case "lower":
+      default:
+        return "text-[#16a34a]";
     }
-    if (symbol === "⌁") {
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#fef3c7] text-[#d97706] flex items-center justify-center shrink-0">
-          <Activity className="w-4 h-4" />
-        </div>
-      );
-    }
-    return (
-      <div className="w-8 h-8 rounded-lg bg-[#fee2e2] text-[#dc2626] flex items-center justify-center shrink-0">
-        <AlertTriangle className="w-4 h-4" />
-      </div>
-    );
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#e2eaf3] p-5 shadow-[0_2px_8px_rgba(12,26,45,0.04)] hover:shadow-[0_4px_16px_rgba(12,26,45,0.06)] transition-all">
+    <div className="bg-white rounded-xl border border-[#e5e7eb] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-[#d1d5db] transition-[border-color,background-color] duration-150">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-bold text-[#101e30] tracking-tight">
-            Early Warning Risks & Opportunity Register
+          <h2 className="text-[15px] font-medium text-[#111827]">
+            Early Warning Risks &amp; Opportunity Register
           </h2>
-          <p className="text-xs text-[#536780]">
+          <p className="text-xs text-[#64748b]">
             Proactive signals detected across supplier lead times, machine telemetry, and milestone variance.
           </p>
         </div>
         <button
           onClick={onSeeAllToast}
-          className="text-xs font-semibold text-[#2563eb] hover:underline cursor-pointer"
+          className="text-xs font-medium text-[#2563eb] hover:underline cursor-pointer shrink-0"
         >
           See all →
         </button>
@@ -69,17 +58,17 @@ export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast
         {risks.map((item) => (
           <div
             key={item.id}
-            className="flex items-start gap-3 p-3 rounded-xl border border-[#e2eaf3] hover:border-[#cbd5e1] bg-[#fbfcfe] hover:bg-white transition-all shadow-[0_1px_3px_rgba(12,26,45,0.02)]"
+            className="flex items-start gap-3 p-3 rounded-xl border border-[#e5e7eb] hover:border-[#d1d5db] bg-[#fafafa] hover:bg-white transition-[border-color,background-color] duration-150"
           >
-            {getSymbolIcon(item.type, item.symbol)}
+            <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${getDotColor(item.badgeClass)}`} />
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-bold text-[#101e30] tracking-tight truncate">
+                <h3 className="text-xs font-medium text-[#111827] truncate">
                   {item.title}
                 </h3>
                 <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${getBadgeClass(
+                  className={`text-[11px] font-mono-numbers font-medium shrink-0 ${getBadgeText(
                     item.badgeClass
                   )}`}
                 >
@@ -87,11 +76,11 @@ export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast
                 </span>
               </div>
 
-              <p className="text-xs text-[#475569] mt-0.5 mb-1.5 leading-snug">
+              <p className="text-xs text-[#4b5565] mt-0.5 mb-1.5 leading-snug">
                 {item.desc}
               </p>
 
-              <div className="text-[11px] text-[#64748b] font-medium">
+              <div className="text-[11px] text-[#64748b]">
                 Department: {item.dept}
               </div>
             </div>

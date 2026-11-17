@@ -2,88 +2,121 @@
 
 import React from "react";
 import { DecisionAction } from "@/types";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 interface DecisionBriefProps {
   actions: DecisionAction[];
+  priorityDepartment?: string;
   onReviewAction: (action: DecisionAction) => void;
 }
 
-export const DecisionBrief: React.FC<DecisionBriefProps> = ({ actions, onReviewAction }) => {
-  const getUrgencyBadge = (urgency: string) => {
+export const DecisionBrief: React.FC<DecisionBriefProps> = ({
+  actions,
+  priorityDepartment,
+  onReviewAction,
+}) => {
+  const getUrgencyDot = (urgency: string) => {
     switch (urgency) {
       case "Urgent":
-        return "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]";
+        return "bg-[#dc2626]";
       case "High":
-        return "bg-[#fef3c7] text-[#d97706] border border-[#fde68a]";
+        return "bg-[#d97706]";
       case "Medium":
       default:
-        return "bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe]";
+        return "bg-[#2563eb]";
+    }
+  };
+
+  const getUrgencyText = (urgency: string) => {
+    switch (urgency) {
+      case "Urgent":
+        return "text-[#dc2626]";
+      case "High":
+        return "text-[#b45309]";
+      case "Medium":
+      default:
+        return "text-[#4b5565]";
     }
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#e2eaf3] p-5 shadow-[0_2px_8px_rgba(12,26,45,0.04)] hover:shadow-[0_4px_16px_rgba(12,26,45,0.06)] transition-all flex flex-col">
-      {/* Header */}
+    <div className="bg-white rounded-xl border border-[#e5e7eb] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-bold text-[#101e30] tracking-tight flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#2563eb]" />
-            <span>AI Decision Brief & Action Priorities</span>
+          <h2 className="text-[15px] font-medium text-[#111827]">
+            AI Decision Brief &amp; Priorities
           </h2>
-          <p className="text-xs text-[#536780]">
-            Cross-functional recommendations to eliminate schedule slippage and protect delivery dates.
+          <p className="text-xs text-[#64748b]">
+            Prioritized interventions requiring human-in-the-loop sign-off
           </p>
         </div>
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe]">
-          {actions.length} actions
+        <span className="text-xs font-mono-numbers text-[#64748b] shrink-0">
+          {actions.length} items
         </span>
       </div>
 
-      {/* Action Cards List */}
       <div className="space-y-3 flex-1 flex flex-col justify-between">
-        {actions.map((act) => (
-          <div
-            key={act.id}
-            className="p-3.5 rounded-xl border border-[#e2eaf3] hover:border-[#cbd5e1] bg-[#fbfcfe] hover:bg-white transition-all shadow-[0_1px_3px_rgba(12,26,45,0.02)]"
-          >
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-md bg-[#eff6ff] text-[#2563eb] flex items-center justify-center text-xs shrink-0 font-bold">
-                  ✧
+        {actions.map((act) => {
+          const isRoleMatch = priorityDepartment && act.department === priorityDepartment;
+          return (
+            <div
+              key={act.id}
+              className={`p-3.5 rounded-xl border transition-colors ${
+                isRoleMatch
+                  ? "border-[#cbd5e1] bg-white"
+                  : "border-[#e5e7eb] bg-[#fafafa]"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="min-w-0">
+                  {isRoleMatch && (
+                    <div className="text-[11px] font-mono-numbers text-[#2563eb] font-medium mb-0.5">
+                      Role Focus
+                    </div>
+                  )}
+                  <h3 className="text-sm font-medium text-[#111827]">
+                    {act.title}
+                  </h3>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-mono-numbers font-medium shrink-0 ${getUrgencyText(
+                    act.urgency
+                  )}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${getUrgencyDot(act.urgency)}`} />
+                  <span>{act.urgency}</span>
                 </span>
-                <h3 className="text-sm font-bold text-[#101e30] tracking-tight">
-                  {act.title}
-                </h3>
-              </div>
-              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider ${getUrgencyBadge(act.urgency)}`}>
-                {act.urgency}
-              </span>
-            </div>
-
-            <p className="text-xs text-[#475569] leading-relaxed mb-3">
-              {act.description}
-            </p>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[#f1f5f9] text-xs">
-              <div className="flex items-center gap-3 text-[#64748b]">
-                <span className="font-medium text-[#334155]">{act.department}</span>
-                <span>·</span>
-                <span className="text-[#0d9263] font-semibold font-mono-numbers">
-                  Confidence {act.confidence}%
-                </span>
               </div>
 
-              <button
-                onClick={() => onReviewAction(act)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[#2563eb] hover:text-[#1d4ed8] hover:underline cursor-pointer"
-              >
-                <span>{act.flagged ? "✓ Authorized (In Audit Log)" : "Review & Authorize"}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <p className="text-xs text-[#4b5565] leading-relaxed mb-3">{act.description}</p>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[#f1f5f9] text-xs">
+                <div className="flex items-center gap-2 text-[#64748b]">
+                  <span className="font-medium text-[#374151]">{act.department}</span>
+                  <span>·</span>
+                  <span className="text-[#16a34a] font-medium font-mono-numbers">
+                    Confidence {act.confidence}%
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onReviewAction(act)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-[#2563eb] hover:text-[#1d4ed8] hover:underline cursor-pointer"
+                >
+                  <span>
+                    {act.flagged
+                      ? act.status === "overridden"
+                        ? "Overridden (Logged)"
+                        : "Authorized (Logged)"
+                      : "Review & Decide"}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

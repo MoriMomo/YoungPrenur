@@ -2,17 +2,17 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, ManufacturingRole } from "@/types";
-import { askManufacturingCopilot } from "@/lib/api";
 import { CitationBadge } from "./CitationBadge";
-import { Sparkles, X, Send, Bot, User, Loader2 } from "lucide-react";
-import gsap from "gsap";
+import { MessageSquareText, X, Send, Bot, User, Loader2 } from "lucide-react";
 
 interface ChatDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   activeRole: ManufacturingRole;
   messages: ChatMessage[];
-  onSendMessage: (msg: ChatMessage) => void;
+  isLoading: boolean;
+  onSendQuery: (query: string) => Promise<void>;
+  onReviewFirstPending: () => void;
 }
 
 export const ChatDrawer: React.FC<ChatDrawerProps> = ({
@@ -20,11 +20,11 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   onClose,
   activeRole,
   messages,
-  onSendMessage,
+  isLoading,
+  onSendQuery,
+  onReviewFirstPending,
 }) => {
   const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const drawerRef = useRef<HTMLDivElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,17 +36,17 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   ];
 
   useEffect(() => {
-    if (isOpen) {
-      if (drawerRef.current) {
-        gsap.fromTo(
-          drawerRef.current,
-          { opacity: 0.8 },
-          { opacity: 1, duration: 0.2, ease: "power2.out" }
-        );
-      }
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 100);
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleEsc);
+    };
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -60,75 +60,40 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     e.preventDefault();
     const query = inputValue.trim();
     if (!query || isLoading) return;
-
-    const userMsg: ChatMessage = {
-      id: `usr-${Date.now()}`,
-      sender: "you",
-      text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-
-    onSendMessage(userMsg);
     setInputValue("");
-    setIsLoading(true);
-
-    try {
-      const response = await askManufacturingCopilot(query, activeRole);
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: "copilot",
-        text: response.reply,
-        citations: response.citations,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      onSendMessage(aiMsg);
-    } catch {
-      const fallbackMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: "copilot",
-        text: "Koneksi ke backend mengalami kendala sementara. Menampilkan respon berbasis grounded SOP lokal.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      onSendMessage(fallbackMsg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSuggestionClick = (text: string) => {
-    setInputValue(text);
-    inputRef.current?.focus();
+    await onSendQuery(query);
   };
 
   return (
     <div
-      className="fixed inset-0 bg-[#0c1a2d]/70 backdrop-blur-sm z-50 flex justify-end"
+      className="fixed inset-0 bg-[#0c1a2d]/65 backdrop-blur-xs z-50 flex justify-end"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Manufacturing AI Copilot Drawer"
     >
-      <div
-        ref={drawerRef}
-        className="bg-white w-full max-w-lg h-full shadow-2xl border-l border-[#e2eaf3] flex flex-col justify-between overflow-hidden"
-      >
-        {/* Drawer Header */}
+      <div className="bg-white w-full max-w-lg h-full shadow-2xl border-l border-[#e2eaf3] flex flex-col justify-between overflow-hidden">
+        {/* Header */}
         <div className="p-4 sm:p-5 border-b border-[#e2eaf3] flex items-center justify-between bg-[#f8fafc]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#2563eb] flex items-center justify-center font-bold text-white shadow-md">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-[#0c1a2d] flex items-center justify-center text-white">
+              <MessageSquareText className="w-5 h-5 text-[#60a5fa]" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#101e30] tracking-tight flex items-center gap-2">
-                <span>Manufacturing AI Copilot</span>
+              <h2 className="text-[15px] font-medium text-[#111827]">
+                Manufacturing AI Copilot
               </h2>
               <p className="text-[11px] text-[#64748b]">
-                Grounded in indexed SOPs · Active Role: <strong>{activeRole}</strong>
+                Grounded SOP Retrieval · Role: <strong>{activeRole}</strong>
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-[#64748b] hover:text-[#101e30] hover:bg-[#e2e8f0] rounded-lg transition cursor-pointer"
+            className="p-1.5 text-[#64748b] hover:text-[#101e30] hover:bg-[#e2e8f0] rounded-lg transition-colors cursor-pointer"
             aria-label="Close Copilot Drawer"
           >
             <X className="w-5 h-5" />
@@ -148,14 +113,14 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               >
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white ${
-                    isCopilot ? "bg-[#2563eb]" : "bg-[#102238]"
+                    isCopilot ? "bg-[#2563eb]" : "bg-[#0c1a2d]"
                   }`}
                 >
                   {isCopilot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
 
                 <div
-                  className={`max-w-[82%] p-3.5 rounded-2xl leading-relaxed shadow-sm ${
+                  className={`max-w-[82%] p-3.5 rounded-2xl leading-relaxed ${
                     isCopilot
                       ? "bg-white text-[#101e30] border border-[#e2eaf3] rounded-tl-sm"
                       : "bg-[#2563eb] text-white rounded-tr-sm"
@@ -163,11 +128,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
                 >
                   <p className="whitespace-pre-line text-xs sm:text-[13px]">{msg.text}</p>
 
-                  {/* Citations list if present */}
                   {msg.citations && msg.citations.length > 0 && (
                     <div className="mt-3 pt-2.5 border-t border-[#f1f5f9] space-y-2">
                       <div className="flex flex-wrap gap-1.5 items-center">
-                        <span className="text-[10px] text-[#64748b] font-medium mr-1">
+                        <span className="text-[10px] text-[#64748b] font-semibold mr-1">
                           Sources:
                         </span>
                         {msg.citations.map((cite, i) => (
@@ -176,15 +140,15 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between pt-1 bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2.5 py-1.5">
-                        <span className="text-[10px] text-[#15803d] font-bold flex items-center gap-1">
-                          <span>✓</span>
-                          <span>Grounded Verification (94% confidence)</span>
+                        <span className="text-[11px] text-[#16a34a] font-medium">
+                          Grounded Verification Active
                         </span>
                         <button
                           type="button"
-                          className="px-2.5 py-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-md text-[11px] font-bold shadow-sm transition flex items-center gap-1 cursor-pointer"
+                          onClick={onReviewFirstPending}
+                          className="px-2.5 py-1 bg-[#0c1a2d] hover:bg-[#1a3354] text-white rounded-md text-[11px] font-semibold transition-colors cursor-pointer"
                         >
-                          <span>Review action →</span>
+                          Review action →
                         </button>
                       </div>
                     </div>
@@ -205,7 +169,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           {isLoading && (
             <div className="flex items-center gap-2 text-xs text-[#64748b] p-3 bg-white rounded-xl border border-[#e2eaf3] w-fit">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2563eb]" />
-              <span>Synthesizing grounded answer with citations...</span>
+              <span>Retrieving grounded SOP clauses...</span>
             </div>
           )}
 
@@ -213,19 +177,20 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         </div>
 
         {/* Suggestion Pills */}
-        <div className="px-4 py-2 bg-white border-t border-[#e2eaf3] overflow-x-auto flex gap-1.5 no-scrollbar">
+        <div className="px-4 py-2 bg-white border-t border-[#e2eaf3] overflow-x-auto flex gap-1.5">
           {suggestions.map((sug) => (
             <button
               key={sug}
-              onClick={() => handleSuggestionClick(sug)}
-              className="px-2.5 py-1 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] rounded-full text-[11px] font-medium whitespace-nowrap transition cursor-pointer shrink-0"
+              type="button"
+              onClick={() => void onSendQuery(sug)}
+              className="px-2.5 py-1 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0"
             >
               {sug}
             </button>
           ))}
         </div>
 
-        {/* Input Bar */}
+        {/* Input Form */}
         <form
           onSubmit={handleSubmit}
           className="p-3 bg-white border-t border-[#e2eaf3] flex items-center gap-2"
@@ -235,13 +200,13 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about project delays, SOPs, or machine constraints..."
-            className="flex-1 px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8fafc] border border-[#cbd5e1] focus:border-[#2563eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 transition"
+            placeholder="Ask about WBS slippage, SOP clauses, or machine constraints"
+            className="flex-1 px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8fafc] border border-[#cbd5e1] focus:border-[#2563eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
           />
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className="p-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 text-white rounded-xl transition cursor-pointer shadow-sm"
+            className="p-2.5 bg-[#0c1a2d] hover:bg-[#1a3354] disabled:opacity-50 text-white rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
             aria-label="Send message"
           >
             <Send className="w-4 h-4" />

@@ -2,6 +2,8 @@ import {
   ManufacturingRole,
   RolePreset,
   DecisionAction,
+  AuditLogEntry,
+  PilotCheckItem,
   RiskItem,
   WbsTask,
   KnowledgeDoc,
@@ -25,8 +27,10 @@ export const ROLES: ManufacturingRole[] = [
 
 export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
   "Operations Manager": {
-    title: "Good morning, Operations Manager",
+    title: "Operations Delivery Cockpit",
     sub: "Project delivery cockpit: WBS progress, critical path delay risks, and cross-department decisions.",
+    buyingCenterRole: "Operational Buyer",
+    priorityDepartment: "Production Planning",
     kpis: [
       { title: "Project Schedule Attainment", value: "91.5%", trend: "↓ 2.5%", subtle: "vs. planned baseline", icon: "▥", status: "warn" },
       { title: "Overall Delay Risk", value: "65.2%", trend: "+3.5d Slippage", subtle: "critical path exposed", icon: "⚑", status: "alert" },
@@ -35,8 +39,10 @@ export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
     ]
   },
   "Plant Manager": {
-    title: "Good morning, Plant Manager",
+    title: "Plant Executive Cockpit",
     sub: "Monitor plant-wide project delivery performance, contract slippage, and penalty exposure.",
+    buyingCenterRole: "Economic Buyer",
+    priorityDepartment: "Engineering & R&D",
     kpis: [
       { title: "Overall Milestone Compliance", value: "94.8%", trend: "↑ 1.8%", subtle: "target: 95.0%", icon: "▥", status: "normal" },
       { title: "Critical Path Slippage", value: "3.5 Days", trend: "Cell 02 & M-204", subtle: "forecasted variance", icon: "⏱", status: "alert" },
@@ -45,8 +51,10 @@ export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
     ]
   },
   "Production Supervisor": {
-    title: "Good morning, Production Supervisor",
+    title: "Shop-Floor Cell Supervision",
     sub: "Manage cell throughput, technician shift assignments, and WBS fabrication schedules.",
+    buyingCenterRole: "Operational Buyer",
+    priorityDepartment: "Production Planning",
     kpis: [
       { title: "Cell 02 Shift Throughput", value: "890 / 1,000", trend: "↓ 11% below pace", subtle: "Assembly Cell 02", icon: "⚙", status: "alert" },
       { title: "Cells 01 & 04 Attainment", value: "95.4%", trend: "↑ On schedule", subtle: "Normal progression", icon: "▥", status: "normal" },
@@ -55,8 +63,10 @@ export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
     ]
   },
   "Maintenance Lead": {
-    title: "Good morning, Maintenance Lead",
+    title: "Condition & Maintenance Control",
     sub: "Prioritize machine health signals, vibration drift on Press P-07, and tooling maintenance.",
+    buyingCenterRole: "Technical Evaluator",
+    priorityDepartment: "Maintenance",
     kpis: [
       { title: "Press P-07 Vibration Index", value: "+18%", trend: "Above normal baseline", subtle: "Hydraulic stamping station", icon: "⌁", status: "alert" },
       { title: "Machine Fleet MTBF", value: "142 hrs", trend: "↑ 8.5% improvement", subtle: "Plant rolling metric", icon: "◉", status: "normal" },
@@ -65,8 +75,10 @@ export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
     ]
   },
   "Quality Manager": {
-    title: "Good morning, Quality Manager",
+    title: "Metrology & Quality Assurance",
     sub: "Track CMM metrology inspection pass rate, drawing tolerance NCRs, and tooling wear.",
+    buyingCenterRole: "Technical Evaluator",
+    priorityDepartment: "Engineering & R&D",
     kpis: [
       { title: "First-Pass Quality Yield", value: "97.1%", trend: "↓ 0.6% vs baseline", subtle: "Target: 98.0%", icon: "✓", status: "warn" },
       { title: "Dimension Variance Scrap", value: "2.9%", trend: "Code DF-04 stamping", subtle: "Cell 02 tooling wear", icon: "◈", status: "warn" },
@@ -75,8 +87,10 @@ export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
     ]
   },
   "Supply Chain Lead": {
-    title: "Good morning, Supply Chain Lead",
+    title: "Material & Supplier Control",
     sub: "Monitor vendor lead times, raw material stock cover, and project delivery commitments.",
+    buyingCenterRole: "Operational Buyer",
+    priorityDepartment: "Supply Chain",
     kpis: [
       { title: "Alloy M-204 Stock Cover", value: "36 hrs", trend: "Critical shortage risk", subtle: "Vendor lead time: 3 days", icon: "⇄", status: "alert" },
       { title: "Supplier On-Time Delivery", value: "88.6%", trend: "↓ 3.4% Vendor PT Baja", subtle: "Last 14 shipments", icon: "▥", status: "warn" },
@@ -99,7 +113,13 @@ export const INITIAL_ACTIONS: DecisionAction[] = [
     owner: "Production Supervisor",
     due: "Before 15:00 shift change",
     sourceDoc: "SOP-LINE2-OPT",
-    flagged: false
+    flagged: false,
+    status: "pending",
+    checklist: [
+      "Verify Level-2 aerospace certification of transferred technician (SOP-LINE2-OPT Cl. 2.2)",
+      "Confirm Cell 04 output buffer remains >= 100% of shift quota",
+      "Log shift transfer in Operation Tracker before 15:00 WIB"
+    ]
   },
   {
     id: "act-shortage",
@@ -113,7 +133,13 @@ export const INITIAL_ACTIONS: DecisionAction[] = [
     owner: "Supply Chain Lead",
     due: "Within 4 hours",
     sourceDoc: "SOP-SCM-12",
-    flagged: false
+    flagged: false,
+    status: "pending",
+    checklist: [
+      "Verify on-hand warehouse count for INGOT-AL7075-T6 / M-204 (<48h cover)",
+      "Confirm expedited freight quote <= Rp 25.000.000 ceiling (SOP-SCM-12 Cl. 5.3)",
+      "Lock supplier airway bill against PO-2026-IMJ-0891"
+    ]
   },
   {
     id: "act-inspect",
@@ -127,7 +153,13 @@ export const INITIAL_ACTIONS: DecisionAction[] = [
     owner: "Maintenance Lead",
     due: "Before next batch run",
     sourceDoc: "SOP-PRS-04",
-    flagged: false
+    flagged: false,
+    status: "pending",
+    checklist: [
+      "Verify vibration transducer calibration against +15% baseline threshold (SOP-PRS-04 Cl. 3.2)",
+      "Inspect hydraulic seal integrity and +/-0.02mm die clearance",
+      "Record inspection ticket under ISO 9001 cl. 7.5"
+    ]
   },
   {
     id: "act-drawing",
@@ -136,12 +168,88 @@ export const INITIAL_ACTIONS: DecisionAction[] = [
     urgencyBadge: "red",
     department: "Engineering & R&D",
     confidence: 89,
-    description: "Drawing revisions for customer order PO-089 are pending sign-off for 48 hours. Activate expedited engineering review protocol under SOP-PRJ-01 to release CAM toolpaths.",
+    description: "Drawing revisions for customer order PO-089 are pending sign-off for 48 hours. Activate expedited engineering review protocol under SOP-ENG-02 to release CAM toolpaths.",
     impact: "Recovers 1.5 days critical path variance on WBS-1.1",
     owner: "Engineering Lead",
     due: "Today, 12:00 WIB",
     sourceDoc: "SOP-ENG-02",
-    flagged: false
+    flagged: false,
+    status: "pending",
+    checklist: [
+      "Verify GD&T bore compensation (+0.040mm offset) on Rev 3.1 (SOP-ENG-02 Cl. 3.1)",
+      "Confirm 4-working-hour critical path SLA sign-off (Cl. 2.3)",
+      "Release verified CAM toolpath to CNC Milling Cell A"
+    ]
+  }
+];
+
+export const INITIAL_AUDIT_LOG: AuditLogEntry[] = [
+  {
+    id: "AUD-2026-01",
+    actionId: "WBS-1.1-PRECHECK",
+    actionTitle: "Release Ingot Lot #882 Incoming QC Clearance",
+    decision: "AUTHORIZED",
+    reviewerRole: "Quality Manager",
+    notes: "Material certificate EN24/AL7075 verified against incoming inspection log.",
+    sopRef: "SOP-SCM-12",
+    timestamp: "08:15 WIB"
+  }
+];
+
+export const PILOT_CHECKS: PilotCheckItem[] = [
+  {
+    id: "chk-1",
+    check: "Scheduling time saved",
+    measure: "Planner hours/week consolidating schedules",
+    target: ">= 30% below baseline",
+    currentSim: "Pending n=15 pilot",
+    blockTested: "Value proposition",
+    status: "pending"
+  },
+  {
+    id: "chk-2",
+    check: "Risk alerts acted on",
+    measure: "Share of alerts reviewed within 5 working days",
+    target: ">= 50%",
+    currentSim: "HITL queue live",
+    blockTested: "Value proposition",
+    status: "pass"
+  },
+  {
+    id: "chk-3",
+    check: "Alert precision",
+    measure: "Share of flagged tasks that actually slipped",
+    target: ">= 60%",
+    currentSim: "Rule-based PoC baseline",
+    blockTested: "Key resources",
+    status: "pending"
+  },
+  {
+    id: "chk-4",
+    check: "Copilot traceability",
+    measure: "Answers traced to verified source document",
+    target: ">= 80%",
+    currentSim: "100% cited (4 SOPs)",
+    blockTested: "Value proposition",
+    status: "pass"
+  },
+  {
+    id: "chk-5",
+    check: "Willingness to pay (WTP)",
+    measure: "Pilot firms signing LOI or paid contract",
+    target: ">= 1 of 3 firms",
+    currentSim: "Rp 30-50M pilot tier",
+    blockTested: "Revenue streams",
+    status: "pending"
+  },
+  {
+    id: "chk-6",
+    check: "Delivery effort & Lean AI cost",
+    measure: "Implementation days & LLM cost within fee",
+    target: "Within Tier 2A/2B cap",
+    currentSim: "SQL/CPM + cached RAG",
+    blockTested: "Cost structure",
+    status: "pass"
   }
 ];
 
@@ -196,92 +304,128 @@ export const WBS_TASKS: WbsTask[] = [
   {
     code: "WBS-1.1",
     task: "Drawing Technical Review & CAD/CAM Sign-off",
-    plannedDays: 5,
-    actualDays: 7,
+    startDay: 0,
+    plannedDays: 4,
+    actualDays: 6,
+    floatDays: 0,
     critical: true,
     delayRisk: 0.72,
     status: "Delayed (+2d)",
-    varianceDays: 2
+    varianceDays: 2,
+    workCenter: "Tooling R&D / CAD",
+    owner: "Hendra Wijaya, ST"
   },
   {
     code: "WBS-1.2",
     task: "Raw Material Procurement (Alloy EN24 & M-204)",
-    plannedDays: 10,
-    actualDays: 12,
+    startDay: 1,
+    plannedDays: 6,
+    actualDays: 8,
+    floatDays: 0,
     critical: true,
     delayRisk: 0.85,
     status: "At Risk",
-    varianceDays: 2
+    varianceDays: 2,
+    workCenter: "Supply Chain / Receiving",
+    owner: "Supply Chain Lead"
   },
   {
     code: "WBS-1.3",
     task: "Tooling & Stamping Die Fabrication (Die-04)",
-    plannedDays: 8,
-    actualDays: 8,
+    startDay: 4,
+    plannedDays: 5,
+    actualDays: 5,
+    floatDays: 2,
     critical: false,
     delayRisk: 0.28,
     status: "On Track",
-    varianceDays: 0
+    varianceDays: 0,
+    workCenter: "Wire EDM Cell 03",
+    owner: "Rudi Hermawan"
   },
   {
     code: "WBS-2.1",
     task: "CNC 5-Axis Milling & Surface Profiling",
-    plannedDays: 9,
-    actualDays: 9,
+    startDay: 6,
+    plannedDays: 7,
+    actualDays: 7,
+    floatDays: 2,
     critical: false,
     delayRisk: 0.22,
     status: "On Track",
-    varianceDays: 0
+    varianceDays: 0,
+    workCenter: "CNC Milling Cell A (Makino D800Z)",
+    owner: "Bambang S."
   },
   {
     code: "WBS-2.2",
     task: "Precision Stamping & Forming (Press P-07)",
-    plannedDays: 6,
-    actualDays: 7,
+    startDay: 9,
+    plannedDays: 5,
+    actualDays: 6,
+    floatDays: 0,
     critical: true,
     delayRisk: 0.68,
     status: "Bottleneck",
-    varianceDays: 1
+    varianceDays: 1,
+    workCenter: "Stamping Press Bay P-07",
+    owner: "Agus H."
   },
   {
     code: "WBS-3.1",
     task: "Cell 02 Sub-Assembly & Precision Tolerancing",
-    plannedDays: 12,
-    actualDays: 14,
+    startDay: 14,
+    plannedDays: 6,
+    actualDays: 8,
+    floatDays: 0,
     critical: true,
     delayRisk: 0.79,
     status: "Lagging -11%",
-    varianceDays: 2
+    varianceDays: 2,
+    workCenter: "Assembly Cell 02",
+    owner: "Production Supervisor"
   },
   {
     code: "WBS-3.2",
     task: "Heat Treatment & Surface Hardening (Subcontract)",
-    plannedDays: 5,
-    actualDays: 5,
+    startDay: 16,
+    plannedDays: 4,
+    actualDays: 4,
+    floatDays: 2,
     critical: false,
     delayRisk: 0.35,
     status: "Scheduled",
-    varianceDays: 0
+    varianceDays: 0,
+    workCenter: "Subcontract Furnace",
+    owner: "Rina Wijaya"
   },
   {
     code: "WBS-4.1",
     task: "CMM Metrology & Quality Acceptance Test",
-    plannedDays: 4,
-    actualDays: 4,
+    startDay: 22,
+    plannedDays: 3,
+    actualDays: 3,
+    floatDays: 0,
     critical: true,
     delayRisk: 0.30,
     status: "Pending Prior Stage",
-    varianceDays: 0
+    varianceDays: 0,
+    workCenter: "CMM Metrology Lab",
+    owner: "Siti M."
   },
   {
     code: "WBS-4.2",
     task: "Final Factory Acceptance (FAT) & Customer Dispatch",
-    plannedDays: 3,
-    actualDays: 3,
+    startDay: 25,
+    plannedDays: 2,
+    actualDays: 2,
+    floatDays: 1,
     critical: false,
     delayRisk: 0.15,
     status: "Scheduled",
-    varianceDays: 0
+    varianceDays: 0,
+    workCenter: "Logistics Dock A",
+    owner: "Rian T."
   }
 ];
 
@@ -314,16 +458,16 @@ export const KNOWLEDGE_DOCS: KnowledgeDoc[] = [
     code: "SOP-PRS-04",
     title: "Hydraulic Stamping & Press P-07 Operating Protocol",
     category: "Maintenance & Tooling",
-    keywords: ["press", "p-07", "vibration", "hydraulic", "stamping", "maintenance"],
+    keywords: ["press", "p-07", "vibration", "hydraulic", "stamping", "maintenance", "changeover"],
     summary: "Mandatory vibration thresholds, hydraulic pressure baselines, and safety inspection guidelines for mechanical stamping presses.",
     sections: [
       {
-        clause: "Clause 3.2 — Vibration Thresholds",
+        clause: "Clause 3.2: Vibration Thresholds",
         content: "If the vibration index exceeds baseline by more than +15%, immediate condition inspection of hydraulic seals, bearings, and load cells is mandatory before commencing the next stamping cycle."
       },
       {
-        clause: "Clause 4.1 — Die Alignment Tolerances",
-        content: "Die clearance tolerance must be maintained within ±0.02mm. Deviations exceeding this threshold accelerate tooling wear DF-04 and introduce edge burrs."
+        clause: "Clause 4.1: Die Alignment & Changeover Tolerances",
+        content: "Before die changeover, isolate main power and engage the mechanical lock pin. Die clearance tolerance must be maintained within +/-0.02mm to avoid tooling wear DF-04."
       }
     ]
   },
@@ -332,15 +476,15 @@ export const KNOWLEDGE_DOCS: KnowledgeDoc[] = [
     code: "SOP-SCM-12",
     title: "Critical Component Shortage & Express Procurement",
     category: "Supply Chain",
-    keywords: ["shortage", "m-204", "procurement", "supplier", "freight", "inventory"],
+    keywords: ["shortage", "m-204", "al7075", "ingot", "procurement", "supplier", "freight", "inventory"],
     summary: "Defines rapid-response workflows when component stock buffers drop below supplier lead times.",
     sections: [
       {
-        clause: "Clause 2.1 — Buffer Inventory Warning",
+        clause: "Clause 2.1: Buffer Inventory Warning",
         content: "When buffer stock falls below 48 hours and supplier lead time exceeds 48 hours, the Supply Chain Lead is authorized to trigger express air freight to protect customer orders."
       },
       {
-        clause: "Clause 5.3 — Commercial Penalty Protection",
+        clause: "Clause 5.3: Commercial Penalty Protection",
         content: "Expedited shipping costs up to Rp 25,000,000 are pre-approved when mitigating contract delivery penalties exceeding Rp 100,000,000."
       }
     ]
@@ -350,15 +494,15 @@ export const KNOWLEDGE_DOCS: KnowledgeDoc[] = [
     code: "SOP-LINE2-OPT",
     title: "Assembly Cell Line Balancing & Operator Reallocation",
     category: "Operations",
-    keywords: ["line 2", "cell 02", "rebalance", "operator", "throughput", "shift"],
+    keywords: ["line 2", "cell 02", "rebalance", "operator", "throughput", "shift", "lagging"],
     summary: "Procedures for dynamic technician transfers across manufacturing cells during unexpected throughput variances.",
     sections: [
       {
-        clause: "Clause 1.4 — Throughput Variance Trigger",
+        clause: "Clause 1.4: Throughput Variance Trigger",
         content: "If cell attainment falls below 90% of shift target for more than 2 consecutive hours, the supervisor may request one cross-trained operator transfer from adjacent balanced cells."
       },
       {
-        clause: "Clause 2.2 — Safety & Certification",
+        clause: "Clause 2.2: Safety & Certification",
         content: "Only technicians with verified Level-2 assembly certification may be reassigned to high-precision aerospace stamping cells."
       }
     ]
@@ -368,15 +512,15 @@ export const KNOWLEDGE_DOCS: KnowledgeDoc[] = [
     code: "SOP-ENG-02",
     title: "Engineering Change Order (ECO) & Drawing Approval",
     category: "Engineering",
-    keywords: ["drawing", "cad", "cam", "approval", "dwg-2026-04", "revision"],
+    keywords: ["drawing", "cad", "cam", "approval", "dwg-2026-04", "revision", "gdt"],
     summary: "Expedited sign-off protocol for engineering drawing revisions and CAM toolpath releases.",
     sections: [
       {
-        clause: "Clause 2.3 — Expedited Turnaround",
+        clause: "Clause 2.3: Expedited Turnaround",
         content: "Critical path drawing revisions must be reviewed by the Lead Tooling Engineer within 4 working hours of submission."
       },
       {
-        clause: "Clause 3.1 — Tolerancing Verification",
+        clause: "Clause 3.1: Tolerancing Verification",
         content: "All revisions involving GD&T adjustments must undergo coordinate metrology validation before full batch production."
       }
     ]
@@ -385,21 +529,27 @@ export const KNOWLEDGE_DOCS: KnowledgeDoc[] = [
 
 export const PERFORMANCE_CHART_DATA = {
   output: {
-    actual: [62, 55, 71, 45, 51, 38, 43],
-    target: [50, 50, 50, 50, 50, 50, 50],
+    actual: [1020, 910, 1170, 740, 840, 630, 710],
+    target: [1000, 1000, 1000, 1000, 1000, 1000, 1000],
     labels: ["1.2k", "900", "600", "300"],
+    min: 300,
+    max: 1200,
     unit: "Units Produced"
   },
   oee: {
-    actual: [75, 68, 72, 55, 61, 48, 53],
-    target: [50, 50, 50, 50, 50, 50, 50],
+    actual: [86, 78, 83, 63, 70, 55, 61],
+    target: [85, 85, 85, 85, 85, 85, 85],
     labels: ["100%", "80%", "60%", "40%"],
+    min: 40,
+    max: 100,
     unit: "Overall Equipment Effectiveness (%)"
   },
   downtime: {
-    actual: [40, 52, 37, 64, 58, 70, 61],
-    target: [65, 65, 65, 65, 65, 65, 65],
-    labels: ["12h", "9h", "6h", "3h"],
+    actual: [2.4, 3.1, 2.2, 4.8, 3.9, 5.4, 4.3],
+    target: [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5],
+    labels: ["6h", "4.5h", "3h", "1.5h"],
+    min: 1.5,
+    max: 6.0,
     unit: "Cumulative Downtime (hrs)"
   }
 };

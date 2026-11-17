@@ -9,22 +9,22 @@ import {
   BookOpen,
   ArrowLeft,
   LogOut,
-  Sparkles,
+  MessageSquareText,
   Layers,
-  ShieldCheck,
-  Activity
 } from "lucide-react";
 
 interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
-  onOpenCopilot?: () => void;
+  pendingActionsCount: number;
+  isApiLive: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
-  onOpenCopilot
+  pendingActionsCount,
+  isApiLive,
 }) => {
   const pathname = usePathname();
 
@@ -33,32 +33,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
       name: "Overview Cockpit",
       href: "/dashboard",
       icon: LayoutDashboard,
-      badge: "Live"
+      badge: pendingActionsCount > 0 ? String(pendingActionsCount) : "0",
+      badgeAlert: pendingActionsCount > 0,
     },
     {
-      name: "IRoom System Hub",
+      name: "IRoom Telemetry",
       href: "/dashboard/iroom",
       icon: Layers,
-      badge: "5 Modules"
+      badge: "5",
+      badgeAlert: false,
     },
     {
-      name: "AI Scheduler (WBS)",
+      name: "AI Scheduler",
       href: "/dashboard/scheduler",
       icon: CalendarClock,
-      badge: "CPM"
+      badge: "CPM",
+      badgeAlert: false,
     },
     {
-      name: "Knowledge Base (SOPs)",
+      name: "SOP Knowledge",
       href: "/dashboard/knowledge",
       icon: BookOpen,
-      badge: "RAG"
+      badge: "4",
+      badgeAlert: false,
     },
     {
       name: "AI Copilot Console",
       href: "/dashboard/copilot",
-      icon: Sparkles,
-      badge: "Grounded"
-    }
+      icon: MessageSquareText,
+      badge: "RAG",
+      badgeAlert: false,
+    },
   ];
 
   const isActive = (href: string) => {
@@ -70,42 +75,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Backdrop */}
       {isOpenMobile && (
         <div
-          className="fixed inset-0 bg-[#0c1a2d]/70 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-[#0c1a2d]/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
           onClick={onCloseMobile}
         />
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 w-64 bg-[#0c1a2d] text-[#cad8e8] flex flex-col z-50 border-r border-[#1e3450] transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 w-64 bg-[#0d131c] text-[#eef0f5] flex flex-col z-50 border-r border-white/8 transition-transform duration-300 lg:static lg:translate-x-0 ${
           isOpenMobile ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Brand Header */}
-        <div className="p-5 border-b border-[#172d47] flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#2563eb] flex items-center justify-center font-extrabold text-white text-base shadow-[0_4px_16px_rgba(37,99,235,0.35)] shrink-0">
+        <div className="p-4 border-b border-white/8 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#2563eb] flex items-center justify-center font-semibold text-white text-sm shrink-0">
             M
           </div>
           <div className="min-w-0">
-            <div className="font-extrabold text-white tracking-tight text-[15px] flex items-center gap-1.5 truncate">
+            <div className="font-semibold text-[#eef0f5] text-[15px] truncate">
               MDIP Copilot
             </div>
-            <div className="text-[10px] text-[#7994b2] font-mono-numbers uppercase tracking-wider truncate">
-              BINUS RTT & IMAJIN
+            <div className="text-[11px] text-[#8f98ab] font-mono-numbers truncate">
+              BINUS RTT &amp; IMAJIN
             </div>
           </div>
         </div>
 
-        {/* Scrollable Nav Items */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          {/* Main Navigation */}
+        {/* Navigation + Action Queue */}
+        <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between gap-6">
           <div>
-            <div className="px-3 mb-2 text-[10px] font-bold tracking-widest text-[#627d9e] uppercase">
-              Operational Intelligence
+            <div className="px-3 mt-2 mb-2 text-xs font-medium text-[#8f98ab]">
+              Navigation
             </div>
-            <div className="space-y-1">
+            <nav aria-label="Dashboard navigation" className="space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
@@ -114,64 +117,96 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.href}
                     href={item.href}
                     onClick={onCloseMobile}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                    className={`flex items-center justify-between h-9 px-3 rounded-lg text-[13px] transition-colors ${
                       active
-                        ? "bg-[#1c3654] text-white shadow-sm font-semibold translate-x-1 border border-[#2b4c73]"
-                        : "text-[#9cb5ce] hover:bg-[#142842] hover:text-white"
+                        ? "bg-[#1a2230] text-[#eef0f5] font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                        : "text-[#a3a9b8] font-normal hover:bg-[#151d2a] hover:text-[#eef0f5]"
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#38bdf8]" : "text-[#7994b2]"}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${active ? "text-[#eef0f5]" : "text-[#8f98ab]"}`}
+                        strokeWidth={1.5}
+                      />
                       <span className="truncate">{item.name}</span>
                     </div>
                     {item.badge && (
-                      <span className={`text-[10px] font-mono-numbers px-1.5 py-0.5 rounded ${
-                        active ? "bg-[#2563eb] text-white font-bold" : "bg-[#162940] text-[#7994b2]"
-                      }`}>
-                        {item.badge}
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-mono-numbers text-[#8f98ab] whitespace-nowrap shrink-0">
+                        {item.badgeAlert && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#e5484d] shrink-0" />
+                        )}
+                        <span>{item.badge}</span>
                       </span>
                     )}
                   </Link>
                 );
               })}
-            </div>
+            </nav>
           </div>
 
-          {/* Quick AI Trigger */}
-          <div className="p-3 bg-[#112338] rounded-xl border border-[#1d3858]">
-            <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
-              <Sparkles className="w-3.5 h-3.5 text-[#38bdf8]" />
-              <span>Grounded Copilot</span>
+          {/* Action Queue */}
+          <div className="p-3.5 bg-[#131b26] rounded-xl border border-white/8 space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-medium text-[#eef0f5]">
+              <span>Action Queue</span>
+              <span className="text-[11px] font-mono-numbers text-[#8f98ab]">
+                {pendingActionsCount} HITL
+              </span>
             </div>
-            <p className="text-[11px] text-[#8aa3be] mb-2.5 leading-snug">
-              Instant answers grounded in indexed SOPs and project constraints.
-            </p>
-            <button
-              onClick={() => {
-                onCloseMobile();
-                onOpenCopilot?.();
-              }}
-              className="w-full py-1.5 px-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-xs font-semibold shadow-sm transition"
-            >
-              Ask Manufacturing AI
-            </button>
+
+            <div className="space-y-1.5 text-xs">
+              <Link
+                href="/dashboard"
+                onClick={onCloseMobile}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0d131c] hover:bg-[#1a2230] text-[#a3a9b8] hover:text-[#eef0f5] transition-colors"
+              >
+                <span className="truncate">HITL Decisions Open</span>
+                <span className="font-mono-numbers text-[#fbbf24] font-medium shrink-0">
+                  {pendingActionsCount} open
+                </span>
+              </Link>
+              <Link
+                href="/dashboard/iroom?tab=material"
+                onClick={onCloseMobile}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0d131c] hover:bg-[#1a2230] text-[#a3a9b8] hover:text-[#eef0f5] transition-colors"
+              >
+                <span className="truncate">INGOT-AL7075-T6 Cover</span>
+                <span className="font-mono-numbers text-[#f87171] font-medium shrink-0">
+                  36h left
+                </span>
+              </Link>
+              <Link
+                href="/dashboard/iroom?tab=operations"
+                onClick={onCloseMobile}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0d131c] hover:bg-[#1a2230] text-[#a3a9b8] hover:text-[#eef0f5] transition-colors"
+              >
+                <span className="truncate">Press P-07 Sensor</span>
+                <span className="font-mono-numbers text-[#fbbf24] font-medium shrink-0">
+                  +18% vib
+                </span>
+              </Link>
+            </div>
+
+            <div className="pt-2 border-t border-white/8 flex items-center gap-2 text-[11px] text-[#8f98ab]">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isApiLive ? "bg-[#4cc38a]" : "bg-[#f59e0b]"}`} />
+              <span>{isApiLive ? "FastAPI PoC Connected" : "TRL 4 Simulation Sandbox"}</span>
+            </div>
           </div>
         </div>
 
         {/* Footer Links */}
-        <div className="p-3 border-t border-[#172d47] space-y-1 text-xs">
+        <div className="p-3 border-t border-white/8 space-y-1 text-xs">
           <Link
             href="/"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[#9cb5ce] hover:bg-[#142842] hover:text-white transition"
+            className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[#a3a9b8] hover:bg-[#151d2a] hover:text-[#eef0f5] transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-[#7994b2]" />
+            <ArrowLeft className="w-4 h-4 text-[#8f98ab]" strokeWidth={1.5} />
             <span>Public Architecture</span>
           </Link>
           <Link
             href="/login"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[#9cb5ce] hover:bg-[#142842] hover:text-white transition"
+            className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[#a3a9b8] hover:bg-[#151d2a] hover:text-[#eef0f5] transition-colors"
           >
-            <LogOut className="w-4 h-4 text-[#7994b2]" />
+            <LogOut className="w-4 h-4 text-[#8f98ab]" strokeWidth={1.5} />
             <span>Switch Role / Sign Out</span>
           </Link>
         </div>

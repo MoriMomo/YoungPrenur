@@ -4,51 +4,83 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
-import {
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  BookOpen,
-  CalendarClock,
-  Activity,
-  AlertTriangle,
-  Flame,
-  Network
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import gsap from "gsap";
 
 const NAV_LINKS = [
-  { href: "#features", label: "Core Pillars" },
-  { href: "#role-matrix", label: "Role Matrix" },
-  { href: "#research", label: "Research & Grounding" },
+  { href: "#features", label: "Capabilities" },
+  { href: "#role-matrix", label: "Personas" },
+  { href: "#research", label: "Research" },
 ];
 
 const TELEMETRY_ITEMS = [
-  { label: "Plant Output", value: "94.8%", tone: "text-white", note: "(Target: 95.0%)" },
-  { label: "Delay Risk", value: "65.2% (+3.5d Slippage)", tone: "text-[#f87171]", note: "" },
-  { label: "Press P-07", value: "Vibration +18% (SOP-PRS-04)", tone: "text-[#fbbf24]", note: "" },
-  { label: "Component M-204", value: "36h Buffer Cover", tone: "text-[#f87171]", note: "" },
-  { label: "Line 2 Rebalance", value: "+120 units/shift potential", tone: "text-[#34d399]", note: "" },
+  { label: "Plant Output", value: "94.8%", dot: "bg-[#4cc38a]", note: "vs 95.0% target" },
+  { label: "Delay Risk", value: "65.2% (+3.5d)", dot: "bg-[#e5484d]", note: "" },
+  { label: "Press P-07", value: "+18% vibration", dot: "bg-[#f59e0b]", note: "SOP-PRS-04" },
+  { label: "Alloy M-204", value: "36h cover", dot: "bg-[#e5484d]", note: "" },
 ];
 
-function TelemetryFeed() {
-  return (
-    <div className="flex items-center gap-8 pr-8 text-[11px] font-mono-numbers text-[#7994b2]">
-      <span className="font-bold text-[#38bdf8] uppercase tracking-wider flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] pulsing-dot" />
-        Live Telemetry Stream
-      </span>
-      {TELEMETRY_ITEMS.map((item) => (
-        <span key={item.label} className="flex items-center gap-8">
-          <span>
-            {item.label}: <strong className={item.tone}>{item.value}</strong>
-            {item.note && <span> {item.note}</span>}
-          </span>
-          <span className="text-[#2b4a6f]">•</span>
-        </span>
-      ))}
-    </div>
-  );
+const HERO_WBS_PREVIEW = [
+  {
+    code: "WBS-1.2",
+    task: "Raw Alloy M-204 Air Freight",
+    leftPct: 12,
+    widthPct: 32,
+    barColor: "bg-[#e5484d]",
+    delta: "+2d slip",
+    deltaColor: "text-[#e5484d]",
+  },
+  {
+    code: "WBS-2.1",
+    task: "CNC 5-Axis Milling Cell 01",
+    leftPct: 30,
+    widthPct: 44,
+    barColor: "bg-[#2563eb]",
+    delta: "On track",
+    deltaColor: "text-[#a3a9b8]",
+  },
+  {
+    code: "WBS-3.1",
+    task: "Cell 02 Sub-Assembly Integration",
+    leftPct: 54,
+    widthPct: 36,
+    barColor: "bg-[#f59e0b]",
+    delta: "+2d slip",
+    deltaColor: "text-[#f59e0b]",
+  },
+];
+
+const HERO_DECISIONS = [
+  {
+    dot: "bg-[#e5484d]",
+    title: "Prevent M-204 Shortage",
+    meta: "Supply Chain · SOP-SCM-12",
+    impact: "Rp 480M protected",
+  },
+  {
+    dot: "bg-[#f59e0b]",
+    title: "Rebalance Cell 02 Schedule",
+    meta: "Production · SOP-LINE2-OPT",
+    impact: "+120 units/shift",
+  },
+  {
+    dot: "bg-[#2563eb]",
+    title: "Inspect Press P-07 Vibration",
+    meta: "Maintenance · SOP-PRS-04",
+    impact: "Seal check pre-cycle",
+  },
+];
+
+function getStatusDot(status: "normal" | "warn" | "alert") {
+  if (status === "alert") return "bg-[#e5484d]";
+  if (status === "warn") return "bg-[#f59e0b]";
+  return "bg-[#4cc38a]";
+}
+
+function getTrendColor(status: "normal" | "warn" | "alert") {
+  if (status === "alert") return "text-[#e5484d]";
+  if (status === "warn") return "text-[#f59e0b]";
+  return "text-[#4cc38a]";
 }
 
 export default function LandingPage() {
@@ -58,9 +90,9 @@ export default function LandingPage() {
   useEffect(() => {
     if (heroRef.current) {
       gsap.fromTo(
-        heroRef.current.children,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power2.out" }
+        heroRef.current,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
       );
     }
   }, []);
@@ -68,332 +100,476 @@ export default function LandingPage() {
   const roleData = ROLE_PRESETS[activeRoleTab];
 
   return (
-    <div className="min-h-screen bg-[#0c1a2d] text-[#cad8e8] selection:bg-[#2563eb] selection:text-white flex flex-col justify-between">
-      {/* 1. Global Navigation Bar */}
-      <header className="sticky top-0 z-50 h-16 bg-[#0c1a2d]/90 backdrop-blur-md border-b border-[#1b3452] px-6 sm:px-12 flex items-center justify-between">
-        <div className="flex items-center gap-10 min-w-0">
-          <Link href="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#2563eb] flex items-center justify-center font-extrabold text-white text-base shadow-[0_2px_12px_rgba(37,99,235,0.4)]">
-              M
-            </div>
-            <div className="leading-tight">
-              <div className="font-extrabold text-white text-[15px] tracking-tight flex items-center gap-1.5">
-                MDIP <span className="text-[#38bdf8] font-normal text-xs">· Copilot</span>
+    <div className="min-h-screen bg-[#0b0d14] text-[#eef0f5] selection:bg-[#2563eb] selection:text-white flex flex-col justify-between">
+      {/* Quiet Global Navigation */}
+      <header className="sticky top-0 z-50 h-14 bg-[#0b0d14]/95 border-b border-white/8 px-6 sm:px-10">
+        <div className="max-w-7xl mx-auto h-full flex items-center justify-between gap-6">
+          <div className="flex items-center gap-8 min-w-0">
+            <Link href="/" className="flex items-center gap-2.5 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-[#2563eb] flex items-center justify-center font-semibold text-white text-sm">
+                M
               </div>
-              <div className="text-[10px] text-[#7994b2] font-mono-numbers">
-                BINUS RTT &amp; IMAJIN
+              <div className="leading-tight">
+                <div className="font-medium text-[#eef0f5] text-[15px] flex items-center gap-1.5">
+                  <span>MDIP</span>
+                  <span className="text-[#8f98ab] font-normal text-xs">Copilot</span>
+                </div>
+                <div className="text-[11px] text-[#8f98ab] font-mono-numbers">
+                  BINUS RTT D1521 · IMAJIN
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-[13px] font-medium text-[#9cb5ce] hover:text-white transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-        </div>
+            <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-6">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-xs font-medium text-[#a3a9b8] hover:text-[#eef0f5] transition-colors"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Link
-            href="/login"
-            className="h-9 px-4 flex items-center text-xs font-semibold text-[#cad8e8] hover:text-white border border-[#234267] hover:border-[#38bdf8] rounded-lg transition-colors"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/dashboard"
-            className="h-9 px-4 flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-lg shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-colors"
-          >
-            <span>Launch Workspace</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-4 shrink-0">
+            <Link
+              href="/login"
+              className="text-xs font-medium text-[#a3a9b8] hover:text-[#eef0f5] transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/dashboard"
+              className="h-9 px-4 inline-flex items-center gap-1.5 bg-[#eef0f5] hover:bg-white text-[#0b0d14] text-xs font-medium rounded-lg transition-colors"
+            >
+              <span>Open Cockpit</span>
+              <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* 2. Live Telemetry Ticker Banner */}
-      <div className="bg-[#081220] border-b border-[#162a43] py-2 overflow-hidden">
-        <div className="ticker-track flex w-max items-center whitespace-nowrap">
-          <TelemetryFeed />
-          <TelemetryFeed />
-        </div>
-      </div>
-
-      {/* 3. Hero Section */}
-      <section className="px-6 sm:px-12 py-16 sm:py-24 max-w-6xl mx-auto w-full">
-        <div ref={heroRef} className="text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#142842] border border-[#234267] text-[#38bdf8] text-xs font-semibold tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-[#38bdf8]" />
-            <span>Academic-Industry Joint Research · BINUS RTT & IMAJIN Enterprise</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.15]">
-            Manufacturing Decision Intelligence Platform
-          </h1>
-
-          <p className="max-w-3xl mx-auto text-sm sm:text-base text-[#9cb5ce] leading-relaxed">
-            AI-driven operational intelligence uniting <strong className="text-white">automated WBS task extraction</strong>, <strong className="text-white">supervised delay-risk ML</strong>, grounded <strong className="text-white">RAG SOP retrieval</strong>, and role-based execution cockpits across multi-station manufacturing.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Link
-              href="/dashboard"
-              className="px-6 py-3.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-sm rounded-xl shadow-[0_4px_20px_rgba(37,99,235,0.4)] transition-all flex items-center gap-2 group"
-            >
-              <Sparkles className="w-4 h-4 text-[#93c5fd]" />
-              <span>Enter Copilot Workspace Demo</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-            </Link>
-
-            <Link
-              href="/login"
-              className="px-6 py-3.5 bg-[#142842] hover:bg-[#1c385c] text-white font-semibold text-sm rounded-xl border border-[#25466f] transition"
-            >
-              Enterprise Sign In (1-Click Roles)
-            </Link>
-          </div>
-        </div>
-
-        {/* Live Cockpit Preview Teaser Card */}
-        <div className="mt-12 sm:mt-16 bg-[#12233b] border border-[#234267] rounded-2xl p-5 sm:p-8 shadow-[0_20px_60px_rgba(4,12,24,0.6)]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#1d3758] gap-3">
-            <div className="flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-[#10b981] pulsing-dot" />
-              <div className="text-sm font-bold text-white">Live Decision Brief Preview</div>
-              <span className="text-[10px] font-mono-numbers px-2 py-0.5 rounded bg-[#1e3c63] text-[#38bdf8] uppercase">
-                Role: Operations Manager
-              </span>
-            </div>
-            <Link
-              href="/dashboard"
-              className="text-xs font-semibold text-[#38bdf8] hover:underline flex items-center gap-1 self-start sm:self-auto"
-            >
-              <span>Inspect Full Interactive Cockpit</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
-            <div className="p-4 rounded-xl bg-[#0e1d31] border border-[#1b3452]">
-              <div className="text-[10px] font-bold text-[#f87171] uppercase tracking-wider mb-1 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Urgent Supply Chain Action</span>
-              </div>
-              <div className="text-sm font-bold text-white mb-1">Prevent M-204 Shortage</div>
-              <p className="text-xs text-[#9cb5ce] leading-snug">
-                Component buffer down to 36 hours. Authorize express air shipment to protect orders PO-089 & PO-092 from late delivery penalties.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#0e1d31] border border-[#1b3452]">
-              <div className="text-[10px] font-bold text-[#fbbf24] uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5" />
-                <span>Production Line Optimization</span>
-              </div>
-              <div className="text-sm font-bold text-white mb-1">Rebalance Line 2 Schedule</div>
-              <p className="text-xs text-[#9cb5ce] leading-snug">
-                Line 2 lagging by -11% (890 vs 1,000 units). Reallocate 1 cross-trained operator from Line 4 to recover 120 units per shift.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#0e1d31] border border-[#1b3452]">
-              <div className="text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Activity className="w-3.5 h-3.5" />
-                <span>Predictive Maintenance Alarm</span>
-              </div>
-              <div className="text-sm font-bold text-white mb-1">Inspect Press P-07 Vibration</div>
-              <p className="text-xs text-[#9cb5ce] leading-snug">
-                Hydraulic stamping sensor shows +18% above normal baseline. Execute SOP-PRS-04 Rev.2 seal inspection before next stamping cycle.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Core Pillars Section */}
-      <section id="features" className="py-16 bg-[#0a1627] border-y border-[#182f4b] px-6 sm:px-12">
-        <div className="max-w-6xl mx-auto space-y-12">
-          <div className="text-center space-y-2">
-            <span className="text-[11px] font-bold text-[#38bdf8] uppercase tracking-widest font-mono-numbers">
-              Decision Intelligence Architecture
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Four Interlocking Intelligence Pillars
-            </h2>
-            <p className="text-xs sm:text-sm text-[#7994b2] max-w-xl mx-auto">
-              Engineered specifically for project-based manufacturing with non-standard work schedules.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="p-6 rounded-2xl bg-[#0f2036] border border-[#1c3759] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1a385c] text-[#38bdf8] flex items-center justify-center">
-                <CalendarClock className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">AI Project Scheduler</h3>
-              <p className="text-xs text-[#9cb5ce] leading-relaxed">
-                Automated extraction of non-standard WBS schedules from Excel/PDF documents, Critical Path Method (CPM) calculation, and ML delay-risk scoring.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0f2036] border border-[#1c3759] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1a385c] text-[#10b981] flex items-center justify-center">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">Grounded RAG Copilot</h3>
-              <p className="text-xs text-[#9cb5ce] leading-relaxed">
-                Indexed repository of official manufacturing standard operating procedures (SOP-PRS-04, SOP-SCM-12) with explicit clause citations on every answer.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0f2036] border border-[#1c3759] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1a385c] text-[#f59e0b] flex items-center justify-center">
-                <Network className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">IRoom Multi-Module Data</h3>
-              <p className="text-xs text-[#9cb5ce] leading-relaxed">
-                Ingests 5 core enterprise streams: Material Delivery, Quotation & PO, Project Progress, Drawing Approval, and Operation Tracker telemetry.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0f2036] border border-[#1c3759] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1a385c] text-[#ec4899] flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">HITL Governance</h3>
-              <p className="text-xs text-[#9cb5ce] leading-relaxed">
-                Human-in-the-Loop decision review ensures that physical plant rebalances and expedited freight authorisations require verified human approval.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Role Matrix Explorer */}
-      <section id="role-matrix" className="py-16 sm:py-20 px-6 sm:px-12 max-w-6xl mx-auto w-full space-y-10">
-        <div className="text-center space-y-2">
-          <span className="text-[11px] font-bold text-[#38bdf8] uppercase tracking-widest font-mono-numbers">
-            Role-Based Decision Intelligence
+      {/* Static Telemetry Reference Strip */}
+      <div className="bg-[#07080d] border-b border-white/8 py-2 px-6 sm:px-10">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 text-xs font-mono-numbers text-[#8f98ab]">
+          <span className="inline-flex items-center gap-2 text-[#a3a9b8]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
+            <span>TRL 4 Simulated Stream</span>
           </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Tailored Cockpits for Six Executive Personas
-          </h2>
-          <p className="text-xs sm:text-sm text-[#7994b2] max-w-xl mx-auto">
-            Select a role to preview its operational focus, real-time KPI metrics, and prioritized decision briefs.
-          </p>
-        </div>
-
-        {/* Role Tabs */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {ROLES.map((role) => (
-            <button
-              key={role}
-              onClick={() => setActiveRoleTab(role)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                activeRoleTab === role
-                  ? "bg-[#2563eb] text-white shadow-md font-bold"
-                  : "bg-[#142842] text-[#9cb5ce] hover:bg-[#1a3456] hover:text-white"
-              }`}
-            >
-              {role}
-            </button>
-          ))}
-        </div>
-
-        {/* Selected Role Card */}
-        <div className="bg-[#12233b] border border-[#234267] rounded-2xl p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#1c3759]">
-            <div>
-              <div className="text-xs font-bold text-[#38bdf8] uppercase tracking-wider font-mono-numbers">
-                Active Persona: {activeRoleTab}
-              </div>
-              <h3 className="text-xl font-bold text-white mt-1">{roleData.title}</h3>
-              <p className="text-xs text-[#9cb5ce] mt-0.5">{roleData.sub}</p>
-            </div>
-
-            <Link
-              href={`/dashboard?role=${encodeURIComponent(activeRoleTab)}`}
-              className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <span>Launch {activeRoleTab} View</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* 4 KPIs for this role */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {roleData.kpis.map((k, idx) => (
-              <div
-                key={idx}
-                className="p-4 rounded-xl bg-[#0c1a2d] border border-[#1b3452] space-y-1.5"
-              >
-                <div className="text-[11px] font-semibold text-[#7994b2] uppercase tracking-tight truncate">
-                  {k.title}
-                </div>
-                <div className="text-2xl font-extrabold text-white font-mono-numbers">
-                  {k.value}
-                </div>
-                <div className="text-[11px] font-medium text-[#38bdf8] flex items-center gap-1">
-                  <span>{k.trend}</span>
-                  {k.subtle && <span className="text-[#64748b] text-[10px]">{k.subtle}</span>}
-                </div>
-              </div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            {TELEMETRY_ITEMS.map((item) => (
+              <span key={item.label} className="inline-flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+                <span>{item.label}:</span>
+                <span className="text-[#eef0f5] font-medium">{item.value}</span>
+                {item.note && <span className="text-[#8f98ab]">({item.note})</span>}
+              </span>
             ))}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* 6. Academic Research & Grounding Section */}
-      <section id="research" className="py-16 bg-[#0a1627] border-t border-[#182f4b] px-6 sm:px-12">
-        <div className="max-w-5xl mx-auto space-y-8">
-          <div className="p-6 sm:p-8 rounded-2xl bg-[#12233b] border border-[#234267] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-3">
-              <span className="px-2.5 py-1 rounded-md bg-[#1d3b5e] text-[#38bdf8] text-[10px] font-mono-numbers font-semibold uppercase tracking-wider border border-[#2b517d]">
-                Verified Academic Foundation
-              </span>
-              <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                BINUS University Research & Technology Transfer
-              </h3>
-              <p className="text-xs text-[#9cb5ce] leading-relaxed max-w-2xl">
-                Lead Researcher: <strong className="text-white">Dr. Ir. Indrajani, S.Kom., M.M.</strong><br />
-                Research Title: <em>&quot;Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek&quot;</em>
-              </p>
+      {/* Asymmetric Split Hero */}
+      <section className="px-6 sm:px-10 py-14 lg:py-20 w-full">
+        <div
+          ref={heroRef}
+          className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center"
+        >
+          {/* Left Copy Column */}
+          <div className="lg:col-span-5 space-y-5 text-left">
+            <div className="inline-flex items-center gap-2 text-xs font-mono-numbers text-[#8f98ab]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
+              <span>BINUS RTT D1521 · PT IMAJIN · TRL 4 Prototype</span>
             </div>
 
-            <div className="flex flex-col gap-2 shrink-0">
+            <h1 className="text-3xl sm:text-[42px] font-medium text-[#eef0f5] tracking-[-0.025em] leading-[1.08]">
+              Predict WBS schedule slippage before a work cell stalls
+            </h1>
+
+            <p className="text-sm sm:text-base text-[#a3a9b8] leading-relaxed max-w-xl">
+              Consolidate factory schedules into normalized work packages, flag delay drivers via Rule-Based CPM heuristics (XGBoost roadmap), ground recommendations in SOP clauses, and log supervisor approvals.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 href="/dashboard"
-                className="px-5 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-xl transition text-center"
+                className="h-11 px-5 inline-flex items-center gap-2 bg-[#eef0f5] hover:bg-white text-[#0b0d14] font-medium text-sm rounded-lg transition-colors"
               >
-                Inspect AI Scheduler WBS
+                <span>Launch Simulation Cockpit</span>
+                <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
               </Link>
+
               <Link
                 href="/login"
-                className="px-5 py-2.5 bg-[#142842] hover:bg-[#1c385c] text-[#cad8e8] text-xs font-semibold rounded-xl border border-[#25466f] transition text-center"
+                className="h-11 px-5 inline-flex items-center bg-[#1a1e28] hover:bg-[#232836] text-[#eef0f5] font-medium text-sm rounded-lg border border-white/8 transition-colors"
               >
-                Sign In to Sandbox
+                Select role persona
               </Link>
             </div>
           </div>
 
-          {/* Prototype Disclosure Notice */}
-          <div className="p-4 rounded-xl bg-[#091423] border border-[#162c47] text-xs text-[#7994b2] text-center max-w-3xl mx-auto leading-relaxed">
-            <strong className="text-white">Prototype Integrity Disclosure:</strong> All metrics, predictions, and recommendations displayed are simulated demonstration data calibrated for prototype v3.0. Verified connectors to production ERP/MES/CMMS and physical machines are isolated behind human-in-the-loop review guardrails.
+          {/* Right Coded MDIP Cockpit Moment */}
+          <div className="lg:col-span-7">
+            <div className="rounded-2xl bg-[#11141c] border border-white/8 shadow-[0_16px_48px_rgba(0,0,0,0.45)] overflow-hidden">
+              {/* Cockpit Window Bar */}
+              <div className="px-5 py-3 bg-[#07080d] border-b border-white/8 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs font-mono-numbers text-[#eef0f5]">
+                  <span className="w-2 h-2 rounded-full bg-[#2563eb]" />
+                  <span>MDIP / Operations Delivery Cockpit</span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] font-mono-numbers text-[#8f98ab]">
+                  <span>TRL 4 Sandbox</span>
+                  <Link href="/dashboard" className="text-[#60a5fa] hover:underline">
+                    Open live view →
+                  </Link>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-5">
+                {/* 3 Pure-Number Stat Cells */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-xl bg-[#0b0d14] border border-white/8">
+                    <div className="flex items-center justify-between text-xs text-[#a3a9b8]">
+                      <span>Schedule Attainment</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
+                    </div>
+                    <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
+                      91.5%
+                    </div>
+                    <div className="text-[11px] text-[#f59e0b] font-mono-numbers mt-1">
+                      -2.5% vs baseline
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#0b0d14] border border-white/8">
+                    <div className="flex items-center justify-between text-xs text-[#a3a9b8]">
+                      <span>Critical Path Risk</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#e5484d]" />
+                    </div>
+                    <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
+                      65.2%
+                    </div>
+                    <div className="text-[11px] text-[#e5484d] font-mono-numbers mt-1">
+                      +3.5d slippage exposed
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#0b0d14] border border-white/8">
+                    <div className="flex items-center justify-between text-xs text-[#a3a9b8]">
+                      <span>Contract Exposure</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#4cc38a]" />
+                    </div>
+                    <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
+                      Rp 480M
+                    </div>
+                    <div className="text-[11px] text-[#8f98ab] font-mono-numbers mt-1">
+                      PO-089 &amp; PO-092
+                    </div>
+                  </div>
+                </div>
+
+                {/* Staggered WBS Critical Path Preview */}
+                <div className="p-4 rounded-xl bg-[#0b0d14] border border-white/8 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#eef0f5]">WBS Critical Path Forecast</span>
+                    <span className="text-[11px] font-mono-numbers text-[#8f98ab]">
+                      Weeks 1 to 4 · Heuristic CPM
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {HERO_WBS_PREVIEW.map((row) => (
+                      <div key={row.code} className="grid grid-cols-12 items-center gap-2 text-xs">
+                        <div className="col-span-5 flex items-center gap-2 min-w-0">
+                          <span className="px-1.5 py-0.5 rounded bg-[#1a1e28] text-[#eef0f5] font-mono-numbers text-[11px] shrink-0">
+                            {row.code}
+                          </span>
+                          <span className="text-[#a3a9b8] truncate">{row.task}</span>
+                        </div>
+                        <div className="col-span-5 h-2.5 rounded bg-[#1a1e28] relative overflow-hidden">
+                          <div
+                            className={`absolute top-0 bottom-0 rounded ${row.barColor}`}
+                            style={{ left: `${row.leftPct}%`, width: `${row.widthPct}%` }}
+                          />
+                        </div>
+                        <div
+                          className={`col-span-2 text-right font-mono-numbers text-[11px] ${row.deltaColor}`}
+                        >
+                          {row.delta}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grounded HITL Decision Rows */}
+                <div className="divide-y divide-white/8 rounded-xl bg-[#0b0d14] border border-white/8 px-4">
+                  {HERO_DECISIONS.map((item) => (
+                    <div
+                      key={item.title}
+                      className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.dot}`} />
+                        <span className="font-medium text-[#eef0f5] truncate">{item.title}</span>
+                        <span className="hidden sm:inline font-mono-numbers text-[11px] text-[#8f98ab]">
+                          {item.meta}
+                        </span>
+                      </div>
+                      <span className="font-mono-numbers text-[11px] text-[#a3a9b8] shrink-0">
+                        {item.impact}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 7. Global Footer */}
-      <footer className="h-16 border-t border-[#182f4b] px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between text-xs text-[#627d9e] gap-2">
-        <div>© 2026 MDIP — AI Manufacturing Decision Intelligence Platform.</div>
-        <div className="flex items-center gap-6">
-          <Link href="/login" className="hover:text-white transition">Enterprise Login</Link>
-          <Link href="/dashboard" className="text-[#38bdf8] hover:underline font-semibold">Live Workspace</Link>
+      {/* Core Pillars (Asymmetric 12-Column Grid) */}
+      <section id="features" className="py-16 bg-[#07080d] border-y border-white/8 px-6 sm:px-10">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="space-y-2 max-w-2xl">
+            <div className="text-xs font-mono-numbers text-[#60a5fa]">
+              Capability Dimensions D1 to D6
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-medium text-[#eef0f5] tracking-tight">
+              Four interlocking decision layers
+            </h2>
+            <p className="text-sm text-[#a3a9b8]">
+              Schedule consolidation, heuristic delay scoring, grounded SOP citations, and supervisor approval control in one workspace.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Wide Card: D1 & D2 */}
+            <div className="lg:col-span-7 p-6 rounded-xl bg-[#11141c] border border-white/8 flex flex-col justify-between gap-5">
+              <div className="space-y-2">
+                <div className="text-xs font-mono-numbers text-[#8f98ab]">D1 &amp; D2 · Schedule Engine</div>
+                <h3 className="text-base font-medium text-[#eef0f5]">AI Project Scheduler &amp; Heuristic Risk</h3>
+                <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
+                  Parses non-standard CSV and Excel schedules into normalized WBS work packages, computes Critical Path Method slippage, and flags upstream vendor risks (XGBoost model on roadmap).
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/8 font-mono-numbers text-xs">
+                <div>
+                  <div className="text-[#8f98ab] text-[11px]">Critical Tasks</div>
+                  <div className="text-[#eef0f5] font-medium mt-0.5">4 packages</div>
+                </div>
+                <div>
+                  <div className="text-[#8f98ab] text-[11px]">Peak Variance</div>
+                  <div className="text-[#e5484d] font-medium mt-0.5">+3.5 days</div>
+                </div>
+                <div>
+                  <div className="text-[#8f98ab] text-[11px]">SLA Penalty Rate</div>
+                  <div className="text-[#eef0f5] font-medium mt-0.5">Rp 15M/day</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Compact Card: D3 */}
+            <div className="lg:col-span-5 p-6 rounded-xl bg-[#11141c] border border-white/8 flex flex-col justify-between gap-5">
+              <div className="space-y-2">
+                <div className="text-xs font-mono-numbers text-[#8f98ab]">D3 · Traceable Guidance</div>
+                <h3 className="text-base font-medium text-[#eef0f5]">Grounded RAG Copilot</h3>
+                <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
+                  Indexed repository of verified factory SOP documents returning clickable clause citations with every operational answer.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-4 border-t border-white/8 font-mono-numbers text-[11px]">
+                {["SOP-PRS-04", "SOP-SCM-12", "SOP-LINE2-OPT", "SOP-ENG-02"].map((code) => (
+                  <span
+                    key={code}
+                    className="px-2 py-1 rounded bg-[#1a1e28] border border-white/8 text-[#a3a9b8]"
+                  >
+                    {code}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Compact Card: D4 */}
+            <div className="lg:col-span-5 p-6 rounded-xl bg-[#11141c] border border-white/8 flex flex-col justify-between gap-5">
+              <div className="space-y-2">
+                <div className="text-xs font-mono-numbers text-[#8f98ab]">D4 · Pilot Telemetry</div>
+                <h3 className="text-base font-medium text-[#eef0f5]">IRoom 5-Stream Connectors</h3>
+                <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
+                  Simulated connectors linking Material Delivery, Project Progress, CAD Drawing Approval, Quotation &amp; PO, and Operation Tracker telemetry.
+                </p>
+              </div>
+              <div className="flex items-center justify-between pt-4 border-t border-white/8 text-xs font-mono-numbers">
+                <span className="text-[#8f98ab]">Active streams</span>
+                <span className="text-[#eef0f5] font-medium">5 modules synced</span>
+              </div>
+            </div>
+
+            {/* Wide Card: D5 & D6 */}
+            <div className="lg:col-span-7 p-6 rounded-xl bg-[#11141c] border border-white/8 flex flex-col justify-between gap-5">
+              <div className="space-y-2">
+                <div className="text-xs font-mono-numbers text-[#8f98ab]">D5 &amp; D6 · Compliance &amp; Privacy</div>
+                <h3 className="text-base font-medium text-[#eef0f5]">Human-in-the-Loop Audit Governance</h3>
+                <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
+                  Supervisors authorize or override recommendations using pre-execution verification checklists recorded under ISO 9001 Cl. 7.5, with SaaS and On-Premise VPC deployment modes for CAD IP isolation.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-white/8 text-xs font-mono-numbers">
+                <span className="inline-flex items-center gap-2 text-[#eef0f5]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4cc38a]" />
+                  <span>Authorize / Override Audit Log</span>
+                </span>
+                <span className="inline-flex items-center gap-2 text-[#a3a9b8]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
+                  <span>On-Prem VPC Option</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Role Matrix */}
+      <section id="role-matrix" className="py-16 px-6 sm:px-10 w-full">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="text-xs font-mono-numbers text-[#60a5fa]">
+              Role-Based Decision Intelligence
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-medium text-[#eef0f5] tracking-tight">
+              Six manufacturing personas &amp; Buying Center views
+            </h2>
+            <p className="text-sm text-[#a3a9b8]">
+              Select a persona to inspect its Buying Center perspective and live operational KPIs.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {ROLES.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setActiveRoleTab(role)}
+                className={`h-9 px-3.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  activeRoleTab === role
+                    ? "bg-[#eef0f5] text-[#0b0d14]"
+                    : "bg-[#11141c] text-[#a3a9b8] border border-white/8 hover:bg-[#1a1e28] hover:text-[#eef0f5]"
+                }`}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-[#11141c] border border-white/8 rounded-xl p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/8">
+              <div>
+                <div className="text-xs font-mono-numbers text-[#8f98ab]">
+                  {activeRoleTab} · {roleData.buyingCenterRole}
+                </div>
+                <h3 className="text-lg sm:text-xl font-medium text-[#eef0f5] mt-1">
+                  {roleData.title}
+                </h3>
+                <p className="text-xs sm:text-sm text-[#a3a9b8] mt-0.5">{roleData.sub}</p>
+              </div>
+
+              <Link
+                href={`/dashboard?role=${encodeURIComponent(activeRoleTab)}`}
+                className="h-9 px-4 bg-[#eef0f5] hover:bg-white text-[#0b0d14] text-xs font-medium rounded-lg transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+              >
+                <span>Launch {activeRoleTab} View</span>
+                <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {roleData.kpis.map((k, idx) => {
+                const isUp = k.trend.includes("↑");
+                const isDown = k.trend.includes("↓");
+                const cleanTrend = k.trend.replace(/^[↑↓]\s*/, "");
+
+                return (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-xl bg-[#0b0d14] border border-white/8 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-[#a3a9b8] truncate">{k.title}</span>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${getStatusDot(k.status)}`} />
+                    </div>
+                    <div className="text-[28px] leading-none font-medium text-[#eef0f5] font-mono-numbers">
+                      {k.value}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className={`font-medium inline-flex items-center gap-0.5 ${getTrendColor(k.status)}`}>
+                        {isUp && <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.5} />}
+                        {isDown && <ArrowDownRight className="w-3.5 h-3.5" strokeWidth={1.5} />}
+                        <span>{cleanTrend}</span>
+                      </span>
+                      {k.subtle && (
+                        <span className="text-[#8f98ab] truncate">{k.subtle}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Academic Research & Honesty Disclosure */}
+      <section id="research" className="py-14 bg-[#07080d] border-t border-white/8 px-6 sm:px-10">
+        <div className="max-w-7xl mx-auto space-y-5">
+          <div className="p-6 sm:p-8 rounded-xl bg-[#11141c] border border-white/8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2.5 max-w-2xl">
+              <div className="text-xs font-mono-numbers text-[#8f98ab]">
+                BINUS RTT D1521 · TRL 4 Prototype
+              </div>
+              <h3 className="text-lg sm:text-xl font-medium text-[#eef0f5]">
+                Bina Nusantara University &amp; PT Imajinasi Karya Bangsa (IMAJIN)
+              </h3>
+              <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
+                Lead Researcher: <span className="text-[#eef0f5] font-medium">Dr. Ir. Indrajani, S.Kom., M.M.</span> · &quot;Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek&quot;
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <Link
+                href="/dashboard/scheduler"
+                className="h-9 px-4 inline-flex items-center bg-[#eef0f5] hover:bg-white text-[#0b0d14] text-xs font-medium rounded-lg transition-colors"
+              >
+                Inspect AI Scheduler
+              </Link>
+              <Link
+                href="/login"
+                className="h-9 px-4 inline-flex items-center bg-[#1a1e28] hover:bg-[#232836] text-[#eef0f5] text-xs font-medium rounded-lg border border-white/8 transition-colors"
+              >
+                Sign in to Sandbox
+              </Link>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#0b0d14] border border-white/8 text-xs text-[#8f98ab] leading-relaxed">
+            <span className="text-[#eef0f5] font-medium">Prototype Integrity Disclosure:</span>{" "}
+            All metrics, predictions, and IRoom feeds shown in this TRL 4 sandbox are simulated demonstration data. Delay-risk scoring currently uses rule-based CPM heuristics; supervised XGBoost training and partner n=15 field testing are scheduled for the Year-1 pilot with PT IMAJIN.
+          </div>
+        </div>
+      </section>
+
+      <footer className="h-14 border-t border-white/8 px-6 sm:px-10 text-xs text-[#8f98ab]">
+        <div className="max-w-7xl mx-auto h-full flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>MDIP: Manufacturing Decision Intelligence Platform (TRL 4 Prototype)</div>
+          <div className="flex items-center gap-6">
+            <Link href="/login" className="hover:text-[#eef0f5] transition-colors">
+              Enterprise Login
+            </Link>
+            <Link href="/dashboard" className="text-[#eef0f5] hover:underline font-medium">
+              Simulation Cockpit
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

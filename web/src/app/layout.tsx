@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MDIP — AI Manufacturing Copilot | Decision Intelligence",
-  description: "Next.js AI Manufacturing Copilot platform featuring role-based dashboards, delay-risk ML engine, grounded RAG SOP retrieval, and cross-module analytics.",
+  title: "MDIP: AI Manufacturing Copilot | Decision Intelligence",
+  description: "Next.js AI Manufacturing Copilot TRL 4 prototype featuring role-based cockpits, CPM heuristic delay-risk scoring, grounded RAG SOP retrieval, and IRoom integration scope.",
 };
 
 export default function RootLayout({

@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, UploadFile, File, Query, Header, HTTPException
+from fastapi import FastAPI, UploadFile, File, Query, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
@@ -39,6 +39,8 @@ class CopilotQuery(BaseModel):
 class FlagActionPayload(BaseModel):
     action_id: str
     reviewer_role: Optional[str] = "Operations Manager"
+    decision: Optional[str] = "AUTHORIZED"
+    notes: Optional[str] = ""
 
 class ScheduleUploadPayload(BaseModel):
     filename: Optional[str] = "master_project_schedule_rev3.xlsx"
@@ -49,13 +51,15 @@ class ScheduleUploadPayload(BaseModel):
 # -------------------------------------------------------------
 
 SAMPLE_WBS = [
-    {"code": "WBS-1.1", "task": "Material Ingestion & Inspection", "planned_days": 4, "actual_days": 4, "critical": False, "delay_risk": 0.15, "status": "COMPLETED", "variance_days": 0},
-    {"code": "WBS-1.2", "task": "CNC Rough Machining (Cell A)", "planned_days": 8, "actual_days": 10, "critical": True, "delay_risk": 0.72, "status": "IN_PROGRESS", "variance_days": 2},
-    {"code": "WBS-1.3", "task": "Precision Wire EDM Sub-assembly", "planned_days": 5, "actual_days": 6, "critical": True, "delay_risk": 0.65, "status": "IN_PROGRESS", "variance_days": 1},
-    {"code": "WBS-1.4", "task": "Heat Treatment & Hardening", "planned_days": 6, "actual_days": 6, "critical": False, "delay_risk": 0.28, "status": "PENDING", "variance_days": 0},
-    {"code": "WBS-1.5", "task": "Surface Finishing & Coating", "planned_days": 4, "actual_days": 4, "critical": False, "delay_risk": 0.20, "status": "PENDING", "variance_days": 0},
-    {"code": "WBS-1.6", "task": "CMM Metrology & Quality Audit", "planned_days": 3, "actual_days": 3, "critical": True, "delay_risk": 0.40, "status": "PENDING", "variance_days": 0},
-    {"code": "WBS-1.7", "task": "Final Packaging & Dispatch", "planned_days": 2, "actual_days": 2, "critical": True, "delay_risk": 0.18, "status": "PENDING", "variance_days": 0}
+    {"code": "WBS-1.1", "task": "Drawing Technical Review & CAD/CAM Sign-off", "start_day": 0, "planned_days": 4, "actual_days": 6, "float_days": 0, "critical": True, "delay_risk": 0.72, "status": "Delayed (+2d)", "variance_days": 2, "work_center": "Tooling R&D / CAD", "owner": "Hendra Wijaya, ST"},
+    {"code": "WBS-1.2", "task": "Raw Material Procurement (Alloy EN24 & M-204)", "start_day": 1, "planned_days": 6, "actual_days": 8, "float_days": 0, "critical": True, "delay_risk": 0.85, "status": "At Risk", "variance_days": 2, "work_center": "Supply Chain / Receiving", "owner": "Supply Chain Lead"},
+    {"code": "WBS-1.3", "task": "Tooling & Stamping Die Fabrication (Die-04)", "start_day": 4, "planned_days": 5, "actual_days": 5, "float_days": 2, "critical": False, "delay_risk": 0.28, "status": "On Track", "variance_days": 0, "work_center": "Wire EDM Cell 03", "owner": "Rudi Hermawan"},
+    {"code": "WBS-2.1", "task": "CNC 5-Axis Milling & Surface Profiling", "start_day": 6, "planned_days": 7, "actual_days": 7, "float_days": 2, "critical": False, "delay_risk": 0.22, "status": "On Track", "variance_days": 0, "work_center": "CNC Milling Cell A (Makino D800Z)", "owner": "Bambang S."},
+    {"code": "WBS-2.2", "task": "Precision Stamping & Forming (Press P-07)", "start_day": 9, "planned_days": 5, "actual_days": 6, "float_days": 0, "critical": True, "delay_risk": 0.68, "status": "Bottleneck", "variance_days": 1, "work_center": "Stamping Press Bay P-07", "owner": "Agus H."},
+    {"code": "WBS-3.1", "task": "Cell 02 Sub-Assembly & Precision Tolerancing", "start_day": 14, "planned_days": 6, "actual_days": 8, "float_days": 0, "critical": True, "delay_risk": 0.79, "status": "Lagging -11%", "variance_days": 2, "work_center": "Assembly Cell 02", "owner": "Production Supervisor"},
+    {"code": "WBS-3.2", "task": "Heat Treatment & Surface Hardening (Subcontract)", "start_day": 16, "planned_days": 4, "actual_days": 4, "float_days": 2, "critical": False, "delay_risk": 0.35, "status": "Scheduled", "variance_days": 0, "work_center": "Subcontract Furnace", "owner": "Rina Wijaya"},
+    {"code": "WBS-4.1", "task": "CMM Metrology & Quality Acceptance Test", "start_day": 22, "planned_days": 3, "actual_days": 3, "float_days": 0, "critical": True, "delay_risk": 0.30, "status": "Pending Prior Stage", "variance_days": 0, "work_center": "CMM Metrology Lab", "owner": "Siti M."},
+    {"code": "WBS-4.2", "task": "Final Factory Acceptance (FAT) & Customer Dispatch", "start_day": 25, "planned_days": 2, "actual_days": 2, "float_days": 1, "critical": False, "delay_risk": 0.15, "status": "Scheduled", "variance_days": 0, "work_center": "Logistics Dock A", "owner": "Rian T."}
 ]
 
 IROOM_MATERIALS = [
@@ -247,24 +251,146 @@ PRODUCTION_LINES = [
 
 PERFORMANCE_METRICS = {
     "output": {
-        "actual": [62, 55, 71, 45, 51, 38, 43],
-        "target": [50, 50, 50, 50, 50, 50, 50],
+        "actual": [1020, 910, 1170, 740, 840, 630, 710],
+        "target": [1000, 1000, 1000, 1000, 1000, 1000, 1000],
         "labels": ["1.2k", "900", "600", "300"],
+        "min": 300,
+        "max": 1200,
         "unit": "Units Produced"
     },
     "oee": {
-        "actual": [75, 68, 72, 55, 61, 48, 53],
-        "target": [50, 50, 50, 50, 50, 50, 50],
+        "actual": [86, 78, 83, 63, 70, 55, 61],
+        "target": [85, 85, 85, 85, 85, 85, 85],
         "labels": ["100%", "80%", "60%", "40%"],
+        "min": 40,
+        "max": 100,
         "unit": "Overall Equipment Effectiveness (%)"
     },
     "downtime": {
-        "actual": [40, 52, 37, 64, 58, 70, 61],
-        "target": [65, 65, 65, 65, 65, 65, 65],
-        "labels": ["12h", "9h", "6h", "3h"],
+        "actual": [2.4, 3.1, 2.2, 4.8, 3.9, 5.4, 4.3],
+        "target": [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5],
+        "labels": ["6h", "4.5h", "3h", "1.5h"],
+        "min": 1.5,
+        "max": 6.0,
         "unit": "Cumulative Downtime (hrs)"
     }
 }
+
+DECISION_ACTIONS = [
+    {
+        "id": "act-rebalance",
+        "title": "Rebalance Cell 02 Shift Allocation",
+        "urgency": "High",
+        "urgency_badge": "warn",
+        "department": "Production Planning",
+        "confidence": 87,
+        "description": "Cell 02 sub-assembly is pacing 11% below target (890 vs 1,000 units). Transfer one cross-trained technician from Cell 04 to recover ~120 units and eliminate 0.8 days slippage.",
+        "impact": "Recovers 120 units/shift; prevents downstream bottleneck on WBS-3.1",
+        "owner": "Production Supervisor",
+        "due": "Before 15:00 shift change",
+        "source_doc": "SOP-LINE2-OPT",
+        "flagged": False,
+        "status": "pending",
+        "checklist": [
+            "Verify Level-2 aerospace certification of transferred technician (SOP-LINE2-OPT Cl. 2.2)",
+            "Confirm Cell 04 output buffer remains >= 100% of shift quota",
+            "Log shift transfer in Operation Tracker before 15:00 WIB"
+        ]
+    },
+    {
+        "id": "act-shortage",
+        "title": "Authorize Express Ingestion for Alloy M-204",
+        "urgency": "Urgent",
+        "urgency_badge": "red",
+        "department": "Supply Chain",
+        "confidence": 91,
+        "description": "Component M-204 buffer inventory will exhaust in 36 hours. Supplier standard lead time is 3 business days. Authorize express air-freight under SOP-SCM-12 to safeguard PO-089 & PO-092.",
+        "impact": "Protects Rp 480M contract value from liquidated late delivery penalties",
+        "owner": "Supply Chain Lead",
+        "due": "Within 4 hours",
+        "source_doc": "SOP-SCM-12",
+        "flagged": False,
+        "status": "pending",
+        "checklist": [
+            "Verify on-hand warehouse count for INGOT-AL7075-T6 / M-204 (<48h cover)",
+            "Confirm expedited freight quote <= Rp 25.000.000 ceiling (SOP-SCM-12 Cl. 5.3)",
+            "Lock supplier airway bill against PO-2026-IMJ-0891"
+        ]
+    },
+    {
+        "id": "act-inspect",
+        "title": "Condition-Based Hydraulic Service (Press P-07)",
+        "urgency": "Medium",
+        "urgency_badge": "warn",
+        "department": "Maintenance",
+        "confidence": 82,
+        "description": "Hydraulic vibration index rose +18% over baseline on Press P-07. Execute 45-minute seal and transducer check during scheduled die changeover before batch stamping.",
+        "impact": "Avoids catastrophic die collision and estimated 4-8 hours unplanned outage",
+        "owner": "Maintenance Lead",
+        "due": "Before next batch run",
+        "source_doc": "SOP-PRS-04",
+        "flagged": False,
+        "status": "pending",
+        "checklist": [
+            "Verify vibration transducer calibration against +15% baseline threshold (SOP-PRS-04 Cl. 3.2)",
+            "Inspect hydraulic seal integrity and +/-0.02mm die clearance",
+            "Record inspection ticket under ISO 9001 cl. 7.5"
+        ]
+    },
+    {
+        "id": "act-drawing",
+        "title": "Fast-Track DWG-2026-04 Technical Review",
+        "urgency": "Urgent",
+        "urgency_badge": "red",
+        "department": "Engineering & R&D",
+        "confidence": 89,
+        "description": "Drawing revisions for customer order PO-089 are pending sign-off for 48 hours. Activate expedited engineering review protocol under SOP-ENG-02 to release CAM toolpaths.",
+        "impact": "Recovers 1.5 days critical path variance on WBS-1.1",
+        "owner": "Engineering Lead",
+        "due": "Today, 12:00 WIB",
+        "source_doc": "SOP-ENG-02",
+        "flagged": False,
+        "status": "pending",
+        "checklist": [
+            "Verify GD&T bore compensation (+0.040mm offset) on Rev 3.1 (SOP-ENG-02 Cl. 3.1)",
+            "Confirm 4-working-hour critical path SLA sign-off (Cl. 2.3)",
+            "Release verified CAM toolpath to CNC Milling Cell A"
+        ]
+    }
+]
+
+SOP_KNOWLEDGE_INDEX = [
+    {
+        "doc_code": "SOP-PRS-04",
+        "title": "Hydraulic Stamping & Press P-07 Operating Protocol",
+        "clause": "Clause 3.2: Vibration Thresholds",
+        "keywords": ["press", "p-07", "vibration", "hydraulic", "stamping", "maintenance", "changeover"],
+        "excerpt": "If the vibration index exceeds baseline by more than +15%, immediate condition inspection of hydraulic seals, bearings, and load cells is mandatory before commencing the next stamping cycle."
+    },
+    {
+        "doc_code": "SOP-SCM-12",
+        "title": "Critical Component Shortage & Express Procurement",
+        "clause": "Clause 2.1: Buffer Inventory Warning",
+        "keywords": ["shortage", "m-204", "al7075", "ingot", "procurement", "supplier", "freight", "inventory", "po"],
+        "excerpt": "When buffer stock falls below 48 hours and supplier lead time exceeds 48 hours, the Supply Chain Lead is authorized to trigger express air freight (pre-approved up to Rp 25M)."
+    },
+    {
+        "doc_code": "SOP-LINE2-OPT",
+        "title": "Assembly Cell Line Balancing & Operator Reallocation",
+        "clause": "Clause 1.4: Throughput Variance Trigger",
+        "keywords": ["line 2", "cell 02", "rebalance", "operator", "throughput", "shift", "lagging"],
+        "excerpt": "If cell attainment falls below 90% of shift target for more than 2 consecutive hours, transfer one Level-2 cross-trained operator from an adjacent balanced cell."
+    },
+    {
+        "doc_code": "SOP-ENG-02",
+        "title": "Engineering Change Order (ECO) & Drawing Approval",
+        "clause": "Clause 2.3: Expedited Turnaround",
+        "keywords": ["drawing", "cad", "cam", "approval", "dwg-2026-04", "revision", "gdt"],
+        "excerpt": "Critical path drawing revisions must be reviewed by the Lead Tooling Engineer within 4 working hours and validated with CMM metrology."
+    }
+]
+
+AUDIT_LOG: List[Dict[str, Any]] = []
 
 # -------------------------------------------------------------
 # Part 2 PoC Specification Endpoints
@@ -274,7 +400,7 @@ PERFORMANCE_METRICS = {
 def health_check():
     return {
         "status": "ok",
-        "engine": "MDIP PoC v1.0 (Rule-Based + Grounded IRoom Retrieval)",
+        "engine": "MDIP PoC v1.0 (Rule-Based CPM + Grounded SOP Retrieval)",
         "deployment": "Hybrid SaaS / Internal Enterprise"
     }
 
@@ -282,7 +408,7 @@ def health_check():
 def api_health_check():
     return {
         "status": "ok",
-        "engine": "MDIP PoC v1.0 (Rule-Based + Grounded IRoom Retrieval)",
+        "engine": "MDIP PoC v1.0 (Rule-Based CPM + Grounded SOP Retrieval)",
         "live": True
     }
 
@@ -329,12 +455,12 @@ def evaluate_delay_risk(tasks: List[TaskItem]):
 def ask_copilot(payload: CopilotQuery):
     return {
         "answer": (
-            "Based on the current project schedule, Fabrication Stage B carries a 75% delay risk "
-            "due to a 4-day upstream slip in raw plate procurement and external vendor dependency."
+            "Based on the current project schedule, WBS-1.2 carries an 85% delay risk "
+            "due to a 2-day upstream slip in raw plate procurement and external vendor dependency."
         ),
         "citations": [
             {"doc_id": "SCH-IMAJIN-04.xlsx", "Location": "Row 14, Col D-G", "verified": True},
-            {"doc_id": "SOP-PROC-02.pdf", "Location": "Section 3.2 (Vendor Lead Time)", "verified": True}
+            {"doc_id": "SOP-SCM-12.pdf", "Location": "Clause 2.1 (Vendor Lead Time)", "verified": True}
         ]
     }
 
@@ -366,7 +492,7 @@ def get_iroom_operations():
 def get_iroom_overview():
     return {
         "status": "connected",
-        "source": "IRoom Manufacturing Telemetry Gateway",
+        "source": "IRoom Manufacturing Telemetry Gateway (Simulated PoC)",
         "modules_active": 5,
         "total_active_records": {
             "materials": len(IROOM_MATERIALS),
@@ -420,85 +546,147 @@ def get_delay_prediction():
         "high_risk_tasks_count": sum(1 for t in SAMPLE_WBS if t["delay_risk"] > 0.6),
         "estimated_project_slippage_days": 3.5,
         "risk_drivers": [
-            {"factor": "CNC Machine Availability", "impact": "High (+2.1d)", "severity": "HIGH"},
-            {"factor": "Raw Ingot Lead Time", "impact": "Medium (+1.0d)", "severity": "MEDIUM"},
-            {"factor": "Tooling Wear Rate", "impact": "Low (+0.4d)", "severity": "LOW"}
+            {"factor": "Drawing Technical Review Variance", "weight": "34%", "impact": "High (+1.5d)"},
+            {"factor": "Component M-204 Vendor Lead Time", "weight": "28%", "impact": "High (+1.2d)"},
+            {"factor": "Press P-07 Mechanical Constraint", "weight": "22%", "impact": "Medium (+0.5d)"},
+            {"factor": "Cell 02 Operator Staffing Deficit", "weight": "16%", "impact": "Medium (+0.3d)"}
         ],
         "tasks": SAMPLE_WBS,
-        "methodology": "Rule-Based PoC Heuristic v0.1"
+        "methodology": "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)"
     }
 
 @app.get("/api/v1/risks/decisions")
 def get_decisions():
-    return [
-        {
-            "id": "ACT-001",
-            "title": "Otorisasi Overtime Operator CNC Cell A",
-            "urgency": "Kritis (Hari Ini)",
-            "urgency_badge": "CRITICAL",
-            "department": "Produksi",
-            "confidence": 92.5,
-            "description": "Menambahkan shift lembur 3.5 jam untuk mengejar deviasi 2 hari pada WBS-1.2.",
-            "impact": "Memulihkan 80% keterlambatan jalur kritis",
-            "owner": "Budi Santoso (Kadiv Machining)",
-            "due": "Hari Ini, 16:00 WIB",
-            "source_doc": "SOP-PROD-2024-V2.pdf",
-            "flagged": False
-        },
-        {
-            "id": "ACT-002",
-            "title": "Pengalihan Vendor Heat Treatment Sekunder",
-            "urgency": "Tinggi (24 Jam)",
-            "urgency_badge": "HIGH",
-            "department": "Procurement",
-            "confidence": 88.0,
-            "description": "Mempersiapkan purchase order darurat ke mitra bersertifikasi AS9100 cadangan.",
-            "impact": "Mitigasi bottleneck antrian oven hardening 4 hari",
-            "owner": "Rina Wijaya (Lead Buyer)",
-            "due": "Besok, 10:00 WIB",
-            "source_doc": "VENDOR-CONTRACT-SEC-09.docx",
-            "flagged": False
-        }
-    ]
+    return DECISION_ACTIONS
 
 @app.post("/api/v1/risks/decisions/flag")
 def flag_decision(payload: FlagActionPayload):
+    decision_val = (payload.decision or "AUTHORIZED").upper()
+    action_title = payload.action_id
+    sop_ref = "SOP-MDIP"
+    for act in DECISION_ACTIONS:
+        if act["id"] == payload.action_id:
+            act["flagged"] = True
+            act["status"] = "overridden" if decision_val == "OVERRIDDEN" else "authorized"
+            action_title = act["title"]
+            sop_ref = act["source_doc"]
+            break
+
+    entry = {
+        "id": f"AUD-{len(AUDIT_LOG) + 1:03d}",
+        "action_id": payload.action_id,
+        "action_title": action_title,
+        "decision": decision_val,
+        "reviewer_role": payload.reviewer_role,
+        "notes": payload.notes or "Verified via HITL modal",
+        "sop_ref": sop_ref,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+    AUDIT_LOG.insert(0, entry)
+
     return {
         "success": True,
         "action_id": payload.action_id,
+        "decision": decision_val,
         "status": "FLAGGED_IN_AUDIT_LOG",
         "reviewer": payload.reviewer_role,
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "message": "Action successfully verified and recorded by human supervisor."
+        "timestamp": entry["timestamp"],
+        "message": f"Action {decision_val.lower()} and recorded by human supervisor."
     }
+
+@app.get("/api/v1/risks/audit-log")
+def get_audit_log():
+    return AUDIT_LOG
 
 @app.post("/api/v1/copilot/chat")
 def copilot_chat(payload: CopilotQuery):
-    msg = payload.message or payload.question or ""
-    return {
-        "success": True,
-        "reply": (
-            "Berdasarkan analisis telemetri IRoom aktif dan dokumen SOP manufaktur terverifikasi: "
-            "Aktivitas WBS-1.2 (CNC Rough Machining) memiliki probabilitas deviasi keterlambatan 72% "
-            "akibat akumulasi variansi +2 hari pada Cell A dan ketergantungan material Alloy AL7075-T6."
-        ),
-        "citations": [
+    msg = (payload.message or payload.question or "").strip()
+    role = payload.active_role or payload.role or "Operations Manager"
+    q_lower = msg.lower()
+
+    scored_docs = []
+    for doc in SOP_KNOWLEDGE_INDEX:
+        score = 0
+        if doc["doc_code"].lower() in q_lower:
+            score += 3
+        if doc["doc_code"] == "SOP-ENG-02" and any(k in q_lower for k in ["dwg-", "drawing", "blueprint"]):
+            score += 2
+        for kw in doc["keywords"]:
+            if kw in q_lower:
+                score += 1
+        if score > 0:
+            scored_docs.append((score, doc))
+
+    scored_docs.sort(key=lambda item: item[0], reverse=True)
+    matched_docs = [doc for _, doc in scored_docs]
+
+    if matched_docs:
+        lead = matched_docs[0]
+        reply = (
+            f"Grounded guidance from {lead['doc_code']} ({lead['title']}) for {role}: "
+            f"{lead['clause']} states: {lead['excerpt']}"
+        )
+        citations = [
             {
-                "doc_code": "SCH-IMAJIN-04",
-                "clause": "WBS Section 1.2",
-                "title": "Master Manufacturing Schedule Rev 3",
-                "excerpt": "Upstream plate delivery variance logged at +2.0 days."
+                "doc_code": d["doc_code"],
+                "clause": d["clause"],
+                "title": d["title"],
+                "excerpt": d["excerpt"]
+            }
+            for d in matched_docs[:2]
+        ]
+        confidence = 0.94
+    elif any(k in q_lower for k in ["wbs", "delay", "slip", "schedule", "cnc"]):
+        reply = (
+            f"Rule-Based CPM & Heuristic Analysis ({role}): WBS-1.2 Raw Material Procurement (85% risk, +2d) "
+            f"and WBS-3.1 Cell 02 Sub-Assembly (79% risk, +2d) drive +3.5 days total project slippage. "
+            f"Review SOP-SCM-12 and SOP-LINE2-OPT before executing mitigation."
+        )
+        citations = [
+            {
+                "doc_code": SOP_KNOWLEDGE_INDEX[1]["doc_code"],
+                "clause": SOP_KNOWLEDGE_INDEX[1]["clause"],
+                "title": SOP_KNOWLEDGE_INDEX[1]["title"],
+                "excerpt": SOP_KNOWLEDGE_INDEX[1]["excerpt"]
             },
             {
-                "doc_code": "SOP-PROD-02",
-                "clause": "Section 4.1 (Bottleneck Remediation)",
-                "title": "Standard Operating Procedure CNC Milling",
-                "excerpt": "When spindle utilization exceeds 90%, load balancing to Cell B is required."
+                "doc_code": SOP_KNOWLEDGE_INDEX[2]["doc_code"],
+                "clause": SOP_KNOWLEDGE_INDEX[2]["clause"],
+                "title": SOP_KNOWLEDGE_INDEX[2]["title"],
+                "excerpt": SOP_KNOWLEDGE_INDEX[2]["excerpt"]
             }
-        ],
-        "confidence": 0.94,
+        ]
+        confidence = 0.91
+    else:
+        reply = (
+            f"Priority assessment for {role}: "
+            f"1. Resolve Alloy M-204 / INGOT-AL7075-T6 stock cover (36h left vs 3-day vendor lead time). "
+            f"2. Perform condition inspection on Press P-07 (+18% vibration exceeds +15% threshold). "
+            f"3. Rebalance Cell 02 staffing to recover ~120 units/shift."
+        )
+        citations = [
+            {
+                "doc_code": SOP_KNOWLEDGE_INDEX[1]["doc_code"],
+                "clause": SOP_KNOWLEDGE_INDEX[1]["clause"],
+                "title": SOP_KNOWLEDGE_INDEX[1]["title"],
+                "excerpt": SOP_KNOWLEDGE_INDEX[1]["excerpt"]
+            },
+            {
+                "doc_code": SOP_KNOWLEDGE_INDEX[0]["doc_code"],
+                "clause": SOP_KNOWLEDGE_INDEX[0]["clause"],
+                "title": SOP_KNOWLEDGE_INDEX[0]["title"],
+                "excerpt": SOP_KNOWLEDGE_INDEX[0]["excerpt"]
+            }
+        ]
+        confidence = 0.93
+
+    return {
+        "success": True,
+        "reply": reply,
+        "citations": citations,
+        "confidence": confidence,
         "is_grounded": True,
-        "source_documents_indexed": 4
+        "source_documents_indexed": len(SOP_KNOWLEDGE_INDEX)
     }
 
 @app.get("/api/v1/dashboard/overview")
@@ -507,14 +695,14 @@ def get_overview(role: str = "Operations Manager"):
         "success": True,
         "active_role": role,
         "header": {
-            "title": f"Operations Cockpit — {role}",
-            "sub": "Real-time decision intelligence & risk mitigation telemetry"
+            "title": f"Operations Cockpit ({role})",
+            "sub": "TRL 4 decision intelligence & risk mitigation telemetry (FastAPI PoC)"
         },
         "kpis": [
-            {"label": "Jadwal On-Time Rate", "value": "88.4%", "change": "+2.1%", "status": "POSITIVE"},
-            {"label": "Probabilitas Delay Proyek", "value": "65.2%", "change": "+4.0%", "status": "WARNING"},
-            {"label": "Estimasi Slippage", "value": "3.5 Hari", "change": "+0.5d", "status": "DANGER"},
-            {"label": "Keputusan Terbuka", "value": "2 Kritis", "change": "Action Needed", "status": "WARNING"}
+            {"label": "Schedule Attainment", "value": "91.5%", "change": "-2.5%", "status": "WARNING"},
+            {"label": "Heuristic Delay Risk", "value": "65.2%", "change": "+3.5d Slippage", "status": "WARNING"},
+            {"label": "First-Time Quality Yield", "value": "97.1%", "change": "-0.6%", "status": "WARNING"},
+            {"label": "Open HITL Decisions", "value": f"{sum(1 for a in DECISION_ACTIONS if not a['flagged'])} Pending", "change": "Review Required", "status": "WARNING"}
         ],
         "source": "fastapi_poc_live"
     }
@@ -524,6 +712,6 @@ def export_summary(role: str = "Operations Manager"):
     return {
         "role": role,
         "export_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "platform": "MDIP AI Manufacturing Copilot",
-        "summary": "OEE: 82.4% | On-Time Rate: 88.4% | Critical Actions: 2 pending approval"
+        "platform": "MDIP AI Manufacturing Copilot (TRL 4 PoC)",
+        "summary": "Schedule Attainment: 91.5% | Delay Risk: 65.2% (+3.5d) | Quality Yield: 97.1%"
     }

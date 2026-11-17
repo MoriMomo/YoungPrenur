@@ -1,6 +1,6 @@
 {
   "suite": "MDIP TRL 3 System Verification",
-  "timestamp": "2026-10-14T22:19:52.430945",
+  "timestamp": "2026-11-17T21:36:28.550845",
   "total_tests": 10,
   "passed": 10,
   "failed": 0,
@@ -12,7 +12,7 @@
       "endpoint": "/health",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2128.33,
+      "latency_ms": 2180.64,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Verifies that the FastAPI engine is running and responding to ping requests."
     },
@@ -22,7 +22,7 @@
       "endpoint": "/api/v1/scheduler/upload",
       "method": "POST",
       "status": "PASSED",
-      "latency_ms": 2058.36,
+      "latency_ms": 2013.2,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Tests parsing of unstructured schedule files into normalized WBS activities."
     },
@@ -32,7 +32,7 @@
       "endpoint": "/api/v1/risks/prediction",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2043.49,
+      "latency_ms": 2019.15,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates ML classification of project delay risk and root-cause risk driver breakdown."
     },
@@ -42,7 +42,7 @@
       "endpoint": "/api/v1/copilot/chat",
       "method": "POST",
       "status": "PASSED",
-      "latency_ms": 2046.48,
+      "latency_ms": 2015.29,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Ensures that AI Copilot reasoning strictly cites indexed documents with zero hallucination."
     },
@@ -52,7 +52,7 @@
       "endpoint": "/api/v1/risks/decisions/flag",
       "method": "POST",
       "status": "PASSED",
-      "latency_ms": 2047.64,
+      "latency_ms": 2009.87,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates cryptographic human authorization logging for automated decision mitigation."
     },
@@ -62,7 +62,7 @@
       "endpoint": "/api/v1/iroom/materials",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2068.93,
+      "latency_ms": 2020.18,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Verifies ingestion of raw material delivery telemetry and buffer-hour depletion alerts."
     },
@@ -72,7 +72,7 @@
       "endpoint": "/api/v1/iroom/progress",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2042.05,
+      "latency_ms": 2009.83,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates live project milestone tracking and WBS-level schedule variance logging."
     },
@@ -82,7 +82,7 @@
       "endpoint": "/api/v1/iroom/drawings",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2055.76,
+      "latency_ms": 2028.07,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Ensures CAD engineering drawings are tracked against technical approval gates."
     },
@@ -92,7 +92,7 @@
       "endpoint": "/api/v1/iroom/quotations",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2050.31,
+      "latency_ms": 2016.88,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Verifies purchase order generation, quotation matching, and expedite PO triggers."
     },
@@ -102,7 +102,7 @@
       "endpoint": "/api/v1/iroom/operations",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2038.93,
+      "latency_ms": 2016.04,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates shop-floor sensor ingestion (+18% vibration sensor trigger on Press P-07)."
     }
