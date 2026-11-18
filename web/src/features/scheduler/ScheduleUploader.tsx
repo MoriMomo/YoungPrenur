@@ -98,7 +98,8 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
   const handleLoadSampleCsv = async () => {
     setIsUploading(true);
     try {
-      const res = await fetch("/sample_master_schedule_wbs.csv");
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+      const res = await fetch(`${basePath}/sample_master_schedule_wbs.csv`);
       if (res.ok) {
         const text = await res.text();
         const parsed = parseCsvToWbs(text);
