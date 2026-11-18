@@ -16,28 +16,36 @@ export default function SchedulerPage() {
   const [overallRisk, setOverallRisk] = useState<number>(65.2);
   const [slippageDays, setSlippageDays] = useState<number>(3.5);
   const [methodology, setMethodology] = useState<string>(
-    "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)"
+    "Offline demo data (backend not connected)"
   );
   const [drivers, setDrivers] = useState<RiskDriver[]>(RISK_DRIVERS);
+
+  const applyPrediction = (pred: Awaited<ReturnType<typeof fetchDelayRiskPrediction>>) => {
+    if (pred.tasks && pred.tasks.length > 0) setTasks(pred.tasks);
+    setOverallRisk(pred.overall_delay_probability);
+    setSlippageDays(pred.estimated_project_slippage_days);
+    setMethodology(pred.methodology);
+    if (pred.risk_drivers && pred.risk_drivers.length > 0) {
+      setDrivers(pred.risk_drivers);
+    }
+  };
 
   useEffect(() => {
     let active = true;
     fetchDelayRiskPrediction().then((pred) => {
-      if (!active || !pred) return;
-      if (pred.tasks && pred.tasks.length > 0) setTasks(pred.tasks);
-      setOverallRisk(pred.overall_delay_probability);
-      setSlippageDays(pred.estimated_project_slippage_days);
-      setMethodology(pred.methodology);
-      if (pred.risk_drivers && pred.risk_drivers.length > 0) {
-        setDrivers(pred.risk_drivers);
-      }
+      if (active && pred) applyPrediction(pred);
     });
     return () => {
       active = false;
     };
   }, []);
 
-  const handleUploadComplete = (data: { tasks?: WbsTask[] }) => {
+  const handleUploadComplete = async (data: { tasks?: WbsTask[]; source?: string }) => {
+    if (data?.source === "backend") {
+      // Backend scored the uploaded schedule; pull the full analysis (drivers, Monte Carlo risk).
+      applyPrediction(await fetchDelayRiskPrediction());
+      return;
+    }
     if (data?.tasks && data.tasks.length > 0) {
       setTasks(data.tasks);
       const critCount = data.tasks.filter((t) => t.critical).length;
@@ -60,7 +68,7 @@ export default function SchedulerPage() {
           BINUS RTT D1521 &amp; PT IMAJIN Research Core
         </div>
         <h1 className="text-xl sm:text-2xl font-semibold text-[#101e30] tracking-tight">
-          AI Project Scheduler &amp; Heuristic Delay-Risk Engine
+          AI Project Scheduler &amp; ML Delay-Risk Engine
         </h1>
         <p className="text-xs sm:text-sm text-[#536780]">
           Standardizes unstructured CSV/Excel/PDF work schedules into normalized WBS activities and computes critical-path slippage risk.
@@ -86,10 +94,10 @@ export default function SchedulerPage() {
           </div>
 
           <div className="text-3xl sm:text-4xl font-semibold text-[#dc2626] font-mono-numbers my-3">
-            +{slippageDays} Days Slippage
+            +{slippageDays.toFixed(1)} Days Slippage
           </div>
           <p className="text-xs text-[#64748b] mb-4">
-            Estimated delivery variance from Critical Path Method (CPM) + weighted heuristic rules.
+            Median (P50) project slippage from a Monte Carlo simulation of XGBoost task-level slip predictions propagated through the CPM network.
           </p>
 
           <div className="pt-3 border-t border-[#f1f5f9]">
@@ -121,7 +129,7 @@ export default function SchedulerPage() {
             </div>
 
             <p className="text-xs text-[#4b5565] leading-relaxed mb-4">
-              Per MDIP BMC Table II, schedule extraction and normalized WBS parsing operate at TRL 4 prototype stage, while delay-risk flags currently run on transparent CPM and heuristic rules. Supervised XGBoost duration prediction activates once partner historical logs are ingested in the pilot phase.
+              Per MDIP BMC Table II, schedule extraction and normalized WBS parsing operate at TRL 4 prototype stage. Delay risk is scored by a supervised XGBoost model (with SHAP root-cause drivers) currently trained on synthetic project-manufacturing schedules; it will be retrained on partner historical planned-vs-actual logs in the pilot phase.
             </p>
           </div>
 
@@ -137,7 +145,7 @@ export default function SchedulerPage() {
         </div>
       </div>
 
-      <GanttTimeline tasks={tasks} />
+      <GanttTimeline tasks={tasks} baseRisk={overallRisk} baseSlipDays={slippageDays} />
 
       <DeviationTable tasks={tasks} />
     </div>

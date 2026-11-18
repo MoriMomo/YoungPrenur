@@ -6,9 +6,13 @@ import { AlertTriangle, Zap } from "lucide-react";
 
 interface GanttTimelineProps {
   tasks: WbsTask[];
+  /** Project-level delay probability (%) from the active analysis. */
+  baseRisk?: number;
+  /** Project-level P50 slippage (days) from the active analysis. */
+  baseSlipDays?: number;
 }
 
-export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks }) => {
+export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 65.2, baseSlipDays = 3.5 }) => {
   const [simulatedSlipDays, setSimulatedSlipDays] = useState<number>(0);
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
 
@@ -30,9 +34,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks }) => {
   // IDR contractual SLA exposure: Rp 15.000.000 / day for critical path slippage
   const todayDay = 9;
   const todayPct = Math.min(100, (todayDay / horizonDays) * 100);
-  const totalSlippageDays = +(3.5 + simulatedSlipDays).toFixed(1);
+  // What-if: injected critical-path slip adds directly to the model's P50 slippage;
+  // risk is a linear what-if approximation on top of the model's Monte Carlo baseline.
+  const totalSlippageDays = +(baseSlipDays + simulatedSlipDays).toFixed(1);
   const slaPenaltyIdrMillions = +(totalSlippageDays * 15).toFixed(1);
-  const delayRiskProbability = Math.min(99.4, +(65.2 + simulatedSlipDays * 4.8).toFixed(1));
+  const delayRiskProbability = Math.min(99.4, +(baseRisk + simulatedSlipDays * 4.8).toFixed(1));
 
   return (
     <div className="bg-white rounded-xl border border-[#e2eaf3] p-5 sm:p-6 space-y-5">
@@ -44,7 +50,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks }) => {
               Time-Phased WBS Critical Path
             </span>
             <span className="text-[11px] text-[#64748b] font-medium">
-              Rule-Based CPM + Heuristic PoC
+              CPM + XGBoost Delay-Risk
             </span>
           </div>
           <h2 className="text-base sm:text-lg font-semibold text-[#101e30] tracking-tight">
@@ -150,7 +156,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks }) => {
                 +{totalSlippageDays}d
               </div>
               <div className="text-[10px] text-[#94a3b8] font-mono-numbers">
-                Heuristic Risk: {delayRiskProbability}%
+                What-if Risk: {delayRiskProbability}%
               </div>
             </div>
 

@@ -1,0 +1,137 @@
+{
+  "model": "XGBoost gradient-boosted trees (classifier + slip regressor)",
+  "target": "Activity finishes later than its CPM total float (+0.5d tolerance)",
+  "trained_at": "2026-11-18T15:38:23+00:00",
+  "training_data": "Synthetic project-manufacturing schedules (ml/generate_dataset.py); to be replaced with partner historical planned-vs-actual data",
+  "n_tasks": 7855,
+  "n_projects": 900,
+  "n_train": 6271,
+  "n_test": 1584,
+  "late_rate": 0.4644,
+  "features": [
+    "planned_days",
+    "float_days",
+    "on_critical_path",
+    "forecast_variance_days",
+    "upstream_slip_days",
+    "external_dependency",
+    "n_predecessors",
+    "resource_utilization",
+    "drawing_revisions",
+    "wc_subcontract",
+    "wc_procurement",
+    "wc_engineering",
+    "wc_stamping",
+    "wc_machining",
+    "wc_assembly",
+    "wc_quality",
+    "wc_logistics",
+    "wc_other"
+  ],
+  "hyperparameters": {
+    "n_estimators": 300,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "subsample": 0.9,
+    "colsample_bytree": 0.9,
+    "random_state": 42,
+    "n_jobs": 2
+  },
+  "test_metrics": {
+    "roc_auc": 0.9303,
+    "f1": 0.8443,
+    "precision": 0.8198,
+    "recall": 0.8702,
+    "accuracy": 0.8516,
+    "brier": 0.105,
+    "baseline_rule_roc_auc": 0.7023,
+    "slip_mae_days": 0.797
+  },
+  "feature_importance": [
+    {
+      "feature": "float_days",
+      "importance": 0.2753,
+      "label": "Thin schedule float buffer"
+    },
+    {
+      "feature": "external_dependency",
+      "importance": 0.1343,
+      "label": "External vendor / subcontract dependency"
+    },
+    {
+      "feature": "forecast_variance_days",
+      "importance": 0.1062,
+      "label": "Forecast overrun vs. plan"
+    },
+    {
+      "feature": "upstream_slip_days",
+      "importance": 0.0912,
+      "label": "Upstream predecessor slippage"
+    },
+    {
+      "feature": "wc_engineering",
+      "importance": 0.0751,
+      "label": "Engineering / drawing review"
+    },
+    {
+      "feature": "drawing_revisions",
+      "importance": 0.0521,
+      "label": "Drawing revision churn"
+    },
+    {
+      "feature": "wc_procurement",
+      "importance": 0.0362,
+      "label": "Material procurement"
+    },
+    {
+      "feature": "wc_quality",
+      "importance": 0.035,
+      "label": "Quality / metrology gate"
+    },
+    {
+      "feature": "wc_logistics",
+      "importance": 0.0334,
+      "label": "Logistics & dispatch"
+    },
+    {
+      "feature": "wc_subcontract",
+      "importance": 0.0308,
+      "label": "Subcontract process"
+    },
+    {
+      "feature": "wc_assembly",
+      "importance": 0.0235,
+      "label": "Assembly cell staffing"
+    },
+    {
+      "feature": "resource_utilization",
+      "importance": 0.0209,
+      "label": "Work-center capacity load"
+    },
+    {
+      "feature": "planned_days",
+      "importance": 0.0208,
+      "label": "Activity duration"
+    },
+    {
+      "feature": "on_critical_path",
+      "importance": 0.019,
+      "label": "On critical path (zero float)"
+    },
+    {
+      "feature": "wc_stamping",
+      "importance": 0.0171,
+      "label": "Stamping press constraint"
+    },
+    {
+      "feature": "wc_machining",
+      "importance": 0.0145,
+      "label": "CNC machining capacity"
+    },
+    {
+      "feature": "n_predecessors",
+      "importance": 0.0144,
+      "label": "Dependency fan-in"
+    }
+  ]
+}

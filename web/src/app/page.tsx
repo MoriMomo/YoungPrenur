@@ -189,7 +189,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-sm sm:text-base text-[#a3a9b8] leading-relaxed max-w-xl">
-              Consolidate factory schedules into normalized work packages, flag delay drivers via Rule-Based CPM heuristics (XGBoost roadmap), ground recommendations in SOP clauses, and log supervisor approvals.
+              Consolidate factory schedules into normalized work packages, score delay risk with CPM + an XGBoost model that explains its drivers, ground recommendations in SOP clauses, and log supervisor approvals.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -275,7 +275,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-[#eef0f5]">WBS Critical Path Forecast</span>
                     <span className="text-[11px] font-mono-numbers text-[#8f98ab]">
-                      Weeks 1 to 4 · Heuristic CPM
+                      Weeks 1 to 4 · CPM + XGBoost
                     </span>
                   </div>
 
@@ -341,7 +341,7 @@ export default function LandingPage() {
               Four interlocking decision layers
             </h2>
             <p className="text-sm text-[#a3a9b8]">
-              Schedule consolidation, heuristic delay scoring, grounded SOP citations, and supervisor approval control in one workspace.
+              Schedule consolidation, ML delay-risk scoring, grounded SOP citations, and supervisor approval control in one workspace.
             </p>
           </div>
 
@@ -350,9 +350,9 @@ export default function LandingPage() {
             <div className="lg:col-span-7 p-6 rounded-xl bg-[#11141c] border border-white/8 flex flex-col justify-between gap-5">
               <div className="space-y-2">
                 <div className="text-xs font-mono-numbers text-[#8f98ab]">D1 &amp; D2 · Schedule Engine</div>
-                <h3 className="text-base font-medium text-[#eef0f5]">AI Project Scheduler &amp; Heuristic Risk</h3>
+                <h3 className="text-base font-medium text-[#eef0f5]">AI Project Scheduler &amp; ML Delay Risk</h3>
                 <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
-                  Parses non-standard CSV and Excel schedules into normalized WBS work packages, computes Critical Path Method slippage, and flags upstream vendor risks (XGBoost model on roadmap).
+                  Parses non-standard CSV and Excel schedules into normalized WBS work packages, computes Critical Path Method float, and scores each activity&apos;s delay risk with an XGBoost model plus a Monte Carlo project forecast.
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/8 font-mono-numbers text-xs">
@@ -554,7 +554,7 @@ export default function LandingPage() {
 
           <div className="p-4 rounded-xl bg-[#0b0d14] border border-white/8 text-xs text-[#8f98ab] leading-relaxed">
             <span className="text-[#eef0f5] font-medium">Prototype Integrity Disclosure:</span>{" "}
-            All metrics, predictions, and IRoom feeds shown in this TRL 4 sandbox are simulated demonstration data. Delay-risk scoring currently uses rule-based CPM heuristics; supervised XGBoost training and partner n=15 field testing are scheduled for the Year-1 pilot with PT IMAJIN.
+            All metrics, predictions, and IRoom feeds shown in this TRL 4 sandbox are simulated demonstration data. Delay-risk scoring uses a supervised XGBoost model trained on synthetic project schedules; retraining on partner historical data and n=15 field testing are scheduled for the Year-1 pilot with PT IMAJIN.
           </div>
         </div>
       </section>

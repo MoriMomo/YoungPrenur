@@ -2,13 +2,13 @@
 
 import React, { useState, useRef } from "react";
 import { FileSpreadsheet, Upload, Loader2, FileCheck, FileDown } from "lucide-react";
-import { uploadScheduleFile } from "@/lib/api";
+import { mockScheduleUpload, ScheduleUploadError, uploadScheduleFile } from "@/lib/api";
 import { WbsTask } from "@/types";
 
 interface ScheduleUploadResult {
   tasks?: WbsTask[];
   tasks_extracted?: number;
-  [key: string]: unknown;
+  source?: string;
 }
 
 interface ScheduleUploaderProps {
@@ -73,26 +73,47 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     onToast?.(`Ingesting and parsing WBS schedule from ${file.name}...`);
 
     try {
-      if (file.name.toLowerCase().endsWith(".csv")) {
-        const text = await file.text();
-        const parsed = parseCsvToWbs(text);
-        if (parsed.length > 0) {
-          setParsedCount(parsed.length);
-          onUploadComplete?.({ tasks: parsed, tasks_extracted: parsed.length });
-          onToast?.(`Parsed ${parsed.length} WBS rows directly from ${file.name}.`);
-          return;
-        }
-      }
-
-      const result = await uploadScheduleFile(file.name);
-      setParsedCount(result.tasks_extracted || result.tasks?.length || 0);
-      onUploadComplete?.(result);
-      onToast?.(`Normalized ${result.tasks_extracted || 0} activities from ${file.name}.`);
-    } catch {
-      onToast?.("Schedule file parsed with local schema.");
+      await ingest(file, file.name, () => file.text());
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  /**
+   * Backend first (real CPM + XGBoost scoring). If the API is unreachable, fall back to
+   * parsing CSVs in the browser, then to the bundled mock schedule.
+   */
+  const ingest = async (blob: Blob, name: string, readText: () => Promise<string>) => {
+    try {
+      const result = await uploadScheduleFile(blob, name);
+      if (result) {
+        setParsedCount(result.tasks_extracted || result.tasks.length);
+        onUploadComplete?.(result);
+        onToast?.(
+          result.message ||
+            `Normalized ${result.tasks_extracted} activities from ${name} and scored delay risk with XGBoost.`
+        );
+        return;
+      }
+    } catch (err) {
+      onToast?.(err instanceof ScheduleUploadError ? err.message : `Could not ingest ${name}.`);
+      return;
+    }
+
+    if (name.toLowerCase().endsWith(".csv")) {
+      const parsed = parseCsvToWbs(await readText());
+      if (parsed.length > 0) {
+        setParsedCount(parsed.length);
+        onUploadComplete?.({ tasks: parsed, tasks_extracted: parsed.length });
+        onToast?.(`Backend offline: parsed ${parsed.length} WBS rows locally from ${name} (risk scores from file).`);
+        return;
+      }
+    }
+    const fallback = mockScheduleUpload(name);
+    setParsedCount(fallback.tasks_extracted);
+    onUploadComplete?.(fallback);
+    onToast?.(`Backend offline: showing the bundled sample schedule instead of ${name}.`);
   };
 
   const handleLoadSampleCsv = async () => {
@@ -100,20 +121,15 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
       const res = await fetch(`${basePath}/sample_master_schedule_wbs.csv`);
+      const name = "sample_master_schedule_wbs.csv";
+      setSelectedFile(name);
       if (res.ok) {
         const text = await res.text();
-        const parsed = parseCsvToWbs(text);
-        if (parsed.length > 0) {
-          setSelectedFile("sample_master_schedule_wbs.csv");
-          setParsedCount(parsed.length);
-          onUploadComplete?.({ tasks: parsed, tasks_extracted: parsed.length });
-          onToast?.(`Loaded ${parsed.length} WBS activities from sample IMAJIN CSV.`);
-          return;
-        }
+        await ingest(new Blob([text], { type: "text/csv" }), name, async () => text);
+        return;
       }
-      const fallback = await uploadScheduleFile("sample_master_schedule_wbs.csv");
-      setSelectedFile("sample_master_schedule_wbs.csv");
-      setParsedCount(fallback.tasks_extracted || 0);
+      const fallback = mockScheduleUpload(name);
+      setParsedCount(fallback.tasks_extracted);
       onUploadComplete?.(fallback);
     } finally {
       setIsUploading(false);

@@ -161,27 +161,60 @@ export async function fetchWbsSchedule(): Promise<WbsTask[]> {
   return WBS_TASKS;
 }
 
+export class ScheduleUploadError extends Error {}
+
+export interface ScheduleUploadResponse {
+  success: boolean;
+  filename: string;
+  tasks_extracted: number;
+  critical_path_tasks?: number;
+  high_risk_tasks?: number;
+  overall_delay_probability?: number;
+  estimated_project_slippage_days?: number;
+  message?: string;
+  tasks: WbsTask[];
+  source: "backend" | "mock";
+}
+
 /**
- * Triggers schedule file ingestion & standardization.
+ * Sends a schedule file (CSV/XLSX) to the backend, which parses it, runs CPM and scores
+ * delay risk with the XGBoost model. Passing no file reloads the bundled sample project.
+ * Returns null when the backend is unreachable so callers can fall back to local parsing.
+ * Throws ScheduleUploadError when the backend rejects the file (e.g. missing columns).
  */
-export async function uploadScheduleFile(filename: string = "master_project_schedule_rev3.xlsx") {
+export async function uploadScheduleFile(file?: File | Blob, filename?: string): Promise<ScheduleUploadResponse | null> {
+  let res: Response;
   try {
-    const res = await fetch(`${API_BASE}/scheduler/upload`, {
+    const form = new FormData();
+    if (file) form.append("file", file, filename || (file instanceof File ? file.name : "schedule.csv"));
+    res = await fetch(`${API_BASE}/scheduler/upload`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename, source_type: "EXCEL_WBS" }),
-      signal: AbortSignal.timeout(3000),
+      body: form,
+      signal: AbortSignal.timeout(15000),
     });
-    if (res.ok) {
-      const json = await res.json();
-      if (Array.isArray(json.tasks)) {
-        json.tasks = mapBackendWbs(json.tasks);
-      }
-      return json;
-    }
   } catch {
-    // Fallback
+    return null;
   }
+  if (!res.ok) {
+    let detail = `Upload failed (${res.status})`;
+    try {
+      const err = await res.json();
+      if (typeof err.detail === "string") detail = err.detail;
+    } catch {
+      // keep default message
+    }
+    throw new ScheduleUploadError(detail);
+  }
+  const json = await res.json();
+  return {
+    ...json,
+    tasks: Array.isArray(json.tasks) ? mapBackendWbs(json.tasks) : [],
+    source: "backend",
+  };
+}
+
+/** Local mock result used when no backend is available (e.g. GitHub Pages without an API). */
+export function mockScheduleUpload(filename: string): ScheduleUploadResponse {
   return {
     success: true,
     filename,
@@ -189,7 +222,8 @@ export async function uploadScheduleFile(filename: string = "master_project_sche
     critical_path_tasks: WBS_TASKS.filter(t => t.critical).length,
     high_risk_tasks: WBS_TASKS.filter(t => t.delayRisk > 0.6).length,
     message: `Extracted and normalized ${WBS_TASKS.length} WBS activities from ${filename}.`,
-    tasks: WBS_TASKS
+    tasks: WBS_TASKS,
+    source: "mock",
   };
 }
 
@@ -215,7 +249,7 @@ export async function fetchDelayRiskPrediction(): Promise<DelayRiskPrediction> {
           impact: d.impact,
         })),
         tasks: Array.isArray(data.tasks) ? mapBackendWbs(data.tasks) : WBS_TASKS,
-        methodology: data.methodology || "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)",
+        methodology: data.methodology || "CPM + XGBoost delay-risk model",
       };
     }
   } catch {
@@ -229,7 +263,7 @@ export async function fetchDelayRiskPrediction(): Promise<DelayRiskPrediction> {
     estimated_project_slippage_days: 3.5,
     risk_drivers: RISK_DRIVERS,
     tasks: WBS_TASKS,
-    methodology: "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)"
+    methodology: "Offline demo data (backend not connected)"
   };
 }
 

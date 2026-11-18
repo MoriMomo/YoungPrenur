@@ -4,6 +4,7 @@ Automated System Verification & Proof of Testing Suite (TRL 3)
 BINUS RTT & PT Imajinasi Karya Bangsa (IMAJIN)
 """
 
+import os
 import sys
 import time
 import json
@@ -11,7 +12,18 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 
-API_BASE = "http://localhost:8000"
+# 127.0.0.1 avoids the ~2s IPv6 "localhost" resolution delay on Windows.
+API_BASE = os.environ.get("MDIP_API_BASE", "http://127.0.0.1:8000")
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
+
+
+def _valid_scored_tasks(tasks):
+    return (
+        isinstance(tasks, list) and len(tasks) > 0
+        and all(0.0 <= t.get("delay_risk", -1) <= 1.0 for t in tasks)
+        and any(t.get("critical") for t in tasks)
+        and all("float_days" in t and "start_day" in t for t in tasks)
+    )
 
 TEST_CASES = [
     {
@@ -29,8 +41,12 @@ TEST_CASES = [
         "endpoint": f"{API_BASE}/api/v1/scheduler/upload",
         "method": "POST",
         "body": {"filename": "master_project_schedule_rev3.xlsx", "source_type": "EXCEL_WBS"},
-        "validate": lambda d: d.get("success") is True and d.get("tasks_extracted", 0) > 0,
-        "desc": "Tests parsing of unstructured schedule files into normalized WBS activities."
+        "validate": lambda d: (
+            d.get("success") is True and d.get("tasks_extracted", 0) > 0
+            and d["tasks_extracted"] == len(d.get("tasks", []))
+            and _valid_scored_tasks(d.get("tasks"))
+        ),
+        "desc": "Tests WBS normalization, CPM float/critical-path computation and per-task ML risk scoring."
     },
     {
         "id": "TC-03",
@@ -38,8 +54,26 @@ TEST_CASES = [
         "endpoint": f"{API_BASE}/api/v1/risks/prediction",
         "method": "GET",
         "body": None,
-        "validate": lambda d: d.get("overall_delay_probability", 0) > 0.5 and len(d.get("risk_drivers", [])) > 0,
-        "desc": "Validates ML classification of project delay risk and root-cause risk driver breakdown."
+        "validate": lambda d: (
+            0.0 <= d.get("overall_delay_probability", -1) <= 100.0
+            and len(d.get("risk_drivers", [])) > 0
+            and "XGBoost" in d.get("methodology", "")
+            and d.get("p80_slippage_days", -1) >= d.get("estimated_project_slippage_days", 0) >= 0
+            and _valid_scored_tasks(d.get("tasks"))
+        ),
+        "desc": "Validates XGBoost task scoring, SHAP root-cause drivers and Monte Carlo project slippage (P50 <= P80)."
+    },
+    {
+        "id": "TC-03b",
+        "name": "Delay-Risk Model Card & Held-Out Performance Gate",
+        "endpoint": f"{API_BASE}/api/v1/ml/model-card",
+        "method": "GET",
+        "body": None,
+        "validate": lambda d: (
+            d.get("test_metrics", {}).get("roc_auc", 0) >= 0.80
+            and d["test_metrics"]["roc_auc"] > d["test_metrics"].get("baseline_rule_roc_auc", 1)
+        ),
+        "desc": "Model must reach ROC-AUC >= 0.80 on held-out projects and beat the legacy rule-based baseline."
     },
     {
         "id": "TC-04",
@@ -182,7 +216,7 @@ def main():
     print("-" * 80)
 
     # Save verification JSON log
-    output_path = "D:\\pasti_berhasil\\codee\\Kuliah\\Lombadll\\youngprenur\\backend\\test_results.json"
+    output_path = OUTPUT_PATH
     report = {
         "suite": "MDIP TRL 3 System Verification",
         "timestamp": datetime.now().isoformat(),

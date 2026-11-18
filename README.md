@@ -10,11 +10,17 @@
 ## 1. Ikhtisar Platform
 
 MDIP adalah platform pendukung keputusan (*AI Decision Intelligence Layer*) terpadu yang dirancang khusus untuk industri manufaktur berbasis proyek (fabrikasi presisi, permesinan CNC, rekayasa perkakas, dan perakitan sub-sistem). Platform ini menggabungkan:
-1. **AI Project Scheduler & Delay-Risk ML Engine:** Ekstraksi struktur aktivitas proyek (WBS) otomatis dari jadwal Excel/PDF tidak baku, normalisasi tanggal terencana vs kapasitas aktual, dan estimasi probabilitas deviasi keterlambatan (*Critical Path Method + heuristik berbasis aturan* pada PoC saat ini; model *Supervised XGBoost* masih tahap *roadmap*).
+1. **AI Project Scheduler & Delay-Risk ML Engine:** Ekstraksi struktur aktivitas proyek (WBS) otomatis dari jadwal Excel/PDF tidak baku, normalisasi tanggal terencana vs kapasitas aktual, dan estimasi probabilitas deviasi keterlambatan (*Critical Path Method + Supervised XGBoost* dengan penjelasan *root-cause* berbasis SHAP, serta simulasi Monte Carlo untuk risiko tingkat proyek).
 2. **AI Manufacturing Copilot:** Kokpit operasional interaktif berbasis peran kerja (*role-based cockpit*), memonitor risiko kritis secara proaktif, menyajikan rekomendasi tindakan terprioritas (*AI Decision Brief* dengan alur *human-in-the-loop audit review*), dan asisten RAG untuk penelusuran SOP dan panduan penanganan kendala mesin dengan sitasi dokumen terverifikasi (PoC saat ini memakai pencocokan kata kunci atas indeks SOP bawaan).
 3. **iRoom Workspace:** Ruang kerja terhubung untuk pengiriman material, progres proyek, persetujuan gambar teknik, quotation & PO, dan pelacakan operasi.
 
-> **Status PoC:** Seluruh logika backend saat ini berada di `backend/main.py` dengan data contoh bawaan. Frontend memiliki *fallback* ke `web/src/lib/mock-data.ts` sehingga dapat berjalan tanpa backend (misalnya pada GitHub Pages).
+> **Status PoC:** Model XGBoost saat ini dilatih pada **data jadwal sintetis** (7.855 aktivitas dari 900 proyek simulasi, `backend/ml/generate_dataset.py`) karena data historis mitra belum tersedia. Pada proyek uji yang tidak ikut dilatih, model mencapai ROC-AUC 0,93 (baseline aturan lama: 0,70); metrik lengkap ada di `backend/ml/artifacts/model_card.json`. Model akan dilatih ulang dengan data *planned vs. actual* mitra pada fase pilot. Data iRoom dan KPI lain masih berupa data contoh. Frontend memiliki *fallback* ke `web/src/lib/mock-data.ts` sehingga dapat berjalan tanpa backend (misalnya pada GitHub Pages).
+
+### Cara Kerja Delay-Risk Engine
+1. **Ingesti jadwal** (`backend/schedule_parser.py`): CSV/XLSX dengan nama kolom fleksibel (ID/Indonesia) dinormalisasi menjadi aktivitas WBS.
+2. **CPM**: *forward/backward pass* menghitung *start day*, *total float*, jalur kritis, dan *slip* yang merambat dari aktivitas pendahulu.
+3. **XGBoost** (`backend/ml/predictor.py`): klasifikasi peluang tiap aktivitas selesai melewati *float*-nya, plus regresi estimasi hari *slip*. Kontribusi SHAP per fitur menjadi *root-cause drivers*.
+4. **Monte Carlo** (2.000 simulasi): *slip* tiap aktivitas disampel lalu dirambatkan lewat jaringan CPM untuk menghasilkan peluang proyek melewati *due date* (baseline + buffer 15%) serta *slippage* P50/P80.
 
 ---
 
@@ -41,11 +47,19 @@ youngprenur/ (MDIP)
 │   ├── 07_USER_PERSONAS_TARGET_USERS.md  # Persona & target pengguna
 │   └── 08_PROOF_OF_TESTING_TRL3.md       # Bukti pengujian TRL 3
 │
-├── backend/                              # FastAPI Backend (single-file PoC)
-│   ├── main.py                           # Seluruh endpoint, Pydantic model & data contoh
+├── backend/                              # FastAPI Backend
+│   ├── main.py                           # Endpoint API, Pydantic model & data contoh
+│   ├── schedule_parser.py                # Parser CSV/XLSX + Critical Path Method (CPM)
+│   ├── ml/                               # Delay-risk ML
+│   │   ├── features.py                   # Fitur bersama untuk training & inferensi
+│   │   ├── generate_dataset.py           # Generator data jadwal sintetis
+│   │   ├── train.py                      # Training XGBoost + evaluasi + model card
+│   │   ├── predictor.py                  # Inferensi, SHAP drivers & Monte Carlo
+│   │   ├── data/                         # Dataset sintetis (CSV)
+│   │   └── artifacts/                    # Model terlatih (.json) & model_card.json
 │   ├── openapi.json                      # Snapshot spesifikasi OpenAPI
 │   ├── requirements.txt                  # Python dependencies
-│   ├── test_system.py                    # Suite verifikasi sistem (HTTP ke localhost:8000)
+│   ├── test_system.py                    # Suite verifikasi sistem (HTTP ke 127.0.0.1:8000)
 │   └── test_results.json                 # Hasil eksekusi terakhir test_system.py
 │
 ├── paper/                                # Abstrak lomba (.docx/.pdf), logo & generate_abstract.py
@@ -136,7 +150,15 @@ npm run dev
 
 Frontend memanggil backend di `http://localhost:8000` secara default; ubah lewat variabel lingkungan `NEXT_PUBLIC_API_URL`. Jika backend tidak aktif, frontend otomatis memakai data contoh.
 
-### C. Verifikasi Sistem (TRL 3)
+### C. Melatih Ulang Model Delay-Risk (opsional)
+Model terlatih sudah tersimpan di `backend/ml/artifacts/`. Untuk membuat ulang dataset dan melatih ulang:
+```bash
+cd backend
+python -m ml.generate_dataset
+python -m ml.train
+```
+
+### D. Verifikasi Sistem (TRL 3)
 Dengan backend aktif:
 ```bash
 cd backend
@@ -144,5 +166,5 @@ python test_system.py
 # Hasil disimpan ke backend/test_results.json
 ```
 
-### D. Deploy ke GitHub Pages
+### E. Deploy ke GitHub Pages
 Setiap push ke `main` menjalankan `.github/workflows/deploy-pages.yml`, yang membangun static export (`GITHUB_PAGES=true`, `basePath` `/YoungPrenur`) dan menerbitkannya ke GitHub Pages. Pada mode ini hanya data contoh yang dipakai, karena backend tidak ikut di-deploy.

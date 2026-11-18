@@ -2,7 +2,14 @@ from fastapi import FastAPI, UploadFile, File, Query, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
+import copy
+import os
+import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ml.predictor import analyze_schedule, model_card, score_tasks  # noqa: E402
+from schedule_parser import ScheduleParseError, compute_cpm, parse_schedule_file  # noqa: E402
 
 app = FastAPI(
     title="MDIP Manufacturing Decision Intelligence Platform API",
@@ -28,6 +35,11 @@ class TaskItem(BaseModel):
     planned_days: int
     upstream_slip_days: int
     external_vendor: bool
+    actual_days: Optional[int] = None
+    float_days: Optional[int] = 0
+    work_center: Optional[str] = ""
+    resource_utilization: Optional[float] = None
+    drawing_revisions: Optional[int] = 0
 
 class CopilotQuery(BaseModel):
     question: Optional[str] = None
@@ -51,15 +63,15 @@ class ScheduleUploadPayload(BaseModel):
 # -------------------------------------------------------------
 
 SAMPLE_WBS = [
-    {"code": "WBS-1.1", "task": "Drawing Technical Review & CAD/CAM Sign-off", "start_day": 0, "planned_days": 4, "actual_days": 6, "float_days": 0, "critical": True, "delay_risk": 0.72, "status": "Delayed (+2d)", "variance_days": 2, "work_center": "Tooling R&D / CAD", "owner": "Hendra Wijaya, ST"},
-    {"code": "WBS-1.2", "task": "Raw Material Procurement (Alloy EN24 & M-204)", "start_day": 1, "planned_days": 6, "actual_days": 8, "float_days": 0, "critical": True, "delay_risk": 0.85, "status": "At Risk", "variance_days": 2, "work_center": "Supply Chain / Receiving", "owner": "Supply Chain Lead"},
-    {"code": "WBS-1.3", "task": "Tooling & Stamping Die Fabrication (Die-04)", "start_day": 4, "planned_days": 5, "actual_days": 5, "float_days": 2, "critical": False, "delay_risk": 0.28, "status": "On Track", "variance_days": 0, "work_center": "Wire EDM Cell 03", "owner": "Rudi Hermawan"},
-    {"code": "WBS-2.1", "task": "CNC 5-Axis Milling & Surface Profiling", "start_day": 6, "planned_days": 7, "actual_days": 7, "float_days": 2, "critical": False, "delay_risk": 0.22, "status": "On Track", "variance_days": 0, "work_center": "CNC Milling Cell A (Makino D800Z)", "owner": "Bambang S."},
-    {"code": "WBS-2.2", "task": "Precision Stamping & Forming (Press P-07)", "start_day": 9, "planned_days": 5, "actual_days": 6, "float_days": 0, "critical": True, "delay_risk": 0.68, "status": "Bottleneck", "variance_days": 1, "work_center": "Stamping Press Bay P-07", "owner": "Agus H."},
-    {"code": "WBS-3.1", "task": "Cell 02 Sub-Assembly & Precision Tolerancing", "start_day": 14, "planned_days": 6, "actual_days": 8, "float_days": 0, "critical": True, "delay_risk": 0.79, "status": "Lagging -11%", "variance_days": 2, "work_center": "Assembly Cell 02", "owner": "Production Supervisor"},
-    {"code": "WBS-3.2", "task": "Heat Treatment & Surface Hardening (Subcontract)", "start_day": 16, "planned_days": 4, "actual_days": 4, "float_days": 2, "critical": False, "delay_risk": 0.35, "status": "Scheduled", "variance_days": 0, "work_center": "Subcontract Furnace", "owner": "Rina Wijaya"},
-    {"code": "WBS-4.1", "task": "CMM Metrology & Quality Acceptance Test", "start_day": 22, "planned_days": 3, "actual_days": 3, "float_days": 0, "critical": True, "delay_risk": 0.30, "status": "Pending Prior Stage", "variance_days": 0, "work_center": "CMM Metrology Lab", "owner": "Siti M."},
-    {"code": "WBS-4.2", "task": "Final Factory Acceptance (FAT) & Customer Dispatch", "start_day": 25, "planned_days": 2, "actual_days": 2, "float_days": 1, "critical": False, "delay_risk": 0.15, "status": "Scheduled", "variance_days": 0, "work_center": "Logistics Dock A", "owner": "Rian T."}
+    {"code": "WBS-1.1", "predecessors": [], "task": "Drawing Technical Review & CAD/CAM Sign-off", "start_day": 0, "planned_days": 4, "actual_days": 6, "float_days": 0, "critical": True, "delay_risk": 0.72, "status": "Delayed (+2d)", "variance_days": 2, "work_center": "Tooling R&D / CAD", "owner": "Hendra Wijaya, ST"},
+    {"code": "WBS-1.2", "predecessors": [], "task": "Raw Material Procurement (Alloy EN24 & M-204)", "start_day": 1, "planned_days": 6, "actual_days": 8, "float_days": 0, "critical": True, "delay_risk": 0.85, "status": "At Risk", "variance_days": 2, "work_center": "Supply Chain / Receiving", "owner": "Supply Chain Lead"},
+    {"code": "WBS-1.3", "predecessors": ["WBS-1.1"], "task": "Tooling & Stamping Die Fabrication (Die-04)", "start_day": 4, "planned_days": 5, "actual_days": 5, "float_days": 2, "critical": False, "delay_risk": 0.28, "status": "On Track", "variance_days": 0, "work_center": "Wire EDM Cell 03", "owner": "Rudi Hermawan"},
+    {"code": "WBS-2.1", "predecessors": ["WBS-1.1", "WBS-1.2"], "task": "CNC 5-Axis Milling & Surface Profiling", "start_day": 6, "planned_days": 7, "actual_days": 7, "float_days": 2, "critical": False, "delay_risk": 0.22, "status": "On Track", "variance_days": 0, "work_center": "CNC Milling Cell A (Makino D800Z)", "owner": "Bambang S."},
+    {"code": "WBS-2.2", "predecessors": ["WBS-1.3", "WBS-2.1"], "task": "Precision Stamping & Forming (Press P-07)", "start_day": 9, "planned_days": 5, "actual_days": 6, "float_days": 0, "critical": True, "delay_risk": 0.68, "status": "Bottleneck", "variance_days": 1, "work_center": "Stamping Press Bay P-07", "owner": "Agus H."},
+    {"code": "WBS-3.1", "predecessors": ["WBS-2.2"], "task": "Cell 02 Sub-Assembly & Precision Tolerancing", "start_day": 14, "planned_days": 6, "actual_days": 8, "float_days": 0, "critical": True, "delay_risk": 0.79, "status": "Lagging -11%", "variance_days": 2, "work_center": "Assembly Cell 02", "owner": "Production Supervisor"},
+    {"code": "WBS-3.2", "predecessors": ["WBS-2.1"], "task": "Heat Treatment & Surface Hardening (Subcontract)", "start_day": 16, "planned_days": 4, "actual_days": 4, "float_days": 2, "critical": False, "delay_risk": 0.35, "status": "Scheduled", "variance_days": 0, "work_center": "Subcontract Furnace", "owner": "Rina Wijaya"},
+    {"code": "WBS-4.1", "predecessors": ["WBS-3.1", "WBS-3.2"], "task": "CMM Metrology & Quality Acceptance Test", "start_day": 22, "planned_days": 3, "actual_days": 3, "float_days": 0, "critical": True, "delay_risk": 0.30, "status": "Pending Prior Stage", "variance_days": 0, "work_center": "CMM Metrology Lab", "owner": "Siti M."},
+    {"code": "WBS-4.2", "predecessors": ["WBS-4.1"], "task": "Final Factory Acceptance (FAT) & Customer Dispatch", "start_day": 25, "planned_days": 2, "actual_days": 2, "float_days": 1, "critical": False, "delay_risk": 0.15, "status": "Scheduled", "variance_days": 0, "work_center": "Logistics Dock A", "owner": "Rian T."}
 ]
 
 IROOM_MATERIALS = [
@@ -396,11 +408,38 @@ AUDIT_LOG: List[Dict[str, Any]] = []
 # Part 2 PoC Specification Endpoints
 # -------------------------------------------------------------
 
+# -------------------------------------------------------------
+# Active schedule analysis (CPM + XGBoost + Monte Carlo)
+# -------------------------------------------------------------
+
+DEFAULT_PROJECT_NAME = "Project Alpha - Precision Stamping & Aerospace Tooling"
+
+
+def _analyze_sample() -> Dict[str, Any]:
+    tasks = []
+    for t in copy.deepcopy(SAMPLE_WBS):
+        tasks.append({
+            "code": t["code"], "task": t["task"], "planned_days": float(t["planned_days"]),
+            "actual_days": float(t["actual_days"]), "predecessors": t["predecessors"],
+            "has_dependency_column": True, "work_center": t["work_center"], "owner": t["owner"],
+            "status_declared": t["status"],
+        })
+    return analyze_schedule(compute_cpm(tasks), DEFAULT_PROJECT_NAME)
+
+
+ACTIVE_ANALYSIS: Dict[str, Any] = {"source": "sample", "filename": "master_project_schedule_rev3.xlsx", **_analyze_sample()}
+
+
+def _risk_headline() -> str:
+    a = ACTIVE_ANALYSIS
+    return f"{a['overall_delay_probability']:.1f}% (+{a['estimated_project_slippage_days']:.1f}d)"
+
+
 @app.get("/health")
 def health_check():
     return {
         "status": "ok",
-        "engine": "MDIP PoC v1.0 (Rule-Based CPM + Grounded SOP Retrieval)",
+        "engine": "MDIP PoC v1.1 (CPM + XGBoost Delay-Risk + Grounded SOP Retrieval)",
         "deployment": "Hybrid SaaS / Internal Enterprise"
     }
 
@@ -408,47 +447,42 @@ def health_check():
 def api_health_check():
     return {
         "status": "ok",
-        "engine": "MDIP PoC v1.0 (Rule-Based CPM + Grounded SOP Retrieval)",
+        "engine": "MDIP PoC v1.1 (CPM + XGBoost Delay-Risk + Grounded SOP Retrieval)",
         "live": True
     }
 
 @app.post("/api/scheduler/upload")
 async def parse_schedule(file: Optional[UploadFile] = File(None)):
-    start = time.perf_counter()
-    filename = file.filename if file else "master_project_schedule_rev3.xlsx"
-    elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+    result = await upload_scheduler_v1(file)
     return {
-        "filename": filename,
+        "filename": result["filename"],
         "status": "standardized",
-        "parse_time_ms": elapsed_ms,
-        "tasks_extracted": len(SAMPLE_WBS),
+        "parse_time_ms": result["parse_time_ms"],
+        "tasks_extracted": result["tasks_extracted"],
         "schema_version": "mdip-v1"
     }
 
 @app.post("/api/risks/evaluate")
 def evaluate_delay_risk(tasks: List[TaskItem]):
-    results = []
+    items = []
     for t in tasks:
-        score = 0.15
-        drivers = []
-        if t.upstream_slip_days > 0:
-            score += min(0.45, t.upstream_slip_days * 0.1)
-            drivers.append(f"Upstream slippage (+{t.upstream_slip_days}d)")
-        if t.external_vendor:
-            score += 0.25
-            drivers.append("External vendor dependency")
-        if t.planned_days > 14:
-            score += 0.10
-            drivers.append("Long duration task (>14d)")
-
-        risk_prob = round(min(score, 0.98), 2)
-        results.append({
-            "task_id": t.task_id,
-            "name": t.name,
-            "delay_probability": risk_prob,
-            "risk_level": "HIGH" if risk_prob >= 0.6 else ("MEDIUM" if risk_prob >= 0.35 else "LOW"),
-            "drivers": drivers or ["Normal operating baseline"]
+        float_days = t.float_days or 0
+        items.append({
+            "code": t.task_id, "task": t.name, "planned_days": float(t.planned_days),
+            "actual_days": float(t.actual_days or t.planned_days), "float_days": float_days,
+            "critical": float_days == 0, "upstream_slip_days": float(t.upstream_slip_days),
+            "external_dependency": t.external_vendor, "work_center": t.work_center or "",
+            "resource_utilization": t.resource_utilization, "drawing_revisions": t.drawing_revisions or 0,
         })
+    score_tasks(items)
+    results = [{
+        "task_id": i["code"],
+        "name": i["task"],
+        "delay_probability": round(i["delay_risk"], 2),
+        "risk_level": i["risk_level"],
+        "expected_slip_days": i["expected_slip_days"],
+        "drivers": [d["label"] for d in i["drivers"]] or ["Normal operating baseline"],
+    } for i in items]
     return {"evaluated_tasks": len(results), "predictions": results}
 
 @app.post("/api/copilot/ask")
@@ -522,38 +556,60 @@ def get_production_lines():
 
 @app.get("/api/v1/scheduler/wbs")
 def get_wbs_schedule():
-    return SAMPLE_WBS
+    return ACTIVE_ANALYSIS["tasks"]
 
 @app.post("/api/v1/scheduler/upload")
-def upload_scheduler_v1(payload: Optional[ScheduleUploadPayload] = None):
-    filename = payload.filename if payload else "master_project_schedule_rev3.xlsx"
+async def upload_scheduler_v1(file: Optional[UploadFile] = File(None)):
+    """Parse an uploaded CSV/XLSX schedule (or reload the sample when no file is sent), run CPM and score it."""
+    global ACTIVE_ANALYSIS
+    start = time.perf_counter()
+    if file is None or not file.filename:
+        filename = "master_project_schedule_rev3.xlsx"
+        analysis = {"source": "sample", "filename": filename, **_analyze_sample()}
+    else:
+        filename = file.filename
+        content = await file.read()
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Schedule file is larger than 5 MB.")
+        try:
+            tasks = parse_schedule_file(content, filename)
+        except ScheduleParseError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Could not read {filename}: {e}")
+        project_name = os.path.splitext(filename)[0].replace("_", " ").strip() or DEFAULT_PROJECT_NAME
+        analysis = {"source": "upload", "filename": filename, **analyze_schedule(tasks, project_name)}
+    ACTIVE_ANALYSIS = analysis
+    elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+    n = len(analysis["tasks"])
     return {
         "success": True,
         "filename": filename,
-        "tasks_extracted": len(SAMPLE_WBS),
-        "critical_path_tasks": sum(1 for t in SAMPLE_WBS if t["critical"]),
-        "high_risk_tasks": sum(1 for t in SAMPLE_WBS if t["delay_risk"] > 0.6),
-        "message": f"Extracted and normalized {len(SAMPLE_WBS)} WBS activities from {filename}.",
-        "tasks": SAMPLE_WBS
+        "parse_time_ms": elapsed_ms,
+        "tasks_extracted": n,
+        "critical_path_tasks": analysis["critical_path_tasks_count"],
+        "high_risk_tasks": analysis["high_risk_tasks_count"],
+        "overall_delay_probability": analysis["overall_delay_probability"],
+        "estimated_project_slippage_days": analysis["estimated_project_slippage_days"],
+        "message": (
+            f"Extracted {n} WBS activities from {filename}, computed the critical path and scored delay risk "
+            f"with XGBoost: {analysis['overall_delay_probability']:.1f}% chance of project slip "
+            f"(P50 +{analysis['estimated_project_slippage_days']:.1f}d)."
+        ),
+        "tasks": analysis["tasks"],
     }
+
 
 @app.get("/api/v1/risks/prediction")
 def get_delay_prediction():
-    return {
-        "project_name": "Project Alpha - Precision Stamping & Aerospace Tooling",
-        "overall_delay_probability": 65.2,
-        "critical_path_tasks_count": sum(1 for t in SAMPLE_WBS if t["critical"]),
-        "high_risk_tasks_count": sum(1 for t in SAMPLE_WBS if t["delay_risk"] > 0.6),
-        "estimated_project_slippage_days": 3.5,
-        "risk_drivers": [
-            {"factor": "Drawing Technical Review Variance", "weight": "34%", "impact": "High (+1.5d)"},
-            {"factor": "Component M-204 Vendor Lead Time", "weight": "28%", "impact": "High (+1.2d)"},
-            {"factor": "Press P-07 Mechanical Constraint", "weight": "22%", "impact": "Medium (+0.5d)"},
-            {"factor": "Cell 02 Operator Staffing Deficit", "weight": "16%", "impact": "Medium (+0.3d)"}
-        ],
-        "tasks": SAMPLE_WBS,
-        "methodology": "Rule-Based CPM + Heuristic PoC (XGBoost Roadmap)"
-    }
+    return {k: v for k, v in ACTIVE_ANALYSIS.items() if k != "source"}
+
+
+@app.get("/api/v1/ml/model-card")
+def get_model_card():
+    """Training provenance, held-out metrics and global feature importance of the delay-risk model."""
+    return model_card()
+
 
 @app.get("/api/v1/risks/decisions")
 def get_decisions():
@@ -637,9 +693,15 @@ def copilot_chat(payload: CopilotQuery):
         ]
         confidence = 0.94
     elif any(k in q_lower for k in ["wbs", "delay", "slip", "schedule", "cnc"]):
+        top = sorted(ACTIVE_ANALYSIS["tasks"], key=lambda t: t["delay_risk"], reverse=True)[:2]
+        top_txt = " and ".join(
+            f"{t['code']} {t['task']} ({t['delay_risk']:.0%} risk, +{t['expected_slip_days']:.1f}d expected)" for t in top
+        )
         reply = (
-            f"Rule-Based CPM & Heuristic Analysis ({role}): WBS-1.2 Raw Material Procurement (85% risk, +2d) "
-            f"and WBS-3.1 Cell 02 Sub-Assembly (79% risk, +2d) drive +3.5 days total project slippage. "
+            f"XGBoost delay-risk analysis ({role}): {top_txt} are the highest-risk activities. "
+            f"Monte Carlo over the CPM network gives a {ACTIVE_ANALYSIS['overall_delay_probability']:.1f}% chance "
+            f"of project slip (P50 +{ACTIVE_ANALYSIS['estimated_project_slippage_days']:.1f}d, "
+            f"P80 +{ACTIVE_ANALYSIS['p80_slippage_days']:.1f}d). "
             f"Review SOP-SCM-12 and SOP-LINE2-OPT before executing mitigation."
         )
         citations = [
@@ -700,7 +762,7 @@ def get_overview(role: str = "Operations Manager"):
         },
         "kpis": [
             {"label": "Schedule Attainment", "value": "91.5%", "change": "-2.5%", "status": "WARNING"},
-            {"label": "Heuristic Delay Risk", "value": "65.2%", "change": "+3.5d Slippage", "status": "WARNING"},
+            {"label": "ML Delay Risk", "value": f"{ACTIVE_ANALYSIS['overall_delay_probability']:.1f}%", "change": f"+{ACTIVE_ANALYSIS['estimated_project_slippage_days']:.1f}d Slippage", "status": "WARNING" if ACTIVE_ANALYSIS["overall_delay_probability"] >= 35 else "OK"},
             {"label": "First-Time Quality Yield", "value": "97.1%", "change": "-0.6%", "status": "WARNING"},
             {"label": "Open HITL Decisions", "value": f"{sum(1 for a in DECISION_ACTIONS if not a['flagged'])} Pending", "change": "Review Required", "status": "WARNING"}
         ],
@@ -713,5 +775,5 @@ def export_summary(role: str = "Operations Manager"):
         "role": role,
         "export_date": time.strftime("%Y-%m-%d %H:%M:%S"),
         "platform": "MDIP AI Manufacturing Copilot (TRL 4 PoC)",
-        "summary": "Schedule Attainment: 91.5% | Delay Risk: 65.2% (+3.5d) | Quality Yield: 97.1%"
+        "summary": f"Schedule Attainment: 91.5% | Delay Risk: {_risk_headline()} | Quality Yield: 97.1%"
     }

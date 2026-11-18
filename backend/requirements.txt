@@ -2,3 +2,10 @@
 uvicorn==0.30.6
 pydantic==2.9.2
 python-multipart==0.0.9
+# Delay-risk ML (inference + schedule parsing)
+xgboost-cpu==3.2.0
+numpy==2.4.6
+pandas==3.1.1
+openpyxl==3.1.5
+# Training only (python -m ml.train)
+scikit-learn==1.9.1
