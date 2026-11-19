@@ -24,3 +24,8 @@ Thumbs.db
 backend/data/*.db*
 backend/ml/data/historical_wbs_tasks.csv
 backend/ml/data/raw/
+
+# Archives (GitHub rejects files > 100 MB; keep backups outside the repo)
+*.zip
+*.7z
+*.rar

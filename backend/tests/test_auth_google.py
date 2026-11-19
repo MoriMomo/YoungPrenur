@@ -14,9 +14,10 @@ from fastapi import HTTPException
 _TMP_DIR = tempfile.TemporaryDirectory()
 os.environ.setdefault("MDIP_DB_PATH", os.path.join(_TMP_DIR.name, "test_auth.db"))
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import database  # noqa: E402
-import main  # noqa: E402
+from app.api import auth as auth_api  # noqa: E402
+from app.schemas import GoogleAuthPayload  # noqa: E402
 
 
 class _MockHttpResp:
@@ -67,12 +68,12 @@ class TestGoogleAuth(unittest.TestCase):
     def test_missing_client_id_returns_503(self):
         os.environ.pop("GOOGLE_CLIENT_ID", None)
         with self.assertRaises(HTTPException) as ctx:
-            main.google_login(main.GoogleAuthPayload(id_token="tok", role="Plant Manager"))
+            auth_api.google_login(GoogleAuthPayload(id_token="tok", role="Plant Manager"))
         self.assertEqual(ctx.exception.status_code, 503)
 
     def test_valid_google_login_upserts_and_updates_role(self):
-        with patch("main.urllib.request.urlopen", return_value=_MockHttpResp(self._valid_claims())):
-            res = main.google_login(main.GoogleAuthPayload(id_token="good.jwt.token", role="Quality Manager"))
+        with patch("app.api.auth.urllib.request.urlopen", return_value=_MockHttpResp(self._valid_claims())):
+            res = auth_api.google_login(GoogleAuthPayload(id_token="good.jwt.token", role="Quality Manager"))
         self.assertTrue(res["success"])
         self.assertEqual(res["provider"], "google")
         self.assertEqual(res["user"]["email"], "rina.engineer@imajin.id")
@@ -81,29 +82,29 @@ class TestGoogleAuth(unittest.TestCase):
         self.assertIsNotNone(verified)
         self.assertEqual(verified["role"], "Quality Manager")
 
-        with patch("main.urllib.request.urlopen", return_value=_MockHttpResp(self._valid_claims())):
-            res2 = main.google_login(main.GoogleAuthPayload(id_token="good.jwt.token", role="Operations Manager"))
+        with patch("app.api.auth.urllib.request.urlopen", return_value=_MockHttpResp(self._valid_claims())):
+            res2 = auth_api.google_login(GoogleAuthPayload(id_token="good.jwt.token", role="Operations Manager"))
         self.assertEqual(res2["user"]["role"], "Operations Manager")
 
     def test_wrong_audience_rejected_401(self):
         bad = self._valid_claims(aud="other-app.apps.googleusercontent.com")
-        with patch("main.urllib.request.urlopen", return_value=_MockHttpResp(bad)):
+        with patch("app.api.auth.urllib.request.urlopen", return_value=_MockHttpResp(bad)):
             with self.assertRaises(HTTPException) as ctx:
-                main.google_login(main.GoogleAuthPayload(id_token="bad.aud", role="Plant Manager"))
+                auth_api.google_login(GoogleAuthPayload(id_token="bad.aud", role="Plant Manager"))
         self.assertEqual(ctx.exception.status_code, 401)
 
     def test_unverified_email_rejected_401(self):
         bad = self._valid_claims(email_verified="false")
-        with patch("main.urllib.request.urlopen", return_value=_MockHttpResp(bad)):
+        with patch("app.api.auth.urllib.request.urlopen", return_value=_MockHttpResp(bad)):
             with self.assertRaises(HTTPException) as ctx:
-                main.google_login(main.GoogleAuthPayload(id_token="unverified", role="Plant Manager"))
+                auth_api.google_login(GoogleAuthPayload(id_token="unverified", role="Plant Manager"))
         self.assertEqual(ctx.exception.status_code, 401)
 
     def test_expired_token_rejected_401(self):
         bad = self._valid_claims(exp=str(int(time.time()) - 10))
-        with patch("main.urllib.request.urlopen", return_value=_MockHttpResp(bad)):
+        with patch("app.api.auth.urllib.request.urlopen", return_value=_MockHttpResp(bad)):
             with self.assertRaises(HTTPException) as ctx:
-                main.google_login(main.GoogleAuthPayload(id_token="expired", role="Plant Manager"))
+                auth_api.google_login(GoogleAuthPayload(id_token="expired", role="Plant Manager"))
         self.assertEqual(ctx.exception.status_code, 401)
 
 

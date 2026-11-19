@@ -15,7 +15,11 @@ from typing import Any, Dict, List
 
 # 127.0.0.1 avoids the ~2s IPv6 "localhost" resolution delay on Windows.
 API_BASE = os.environ.get("MDIP_API_BASE", "http://127.0.0.1:8000")
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
+# Proof-of-testing log lives with the other evidence in docs/evidence/.
+OUTPUT_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "docs", "evidence", "test_results.json",
+)
 
 
 def _valid_scored_tasks(tasks):

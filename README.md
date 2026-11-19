@@ -14,7 +14,16 @@ MDIP adalah platform pendukung keputusan (*AI Decision Intelligence Layer*) terp
 2. **AI Manufacturing Copilot:** Kokpit operasional interaktif berbasis peran kerja (*role-based cockpit*), memonitor risiko kritis secara proaktif, menyajikan rekomendasi tindakan terprioritas (*AI Decision Brief* dengan alur *human-in-the-loop audit review*), dan asisten RAG untuk penelusuran SOP dan panduan penanganan kendala mesin dengan sitasi dokumen terverifikasi (PoC saat ini memakai pencocokan kata kunci atas indeks SOP bawaan).
 3. **iRoom Workspace:** Ruang kerja terhubung untuk pengiriman material, progres proyek, persetujuan gambar teknik, quotation & PO, dan pelacakan operasi.
 
-> **Status PoC:** Model XGBoost saat ini dilatih pada **data jadwal sintetis** (7.855 aktivitas dari 900 proyek simulasi, `backend/ml/generate_dataset.py`) karena data historis mitra belum tersedia. Pada proyek uji yang tidak ikut dilatih, model mencapai ROC-AUC 0,93 (baseline aturan lama: 0,70); metrik lengkap ada di `backend/ml/artifacts/model_card.json`. Model akan dilatih ulang dengan data *planned vs. actual* mitra pada fase pilot. Data iRoom dan KPI lain masih berupa data contoh. Frontend memiliki *fallback* ke `web/src/lib/mock-data.ts` sehingga dapat berjalan tanpa backend (misalnya pada GitHub Pages).
+> **Status PoC:** Model XGBoost (*hurdle model*: klasifikasi terlambat + regresi slip) dilatih pada **4.149 aktivitas historis nyata** (251 proyek publik: DSLIB dan log CNC 4TU, bobot 5×) ditambah **7.855 aktivitas sintetis** (900 proyek simulasi, `backend/ml/generate_dataset.py`). Data mitra (PT IMAJIN) belum tersedia dan akan dipakai pada fase pilot. Metrik lengkap ada di `backend/ml/artifacts/model_card.json`:
+>
+> | Evaluasi | ROC-AUC | Recall (ambang 0,5) | Baseline aturan lama |
+> |---|---|---|---|
+> | Uji campuran (sintetis + nyata) | 0,92 | 0,78 | 0,67 |
+> | **Proyek nyata yang tidak ikut dilatih** (51 proyek, 936 aktivitas) | **0,78** | **0,16** | 0,53 |
+>
+> Pada data nyata model jauh lebih baik dari aturan lama dalam *mengurutkan* risiko (AUC 0,78 vs 0,53), tetapi pada ambang 0,5 baru menangkap ~16% aktivitas yang benar-benar terlambat; ambang dan kalibrasi perlu disetel dengan data mitra. Data iRoom dan KPI lain masih berupa data contoh. Frontend memiliki *fallback* ke `web/src/lib/mock-data.ts` sehingga dapat berjalan tanpa backend (misalnya pada GitHub Pages).
+>
+> **Sumber data nyata** (diunduh ke `backend/ml/data/raw/`, tidak di-commit): DSLIB v3.4 (UGent, basis data proyek empiris) dan 4TU *Production_Data.csv* (Levy 2014, log *job-shop* CNC). *TODO: cantumkan tautan unduhan resmi dan lisensi masing-masing dataset di sini sebelum publikasi.*
 
 ### Cara Kerja Delay-Risk Engine
 1. **Ingesti jadwal** (`backend/schedule_parser.py`): CSV/XLSX dengan nama kolom fleksibel (ID/Indonesia) dinormalisasi menjadi aktivitas WBS.
@@ -30,100 +39,69 @@ MDIP adalah platform pendukung keputusan (*AI Decision Intelligence Layer*) terp
 youngprenur/ (MDIP)
 ├── README.md
 ├── package.json                          # Skrip root (dev/build/start/lint → web/)
-├── pyrightconfig.json
+├── render.yaml                           # Deploy backend ke Render
+├── .mcp.json                             # Konfigurasi MCP (Supabase, Context7) untuk Claude Code
 ├── .github/workflows/
 │   └── deploy-pages.yml                  # Static export Next.js → GitHub Pages
 │
-├── docs/                                 # Dokumentasi & Spesifikasi Resmi
-│   ├── MDIP_PRD.md                       # Product Requirement Document
-│   ├── MDIP_TRD.md                       # Technical Requirement Document
-│   ├── MDIP_DRD.md                       # Decision Requirement Document
-│   ├── 01_INNOVATION_IROOM_SPEC.md       # Spesifikasi inovasi iRoom
-│   ├── 02_MARKET_RESEARCH_COMPETITORS.md # Riset pasar & kompetitor
-│   ├── 03_FEASIBILITY_STUDY.md           # Studi kelayakan
-│   ├── 04_BUSINESS_MODEL_SWOT_TOWS.md    # Model bisnis, SWOT & TOWS
-│   ├── 05_BUSINESS_PLAN_GTM.md           # Rencana bisnis & go-to-market
-│   ├── 06_PITCH_DECK_PROPOSAL.md         # Proposal pitch deck
-│   ├── 07_USER_PERSONAS_TARGET_USERS.md  # Persona & target pengguna
-│   └── 08_PROOF_OF_TESTING_TRL3.md       # Bukti pengujian TRL 3
+├── docs/
+│   ├── MDIP_PRD.md / MDIP_TRD.md / MDIP_DRD.md   # Product / Technical / Decision Requirement Docs
+│   ├── 01_…08_*.md                       # Dokumen lomba: inovasi, riset pasar, kelayakan, SWOT/TOWS,
+│   │                                     #   rencana bisnis, pitch deck, persona, bukti uji TRL 3
+│   ├── evidence/
+│   │   ├── test_results.json             # Log otomatis dari backend/tests/test_system.py
+│   │   └── openapi.json                  # Kontrak API (python scripts/export_openapi.py)
+│   └── handoffs/                         # Catatan serah-terima antar agen AI
+│
+├── supabase/migrations/                  # Skema Postgres untuk mode Supabase
 │
 ├── backend/                              # FastAPI Backend
-│   ├── main.py                           # Endpoint API, Pydantic model & data contoh
+│   ├── main.py                           # Entrypoint: membuat app + memasang router
+│   ├── app/
+│   │   ├── api/                          # Router per area: auth, system, scheduler, risks, ml,
+│   │   │                                 #   iroom, dashboard, knowledge, legacy (pra-v1)
+│   │   ├── services/
+│   │   │   ├── insights.py               # Decision brief, KPI, lini produksi, performa, ringkasan IRoom
+│   │   │   └── copilot.py                # Copilot SOP (retrieval + sintesis Gemini opsional)
+│   │   ├── state.py                      # Analisis jadwal aktif (dibagi semua router)
+│   │   ├── schemas.py                    # Model request Pydantic
+│   │   └── config.py                     # Path & nilai default
+│   ├── database.py                       # Persistensi: Supabase jika SUPABASE_* key diset, selain itu SQLite
+│   ├── seed_data.py                      # Data contoh awal (IRoom, SOP, akun demo)
 │   ├── schedule_parser.py                # Parser CSV/XLSX + Critical Path Method (CPM)
-│   ├── ml/                               # Delay-risk ML
+│   ├── ml/
 │   │   ├── features.py                   # Fitur bersama untuk training & inferensi
 │   │   ├── generate_dataset.py           # Generator data jadwal sintetis
+│   │   ├── build_real_dataset.py         # ETL dataset nyata (DSLIB + 4TU CNC) tanpa kebocoran label
 │   │   ├── train.py                      # Training XGBoost + evaluasi + model card
 │   │   ├── predictor.py                  # Inferensi, SHAP drivers & Monte Carlo
-│   │   ├── data/                         # Dataset sintetis (CSV)
+│   │   ├── data/                         # Dataset sintetis (tracked); historis & raw/ (tidak di-commit)
 │   │   └── artifacts/                    # Model terlatih (.json) & model_card.json
-│   ├── openapi.json                      # Snapshot spesifikasi OpenAPI
-│   ├── requirements.txt                  # Python dependencies
-│   ├── test_system.py                    # Suite verifikasi sistem (HTTP ke 127.0.0.1:8000)
-│   └── test_results.json                 # Hasil eksekusi terakhir test_system.py
-│
-├── paper/                                # Abstrak lomba (.docx/.pdf), logo & generate_abstract.py
-├── screenshots/                          # Tangkapan layar UI untuk dokumentasi
+│   ├── data/                             # Jadwal contoh (CSV); mdip.db lokal (tidak di-commit)
+│   ├── scripts/export_openapi.py         # Membuat ulang docs/evidence/openapi.json
+│   ├── tests/                            # Unit test (auth, ML) & suite verifikasi sistem HTTP
+│   ├── Dockerfile / requirements.txt / .env.example
 │
 └── web/                                  # Next.js App Router Frontend
-    ├── package.json
-    ├── tsconfig.json
     ├── next.config.ts                    # Mode static export saat GITHUB_PAGES=true
-    ├── public/
-    │   └── sample_master_schedule_wbs.csv  # Contoh jadwal WBS untuk uji unggah
+    ├── public/sample_master_schedule_wbs.csv
     └── src/
-        ├── app/                          # Next.js App Router
-        │   ├── layout.tsx
-        │   ├── page.tsx                  # Public Architecture Overview
-        │   ├── globals.css
-        │   ├── (auth)/
-        │   │   └── login/
-        │   │       └── page.tsx          # Zero-Trust Persona Access Gateway
-        │   └── dashboard/                # Shared Dashboard Shell
-        │       ├── layout.tsx            # Global Sidebar, Topbar, Copilot & Toast Wrapper
-        │       ├── page.tsx              # Overview Cockpit: KPIs, Decision Brief & Risks
-        │       ├── iroom/
-        │       │   └── page.tsx          # iRoom Workspace
-        │       ├── scheduler/
-        │       │   └── page.tsx          # AI Scheduler: Gantt, Ingestion & Variance Table
-        │       ├── knowledge/
-        │       │   └── page.tsx          # Knowledge Base: SOPs & Clause Inspector
-        │       └── copilot/
-        │           └── page.tsx          # Full-page Grounded Copilot
-        │
-        ├── components/                   # Shared Layout & UI Primitives
-        │   ├── layout/
-        │   │   ├── Sidebar.tsx           # App Router Navigation Links
-        │   │   ├── Topbar.tsx            # Role Switcher & Live API Indicator
-        │   │   └── DisclaimerBanner.tsx  # Integrity Disclaimer
-        │   └── ui/
-        │       ├── Toast.tsx             # System Notification Toast
-        │       └── ReviewModal.tsx       # Human-in-the-Loop Audit Modal
-        │
-        ├── features/                     # Domain-Driven Feature Modules
-        │   ├── dashboard/
-        │   │   ├── PerformanceChart.tsx      # Grafik output / OEE / downtime
-        │   │   └── ProductionLineStatus.tsx  # Status lini produksi & peta lantai produksi
+        ├── app/                          # Halaman: landing, (auth)/login, dashboard/{overview,
+        │                                 #   iroom, scheduler, knowledge, copilot}
+        ├── components/
+        │   ├── layout/                   # Navbar, Sidebar, Topbar, DisclaimerBanner
+        │   └── ui/                       # MdipLogo, Toast, ReviewModal (HITL audit)
+        ├── features/
+        │   ├── dashboard/                # PerformanceChart, ProductionLineStatus
         │   ├── iroom/
-        │   │   └── IRoomWorkspace.tsx    # Material, progres, gambar, quotation/PO, operasi
-        │   ├── scheduler/
-        │   │   ├── GanttTimeline.tsx     # Interactive Gantt & Critical Path Bar Chart
-        │   │   ├── ScheduleUploader.tsx  # Ingestion & Normalization Trigger
-        │   │   └── DeviationTable.tsx    # WBS Variance & Float Buffer Table
-        │   ├── risks/
-        │   │   ├── KpiCards.tsx          # Role-based Metric Cards
-        │   │   ├── DecisionBrief.tsx     # AI Prioritized Action Cards
-        │   │   └── RisksMonitor.tsx      # Early Warning Signals & Opportunity Register
-        │   └── copilot/
-        │       ├── ChatDrawer.tsx        # Slide-over Grounded Copilot Drawer
-        │       └── CitationBadge.tsx     # Traceable Source Citation Component
-        │
-        ├── lib/
-        │   ├── api.ts                    # Backend API Client with Mock-Data Fallbacks
-        │   └── mock-data.ts              # Calibrated Project Manufacturing Mock Data
-        │
-        └── types/
-            └── index.ts                  # TypeScript Type Definitions
+        │   │   ├── IRoomWorkspace.tsx    # Shell: tab, pencarian, tambah record, aksi AI
+        │   │   ├── IRoomTable.tsx        # Tabel bersama
+        │   │   └── tabs/                 # Material, Progress, Drawing (CAD inspector), Quotation, Operations
+        │   ├── scheduler/                # GanttTimeline, ScheduleUploader, DeviationTable
+        │   ├── risks/                    # KpiCards, DecisionBrief, RisksMonitor, ModelCardStrip
+        │   └── copilot/                  # ChatDrawer, CitationBadge
+        ├── lib/                          # api.ts (klien API + fallback), mock-data.ts
+        └── types/index.ts
 ```
 
 ---
@@ -154,17 +132,21 @@ Frontend memanggil backend di `http://localhost:8000` secara default; ubah lewat
 Model terlatih sudah tersimpan di `backend/ml/artifacts/`. Untuk membuat ulang dataset dan melatih ulang:
 ```bash
 cd backend
-python -m ml.generate_dataset
+python -m ml.generate_dataset      # data sintetis
+python -m ml.build_real_dataset    # data nyata (butuh berkas di ml/data/raw/)
 python -m ml.train
 ```
+Retraining lewat API (`POST /api/v1/ml/retrain`) hanya aktif jika server memiliki `MDIP_ADMIN_KEY`, dan permintaan harus mengirim header `X-Admin-Key`.
 
-### D. Verifikasi Sistem (TRL 3)
-Dengan backend aktif:
+### D. Pengujian & Verifikasi Sistem (TRL 3)
 ```bash
 cd backend
-python test_system.py
-# Hasil disimpan ke backend/test_results.json
+python -m unittest discover -s tests -p "test_[am]*.py"   # unit test auth & ML
+python tests/test_system.py      # suite HTTP, butuh backend aktif → docs/evidence/test_results.json
+python scripts/export_openapi.py # kontrak API → docs/evidence/openapi.json
 ```
 
-### E. Deploy ke GitHub Pages
-Setiap push ke `main` menjalankan `.github/workflows/deploy-pages.yml`, yang membangun static export (`GITHUB_PAGES=true`, `basePath` `/YoungPrenur`) dan menerbitkannya ke GitHub Pages. Pada mode ini hanya data contoh yang dipakai, karena backend tidak ikut di-deploy.
+### E. Deploy
+- **Frontend (GitHub Pages):** setiap push ke `main` menjalankan `.github/workflows/deploy-pages.yml`, yang membangun static export (`GITHUB_PAGES=true`, `basePath` `/YoungPrenur`).
+- **Backend (Render):** `render.yaml` men-deploy folder `backend/` (`uvicorn main:app`). Isi `SUPABASE_SERVICE_ROLE_KEY` agar data tersimpan di Supabase; tanpa itu backend memakai SQLite lokal yang hilang saat server restart.
+- Tanpa backend yang di-deploy, situs GitHub Pages hanya menampilkan data contoh.

@@ -55,8 +55,8 @@ $$\text{Penalti SLA} = \Delta T_{\text{total}} \times \text{Tarif Denda Harian}$
 
 ## 4. Berkas Pendukung Pengujian yang Tersedia
 
-1. **Log Eksekusi Otomatis:** `backend/test_results.json` (dihasilkan otomatis oleh `backend/test_system.py`).
-2. **Spesifikasi Kontrak API:** `backend/openapi.json` (skema lengkap 16 endpoint terstandarisasi OpenAPI v3.1).
+1. **Log Eksekusi Otomatis:** `docs/evidence/test_results.json` (dihasilkan otomatis oleh `backend/tests/test_system.py`).
+2. **Spesifikasi Kontrak API:** `docs/evidence/openapi.json` (skema lengkap seluruh endpoint OpenAPI, dibuat ulang dengan `python scripts/export_openapi.py` dari folder `backend/`).
 3. **Sampel Dataset Uji:** `web/public/sample_master_schedule_wbs.csv` (berisi 6 paket kerja standar manufaktur aviasi).
 4. **Tangkapan Layar Bukti Pengujian:** 8 berkas `.png` di direktori `screenshots/`.
 

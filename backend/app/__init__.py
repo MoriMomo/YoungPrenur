@@ -1,0 +1,1 @@
+"""MDIP backend application package."""

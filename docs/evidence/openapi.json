@@ -1,0 +1,1339 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MDIP Manufacturing Decision Intelligence Platform API",
+    "description": "Backend API serving SQLite-persisted IRoom System Connectors, CPM Scheduler, XGBoost Delay-Risk + SHAP + Monte Carlo Engine, and Grounded Copilot RAG.",
+    "version": "1.2.0"
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register User",
+        "operationId": "register_user_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Login User",
+        "operationId": "login_user_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "summary": "Current User",
+        "operationId": "current_user_api_v1_auth_me_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google": {
+      "post": {
+        "summary": "Google Login",
+        "operationId": "google_login_api_v1_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Api Health Check",
+        "operationId": "api_health_check_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/db/status": {
+      "get": {
+        "summary": "Get Db Status",
+        "description": "Report active database persistence engine (Supabase Postgres or local SQLite fallback).",
+        "operationId": "get_db_status_api_v1_db_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scheduler/upload": {
+      "post": {
+        "summary": "Parse Schedule",
+        "operationId": "parse_schedule_api_scheduler_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_schedule_api_scheduler_upload_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/risks/evaluate": {
+      "post": {
+        "summary": "Evaluate Delay Risk",
+        "operationId": "evaluate_delay_risk_api_risks_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/TaskItem"
+                },
+                "type": "array",
+                "title": "Tasks"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/copilot/ask": {
+      "post": {
+        "summary": "Ask Copilot",
+        "operationId": "ask_copilot_api_copilot_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopilotQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/materials": {
+      "get": {
+        "summary": "Get Iroom Materials",
+        "operationId": "get_iroom_materials_api_v1_iroom_materials_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/progress": {
+      "get": {
+        "summary": "Get Iroom Progress",
+        "operationId": "get_iroom_progress_api_v1_iroom_progress_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/drawings": {
+      "get": {
+        "summary": "Get Iroom Drawings",
+        "operationId": "get_iroom_drawings_api_v1_iroom_drawings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/quotations": {
+      "get": {
+        "summary": "Get Iroom Quotations",
+        "operationId": "get_iroom_quotations_api_v1_iroom_quotations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/operations": {
+      "get": {
+        "summary": "Get Iroom Operations",
+        "operationId": "get_iroom_operations_api_v1_iroom_operations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/{stream}": {
+      "post": {
+        "summary": "Ingest Iroom Stream",
+        "description": "Ingest live IRoom JSON telemetry records into SQLite.",
+        "operationId": "ingest_iroom_stream_api_v1_iroom__stream__post",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One of: materials, progress, drawings, quotations, operations",
+              "title": "Stream"
+            },
+            "description": "One of: materials, progress, drawings, quotations, operations"
+          },
+          {
+            "name": "replace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Replace existing stream records instead of upserting",
+              "default": false,
+              "title": "Replace"
+            },
+            "description": "Replace existing stream records instead of upserting"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "title": "Records"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iroom/overview": {
+      "get": {
+        "summary": "Get Iroom Overview",
+        "operationId": "get_iroom_overview_api_v1_iroom_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/performance": {
+      "get": {
+        "summary": "Get Performance Metric",
+        "operationId": "get_performance_metric_api_v1_analytics_performance_get",
+        "parameters": [
+          {
+            "name": "metric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "output",
+                "oee",
+                "downtime"
+              ],
+              "default": "output",
+              "title": "Metric"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/lines": {
+      "get": {
+        "summary": "Get Production Lines",
+        "operationId": "get_production_lines_api_v1_dashboard_lines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/overview": {
+      "get": {
+        "summary": "Get Overview",
+        "operationId": "get_overview_api_v1_dashboard_overview_get",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "Operations Manager",
+              "title": "Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/export": {
+      "get": {
+        "summary": "Export Summary",
+        "operationId": "export_summary_api_v1_dashboard_export_get",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "Operations Manager",
+              "title": "Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scheduler/wbs": {
+      "get": {
+        "summary": "Get Wbs Schedule",
+        "operationId": "get_wbs_schedule_api_v1_scheduler_wbs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scheduler/upload": {
+      "post": {
+        "summary": "Upload Scheduler V1",
+        "description": "Parse uploaded CSV/XLSX schedule (or reload baseline CSV file), persist to SQLite, run CPM + XGBoost.",
+        "operationId": "upload_scheduler_v1_api_v1_scheduler_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_scheduler_v1_api_v1_scheduler_upload_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/prediction": {
+      "get": {
+        "summary": "Get Delay Prediction",
+        "operationId": "get_delay_prediction_api_v1_risks_prediction_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/decisions": {
+      "get": {
+        "summary": "Get Decisions",
+        "operationId": "get_decisions_api_v1_risks_decisions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/decisions/flag": {
+      "post": {
+        "summary": "Flag Decision",
+        "operationId": "flag_decision_api_v1_risks_decisions_flag_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagActionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/audit-log": {
+      "get": {
+        "summary": "Get Audit Log",
+        "operationId": "get_audit_log_api_v1_risks_audit_log_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ml/model-card": {
+      "get": {
+        "summary": "Get Model Card",
+        "description": "Training provenance, held-out metrics, and global feature importance of the delay-risk model.",
+        "operationId": "get_model_card_api_v1_ml_model_card_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ml/retrain": {
+      "post": {
+        "summary": "Retrain Ml Models",
+        "description": "Ingest a COMPLETED CSV/XLSX schedule (planned vs. actual) into historical training data,\nretrain XGBoost, and hot-reload. Requires the X-Admin-Key header.\nThe live (in-progress) schedule is never used as training data: its \"actual\" days are forecasts.",
+        "operationId": "retrain_ml_models_api_v1_ml_retrain_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional unique historical project identifier",
+              "title": "Project Id"
+            },
+            "description": "Optional unique historical project identifier"
+          },
+          {
+            "name": "x-admin-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_retrain_ml_models_api_v1_ml_retrain_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/docs": {
+      "get": {
+        "summary": "Get Knowledge Docs",
+        "operationId": "get_knowledge_docs_api_v1_knowledge_docs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/ingest": {
+      "post": {
+        "summary": "Ingest Knowledge Doc",
+        "description": "Add or update an SOP document in the SQLite RAG index.",
+        "operationId": "ingest_knowledge_doc_api_v1_knowledge_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SopDocumentPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copilot/chat": {
+      "post": {
+        "summary": "Copilot Chat",
+        "operationId": "copilot_chat_api_v1_copilot_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopilotQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_parse_schedule_api_scheduler_upload_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "title": "Body_parse_schedule_api_scheduler_upload_post"
+      },
+      "Body_retrain_ml_models_api_v1_ml_retrain_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "title": "Body_retrain_ml_models_api_v1_ml_retrain_post"
+      },
+      "Body_upload_scheduler_v1_api_v1_scheduler_upload_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "title": "Body_upload_scheduler_v1_api_v1_scheduler_upload_post"
+      },
+      "CopilotQuery": {
+        "properties": {
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "default": "Operations Manager"
+          },
+          "active_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Role"
+          },
+          "context_module": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Module"
+          }
+        },
+        "type": "object",
+        "title": "CopilotQuery"
+      },
+      "FlagActionPayload": {
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "title": "Action Id"
+          },
+          "reviewer_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Role",
+            "default": "Operations Manager"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision",
+            "default": "AUTHORIZED"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_id"
+        ],
+        "title": "FlagActionPayload"
+      },
+      "GoogleAuthPayload": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "title": "Id Token"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "Operations Manager"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token"
+        ],
+        "title": "GoogleAuthPayload"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginPayload": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginPayload"
+      },
+      "RegisterPayload": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "Operations Manager"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "name"
+        ],
+        "title": "RegisterPayload"
+      },
+      "SopDocumentPayload": {
+        "properties": {
+          "doc_code": {
+            "type": "string",
+            "title": "Doc Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "clause": {
+            "type": "string",
+            "title": "Clause"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords",
+            "default": []
+          },
+          "excerpt": {
+            "type": "string",
+            "title": "Excerpt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_code",
+          "title",
+          "clause",
+          "excerpt"
+        ],
+        "title": "SopDocumentPayload"
+      },
+      "TaskItem": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "planned_days": {
+            "type": "integer",
+            "title": "Planned Days"
+          },
+          "upstream_slip_days": {
+            "type": "integer",
+            "title": "Upstream Slip Days"
+          },
+          "external_vendor": {
+            "type": "boolean",
+            "title": "External Vendor"
+          },
+          "actual_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Days"
+          },
+          "float_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Float Days",
+            "default": 0
+          },
+          "work_center": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Center",
+            "default": ""
+          },
+          "resource_utilization": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Utilization"
+          },
+          "drawing_revisions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drawing Revisions",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "name",
+          "planned_days",
+          "upstream_slip_days",
+          "external_vendor"
+        ],
+        "title": "TaskItem"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
