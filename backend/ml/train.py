@@ -158,8 +158,33 @@ def _eval_pair(clf: XGBClassifier, reg: XGBRegressor, df_eval: pd.DataFrame) -> 
     }
 
 
+def _real_source_name(pid: str) -> str:
+    raw = pid[5:] if pid.startswith("real_") else pid
+    prefix = raw.split("_", 1)[0].lower()
+    return prefix if prefix in {"dslib", "cnc"} else "other"
+
+
+def _split_real_projects(df_hist: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Stratified project-level 80/20 split across real data sources."""
+    df_tagged = df_hist.copy()
+    df_tagged["_source"] = df_tagged["project_id"].astype(str).map(_real_source_name)
+    tr_parts, te_parts = [], []
+    for _, grp in df_tagged.groupby("_source", sort=True):
+        if grp["project_id"].nunique() >= 2:
+            splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
+            tr_i, te_i = next(splitter.split(grp[FEATURE_NAMES], grp["late"], groups=grp["project_id"]))
+            tr_parts.append(grp.iloc[tr_i])
+            te_parts.append(grp.iloc[te_i])
+        else:
+            tr_parts.append(grp)
+    df_tr = pd.concat(tr_parts, ignore_index=True) if tr_parts else df_tagged.iloc[0:0]
+    df_te = pd.concat(te_parts, ignore_index=True) if te_parts else df_tagged.iloc[0:0]
+    return df_tr, df_te
+
+
 def train_models() -> Dict[str, Any]:
     """Train hurdle classifier + conditional slip regressor with separate synthetic and real metrics."""
+    rng = np.random.default_rng(SEED)
     df_syn = pd.read_csv(DATA_PATH)
     df_syn["project_id"] = "syn_" + df_syn["project_id"].astype(str)
     df_syn["sample_weight"] = 1.0
@@ -168,7 +193,9 @@ def train_models() -> Dict[str, Any]:
 
     syn_split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
     syn_tr_pos, syn_te_pos = next(syn_split.split(df_syn[FEATURE_NAMES], df_syn["late"], groups=df_syn["project_id"]))
-    df_syn_train = df_syn.iloc[syn_tr_pos]
+    df_syn_train = df_syn.iloc[syn_tr_pos].copy()
+    prestart_mask = rng.random(len(df_syn_train)) < 0.5
+    df_syn_train.loc[prestart_mask, "forecast_variance_days"] = 0.0
     df_syn_test = df_syn.iloc[syn_te_pos]
 
     df_hist = pd.DataFrame()
@@ -204,20 +231,25 @@ def train_models() -> Dict[str, Any]:
         df_all = pd.concat([df_syn, df_hist], ignore_index=True)
         n_train, n_test = len(df_train_all), len(df_syn_test)
     else:
-        real_split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
-        r_tr_pos, r_te_pos = next(real_split.split(df_hist[FEATURE_NAMES], df_hist["late"], groups=df_hist["project_id"]))
-        df_real_train = df_hist.iloc[r_tr_pos]
-        df_real_test = df_hist.iloc[r_te_pos]
+        df_real_train, df_real_test = _split_real_projects(df_hist)
 
-        df_train_all = pd.concat([df_syn_train, df_real_train], ignore_index=True)
-        df_test_all = pd.concat([df_syn_test, df_real_test], ignore_index=True)
+        df_train_all = pd.concat([df_syn_train, df_real_train.drop(columns=["_source"], errors="ignore")], ignore_index=True)
+        df_test_all = pd.concat([df_syn_test, df_real_test.drop(columns=["_source"], errors="ignore")], ignore_index=True)
         clf, reg = _fit_pair(df_train_all)
         synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        by_source: Dict[str, Any] = {}
+        for src, sub in df_real_test.groupby("_source", sort=True):
+            by_source[str(src)] = {
+                "n_tasks": len(sub),
+                "n_projects": int(sub["project_id"].nunique()),
+                **_eval_pair(clf, reg, sub),
+            }
         real_validation_metrics = {
             "evaluation_mode": "held_out_real_projects",
             "n_tasks": len(df_real_test),
             "n_projects": int(df_real_test["project_id"].nunique()),
             **_eval_pair(clf, reg, df_real_test),
+            "by_source": by_source,
         }
         metrics = _eval_pair(clf, reg, df_test_all)
         df_all = pd.concat([df_syn, df_hist], ignore_index=True)

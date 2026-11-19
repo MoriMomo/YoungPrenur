@@ -13,10 +13,10 @@ CATEGORY_KEYWORDS = [
     ("procurement", ["procure", "raw material", "raw ingot", "ingot", "material", "purchase", "supply chain", "receiving", "vendor"]),
     ("engineering", ["drawing", "cad", "cam", "design", "blueprint", "sign-off", "engineering review"]),
     ("stamping", ["stamp", "press", "forming", "die"]),
-    ("machining", ["cnc", "milling", "lathe", "machin", "edm", "grind", "turning"]),
+    ("machining", ["cnc", "milling", "lathe", "machin", "edm", "grind", "turning", "lapping", "wire cut", "laser", "setup", "round grinding", "flat grinding"]),
     ("assembly", ["assembl", "cleanroom", "fitting"]),
-    ("quality", ["cmm", "metrology", "quality", "inspection", "qa ", "acceptance test"]),
-    ("logistics", ["logistic", "dispatch", "packag", "shipping", "dock"]),
+    ("quality", ["cmm", "metrology", "quality", "inspection", "qa ", "q.c.", "qc", "acceptance test"]),
+    ("logistics", ["logistic", "dispatch", "packag", "packing", "shipping", "dock"]),
 ]
 CATEGORIES = [name for name, _ in CATEGORY_KEYWORDS] + ["other"]
 

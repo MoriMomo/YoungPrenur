@@ -94,9 +94,9 @@ def normalize_rows(df: pd.DataFrame) -> List[Dict[str, Any]]:
         planned = _to_float(get("planned_days"))
         if not name or planned is None:
             continue
-        planned = max(1.0, planned)
+        planned = max(0.25, planned)
         actual = _to_float(get("actual_days"))
-        actual = max(1.0, actual) if actual is not None else planned
+        actual = max(0.25, actual) if actual is not None else planned
         code = str(get("code") or f"WBS-{i + 1}").strip()
         work_center = str(get("work_center") or "").strip()
         deps_raw = str(get("dependency") or "").strip()
@@ -181,8 +181,8 @@ def compute_cpm(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         upstream = max((carried[p] for p in t["predecessors"] if p in carried), default=0.0)
         variance = t["actual_days"] - t["planned_days"]
         t["start_day"] = int(round(es[c]))
-        t["float_days"] = int(round(max(0.0, ls[c] - es[c])))
-        t["critical"] = t["float_days"] == 0
+        t["float_days"] = round(max(0.0, ls[c] - es[c]), 2)
+        t["critical"] = t["float_days"] <= 1e-6
         t["upstream_slip_days"] = round(upstream, 2)
         t["variance_days"] = round(variance, 2)
         carried[c] = max(0.0, upstream + variance)

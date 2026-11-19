@@ -22,3 +22,4 @@ Thumbs.db
 # Runtime state & historical uploads
 backend/data/*.db*
 backend/ml/data/historical_wbs_tasks.csv
+backend/ml/data/raw/
