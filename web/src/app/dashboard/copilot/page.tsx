@@ -44,10 +44,6 @@ export default function CopilotPage() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-medium text-[#2563eb] mb-1 flex items-center gap-1.5">
-            <MessageSquareText className="w-3.5 h-3.5" />
-            <span>Grounded RAG Copilot Console</span>
-          </div>
           <h1 className="text-xl sm:text-2xl font-semibold text-[#101e30] tracking-tight">
             Manufacturing AI Copilot Console
           </h1>

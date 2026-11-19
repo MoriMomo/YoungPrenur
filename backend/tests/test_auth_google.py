@@ -57,7 +57,7 @@ class TestGoogleAuth(unittest.TestCase):
         claims = {
             "aud": self.CLIENT_ID,
             "iss": "https://accounts.google.com",
-            "email": "Rina.Engineer@imajin.id",
+            "email": "Rina.Engineer@mdip.id",
             "email_verified": "true",
             "name": "Rina Engineer",
             "exp": str(int(time.time()) + 3600),
@@ -76,7 +76,7 @@ class TestGoogleAuth(unittest.TestCase):
             res = auth_api.google_login(GoogleAuthPayload(id_token="good.jwt.token", role="Quality Manager"))
         self.assertTrue(res["success"])
         self.assertEqual(res["provider"], "google")
-        self.assertEqual(res["user"]["email"], "rina.engineer@imajin.id")
+        self.assertEqual(res["user"]["email"], "rina.engineer@mdip.id")
         self.assertEqual(res["user"]["role"], "Quality Manager")
         verified = database.verify_session_token(res["token"])
         self.assertIsNotNone(verified)

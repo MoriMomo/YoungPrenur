@@ -145,7 +145,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
             <span>Schedule Ingestion &amp; WBS Normalizer</span>
           </h2>
           <p className="text-xs text-[#4b5565] mt-0.5">
-            Upload CSV/Excel work schedules or load the bundled PT IMAJIN WBS sample CSV
+            Upload CSV/Excel work schedules or load the bundled sample WBS CSV
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
             className="flex items-center gap-1.5 px-3.5 py-2 bg-[#f9fafb] hover:bg-[#f3f4f6] text-[#111827] border border-[#e5e7eb] text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
           >
             <FileDown className="w-3.5 h-3.5 text-[#64748b]" strokeWidth={1.5} />
-            <span>Load Sample IMAJIN CSV</span>
+            <span>Load Sample CSV</span>
           </button>
 
           <button

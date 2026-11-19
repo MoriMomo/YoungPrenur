@@ -8,13 +8,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { ArrowRight, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import gsap from "gsap";
 
-const TELEMETRY_ITEMS = [
-  { label: "Plant Output", value: "94.8%", dot: "bg-[#16a34a]", note: "vs 95.0% target" },
-  { label: "Delay Risk", value: "59.9% (+5.1d)", dot: "bg-[#dc2626]", note: "" },
-  { label: "Press P-07", value: "+18% vibration", dot: "bg-[#d97706]", note: "SOP-PRS-04" },
-  { label: "Alloy M-204", value: "36h cover", dot: "bg-[#dc2626]", note: "" },
-];
-
 const HERO_WBS_PREVIEW = [
   {
     code: "WBS-1.2",
@@ -98,26 +91,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white text-[#111827] selection:bg-[#0d556e] selection:text-white flex flex-col justify-between">
       <Navbar />
 
-      {/* Quiet Telemetry Reference Strip */}
-      <div className="bg-[#f8fafc] border-b border-[#e5e7eb] py-2 px-6 sm:px-10">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 text-xs font-mono-numbers text-[#64748b]">
-          <span className="inline-flex items-center gap-2 text-[#111827] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#15a87d]" />
-            <span>Shift 01 · Live Telemetry Stream</span>
-          </span>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-            {TELEMETRY_ITEMS.map((item) => (
-              <span key={item.label} className="inline-flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
-                <span>{item.label}:</span>
-                <span className="text-[#111827] font-medium">{item.value}</span>
-                {item.note && <span className="text-[#64748b]">({item.note})</span>}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Asymmetric Split Hero */}
       <section className="px-6 sm:px-10 py-14 lg:py-20 w-full bg-white">
         <div
@@ -126,10 +99,6 @@ export default function LandingPage() {
         >
           {/* Left Copy Column */}
           <div className="lg:col-span-5 space-y-5 text-left">
-            <div className="inline-flex items-center gap-2 text-xs font-mono-numbers text-[#0d556e] bg-[#edf7f5] px-2.5 py-1 rounded-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#15a87d]" />
-              <span>BINUS RTT D1521 · PT IMAJIN</span>
-            </div>
 
             <h1 className="text-3xl sm:text-[42px] font-medium text-[#0a0a0a] tracking-[-0.025em] leading-[1.08]">
               Predict WBS schedule slippage before a work cell stalls
@@ -281,9 +250,6 @@ export default function LandingPage() {
       <section id="features" className="py-16 bg-[#f8fafc] border-y border-[#e5e7eb] px-6 sm:px-10">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="space-y-2 max-w-2xl">
-            <div className="text-xs font-mono-numbers text-[#0d556e]">
-              Platform · Capability Dimensions D1 to D6
-            </div>
             <h2 className="text-2xl sm:text-3xl font-medium text-[#0a0a0a] tracking-tight">
               Four interlocking decision layers
             </h2>
@@ -296,7 +262,6 @@ export default function LandingPage() {
             {/* Wide Card: D1 & D2 */}
             <div className="lg:col-span-7 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
               <div className="space-y-2">
-                <div className="text-xs font-mono-numbers text-[#64748b]">D1 &amp; D2 · Schedule Engine</div>
                 <h3 className="text-base font-medium text-[#111827]">AI Project Scheduler &amp; ML Delay Risk</h3>
                 <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
                   Parses non-standard CSV and Excel schedules into normalized WBS work packages, computes Critical Path Method float, and scores each activity&apos;s delay risk with an XGBoost hurdle model plus 2,000-run Monte Carlo forecasting.
@@ -321,7 +286,6 @@ export default function LandingPage() {
             {/* Compact Card: D3 */}
             <div className="lg:col-span-5 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
               <div className="space-y-2">
-                <div className="text-xs font-mono-numbers text-[#64748b]">D3 · Traceable Guidance</div>
                 <h3 className="text-base font-medium text-[#111827]">Grounded RAG Copilot</h3>
                 <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
                   Indexed repository of verified factory SOP documents returning clickable clause citations with every operational answer.
@@ -342,7 +306,6 @@ export default function LandingPage() {
             {/* Compact Card: D4 */}
             <div className="lg:col-span-5 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
               <div className="space-y-2">
-                <div className="text-xs font-mono-numbers text-[#64748b]">D4 · Plant Telemetry</div>
                 <h3 className="text-base font-medium text-[#111827]">IRoom 5-Stream Connectors</h3>
                 <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
                   Live connectors linking Material Delivery, Project Progress, CAD Drawing Approval, Quotation &amp; PO, and Operation Tracker telemetry.
@@ -357,7 +320,6 @@ export default function LandingPage() {
             {/* Wide Card: D5 & D6 */}
             <div className="lg:col-span-7 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
               <div className="space-y-2">
-                <div className="text-xs font-mono-numbers text-[#64748b]">D5 &amp; D6 · Compliance &amp; Privacy</div>
                 <h3 className="text-base font-medium text-[#111827]">Human-in-the-Loop Audit Governance</h3>
                 <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
                   Supervisors authorize or override recommendations using pre-execution verification checklists recorded under ISO 9001 Cl. 7.5, backed by Supabase Postgres &amp; SQLite persistence.
@@ -382,9 +344,6 @@ export default function LandingPage() {
       <section id="role-matrix" className="py-16 px-6 sm:px-10 w-full bg-white">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="text-xs font-mono-numbers text-[#0d556e]">
-              Solutions · Role-Based Decision Intelligence
-            </div>
             <h2 className="text-2xl sm:text-3xl font-medium text-[#0a0a0a] tracking-tight">
               Six manufacturing personas &amp; Buying Center views
             </h2>
@@ -413,9 +372,6 @@ export default function LandingPage() {
           <div className="bg-[#f8fafc] border border-[#e5e7eb] rounded-xl p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e5e7eb]">
               <div>
-                <div className="text-xs font-mono-numbers text-[#64748b]">
-                  {activeRoleTab} · {roleData.buyingCenterRole}
-                </div>
                 <h3 className="text-lg sm:text-xl font-medium text-[#111827] mt-1">
                   {roleData.title}
                 </h3>
@@ -463,45 +419,6 @@ export default function LandingPage() {
                 );
               })}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How We Work / Research & Integrity Disclosure */}
-      <section id="research" className="py-14 bg-[#f8fafc] border-t border-[#e5e7eb] px-6 sm:px-10">
-        <div className="max-w-7xl mx-auto space-y-5">
-          <div className="p-6 sm:p-8 rounded-xl bg-white border border-[#e5e7eb] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-2.5 max-w-2xl">
-              <div className="text-xs font-mono-numbers text-[#0d556e]">
-                How We Work · BINUS RTT D1521
-              </div>
-              <h3 className="text-lg sm:text-xl font-medium text-[#111827]">
-                Bina Nusantara University &amp; PT Imajinasi Karya Bangsa (IMAJIN)
-              </h3>
-              <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
-                Lead Researcher: <span className="text-[#111827] font-medium">Dr. Ir. Indrajani, S.Kom., M.M.</span> · &quot;Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek&quot;
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <Link
-                href="/login?mode=register"
-                className="h-9 px-5 inline-flex items-center bg-[#0a0a0a] hover:bg-[#1f2937] text-white text-xs font-medium rounded-full transition-colors"
-              >
-                Create Account
-              </Link>
-              <Link
-                href="/login"
-                className="h-9 px-5 inline-flex items-center bg-white hover:bg-[#f9fafb] text-[#111827] text-xs font-medium rounded-full border border-[#e5e7eb] transition-colors"
-              >
-                Sign in to Cockpit
-              </Link>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-white border border-[#e5e7eb] text-xs text-[#4b5565] leading-relaxed">
-            <span className="text-[#111827] font-medium">Model &amp; Data Integrity:</span>{" "}
-            MDIP&apos;s delay-risk engine combines 4,149 real empirical project &amp; CNC routing tasks (251 projects from DSLIB v3.4 and 4TU Production_Data, achieving 0.78 held-out ROC-AUC vs 0.53 heuristic) with 7,855 synthetic WBS tasks. User accounts and audit logs persist in Supabase Postgres with local SQLite fallback.
           </div>
         </div>
       </section>

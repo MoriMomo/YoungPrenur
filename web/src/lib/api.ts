@@ -405,7 +405,6 @@ export function downloadOperationalExport(
     "================================================================",
     `Generated At : ${timestamp}`,
     `Active Role  : ${role} (${preset.buyingCenterRole})`,
-    `Research Ref : BINUS RTT D1521 & PT IMAJIN (IRoom System)`,
     "",
     "1. ROLE KPI SNAPSHOT",
     ...preset.kpis.map(k => `   - ${k.title}: ${k.value} (${k.trend}, ${k.subtle})`),

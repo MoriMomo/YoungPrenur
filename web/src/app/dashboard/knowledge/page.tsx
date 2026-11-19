@@ -105,9 +105,6 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-medium text-[#2563eb] mb-1">
-            RAG Knowledge Store &amp; Clause Traceability
-          </div>
           <h1 className="text-xl sm:text-2xl font-semibold text-[#101e30] tracking-tight">
             Manufacturing Knowledge Base &amp; SOPs
           </h1>

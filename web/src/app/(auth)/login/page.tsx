@@ -45,19 +45,19 @@ declare global {
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 const ROLE_EMAILS: Record<ManufacturingRole, string> = {
-  "Operations Manager": "ops.lead@imajin.id",
-  "Plant Manager": "plant.manager@imajin.id",
-  "Production Supervisor": "production.supervisor@imajin.id",
-  "Maintenance Lead": "maintenance.lead@imajin.id",
-  "Quality Manager": "quality.manager@imajin.id",
-  "Supply Chain Lead": "supply.chain.lead@imajin.id",
+  "Operations Manager": "ops.lead@mdip.id",
+  "Plant Manager": "plant.manager@mdip.id",
+  "Production Supervisor": "production.supervisor@mdip.id",
+  "Maintenance Lead": "maintenance.lead@mdip.id",
+  "Quality Manager": "quality.manager@mdip.id",
+  "Supply Chain Lead": "supply.chain.lead@mdip.id",
 };
 
 export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("ops.lead@imajin.id");
+  const [email, setEmail] = useState("ops.lead@mdip.id");
   const [password, setPassword] = useState("imajin2026");
   const [selectedDemoRole, setSelectedDemoRole] = useState<ManufacturingRole>("Operations Manager");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -196,9 +196,6 @@ export default function LoginPage() {
             <div className="font-medium text-[#eef0f5] text-sm group-hover:text-[#60a5fa] transition-colors">
               MDIP Operations Gateway
             </div>
-            <div className="text-[11px] text-[#8f98ab] font-mono-numbers">
-              PT Imajinasi Karya Bangsa · Control Room
-            </div>
           </div>
         </Link>
 
@@ -218,10 +215,6 @@ export default function LoginPage() {
             className="lg:col-span-5 p-6 sm:p-8 bg-[#07080d] border-b lg:border-b-0 lg:border-r border-white/8 flex flex-col justify-between space-y-6"
           >
             <div>
-              <div className="inline-flex items-center gap-2 text-xs font-mono-numbers text-[#8f98ab] mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
-                <span>Plant Access Control</span>
-              </div>
 
               <h1 className="text-xl sm:text-2xl font-medium text-[#eef0f5] tracking-tight mb-2">
                 Manufacturing Decision Intelligence Platform
@@ -267,7 +260,6 @@ export default function LoginPage() {
 
             <div className="pt-3 border-t border-white/8 text-[11px] text-[#8f98ab] flex items-center justify-between">
               <span>Session Auth · SQLite &amp; Supabase</span>
-              <span className="font-mono-numbers">BINUS RTT &amp; IMAJIN</span>
             </div>
           </div>
 
@@ -403,7 +395,7 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
-                      placeholder="user@imajin.id"
+                      placeholder="you@company.com"
                     />
                   </div>
                 </div>
@@ -414,7 +406,7 @@ export default function LoginPage() {
                       Password
                     </label>
                     <span className="text-[11px] text-[#8f98ab] font-mono-numbers">
-                      {authMode === "register" ? "Min 6 chars" : "Default: imajin2026"}
+                      {authMode === "register" ? "Min 6 chars" : "Demo password pre-filled"}
                     </span>
                   </div>
                   <div className="relative">
@@ -465,7 +457,6 @@ export default function LoginPage() {
 
       <footer className="h-12 border-t border-white/8 px-6 sm:px-10 flex items-center justify-between text-xs text-[#8f98ab]">
         <span>Manufacturing Decision Intelligence Platform (MDIP)</span>
-        <span>BINUS RTT &amp; IMAJIN Enterprise</span>
       </footer>
     </div>
   );

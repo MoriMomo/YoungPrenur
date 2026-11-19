@@ -121,7 +121,7 @@ Redesigning components MUST keep calling `web/src/lib/api.ts` (or matching these
 
 1. **Session Storage (`web/src/lib/api.ts`):**
    - Stores `{ token, user, mode: "backend" | "sandbox" }` under `localStorage["mdip_session_v1"]` (key used by `getStoredSession()` and `clearStoredSession()`).
-   - Default seeded persona accounts (when backend runs SQLite): `ops.lead@imajin.id`, `plant.manager@imajin.id`, `production.supervisor@imajin.id`, `maintenance.lead@imajin.id`, `quality.manager@imajin.id`, `supply.chain.lead@imajin.id` (default password: `imajin2026`).
+   - Default seeded persona accounts (when backend runs SQLite): `ops.lead@mdip.id`, `plant.manager@mdip.id`, `production.supervisor@mdip.id`, `maintenance.lead@mdip.id`, `quality.manager@mdip.id`, `supply.chain.lead@mdip.id` (default password: `imajin2026`).
 2. **Google Sign-In (Google Identity Services):**
    - Frontend loads `https://accounts.google.com/gsi/client` using `process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
    - User picks their `Plant Role` **before** clicking Google's Sign-In button; `callback` sends `{ id_token, role }` to `POST /api/v1/auth/google`.

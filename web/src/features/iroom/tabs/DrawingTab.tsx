@@ -124,7 +124,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
               VIEW: {activeRevision} · {selectedDrawing.department}
             </text>
             <text x="525" y="280" fill="#64748b" fontSize="8" fontFamily="monospace">
-              ISO 2768-m / AS9100D · IMAJIN CAD
+              ISO 2768-m / AS9100D
             </text>
 
             {/* View A */}

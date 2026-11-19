@@ -45,14 +45,6 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
       {/* Header & Legend */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#f1f5f9]">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
-              Time-Phased WBS Critical Path
-            </span>
-            <span className="text-[11px] text-[#64748b] font-medium">
-              CPM + XGBoost Delay-Risk
-            </span>
-          </div>
           <h2 className="text-base sm:text-lg font-semibold text-[#101e30] tracking-tight">
             Time-Phased Gantt Schedule &amp; What-If Slippage Simulator
           </h2>

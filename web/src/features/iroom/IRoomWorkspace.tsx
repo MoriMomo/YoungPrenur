@@ -167,7 +167,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
         id,
         projectCode: draftCode.trim().toUpperCase(),
         name: draftParty.trim() || draftCode.trim(),
-        customer: "IMAJIN Client Order",
+        customer: "Client Order",
         currentMilestone: "In Machining",
         progressPercent: pct,
         targetCompletion: "Scheduled",
@@ -232,9 +232,6 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       <div className="bg-[#0c1a2d] border border-[#1e3450] rounded-xl p-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-medium text-[#60a5fa] mb-1">
-              IRoom System Ingestion Layer (Pilot Scope Connector)
-            </div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
               Unified IRoom Telemetry Hub
             </h1>

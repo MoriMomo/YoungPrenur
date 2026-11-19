@@ -284,9 +284,53 @@ def _seed_supabase_if_empty() -> None:
                     body=[dict(r) for r in local_users],
                     prefer="resolution=merge-duplicates,return=minimal",
                 )
+        _sync_demo_user_emails_to_supabase()
     except Exception:
         # Supabase unreachable or schema not applied yet; local SQLite handles requests cleanly.
         pass
+
+
+def _ensure_demo_users(conn: sqlite3.Connection) -> None:
+    """
+    Make sure every demo persona in seed_data.INITIAL_USERS exists with its current email.
+    Accounts are matched by their fixed id (usr-ops, ...), so an email change in seed_data
+    (e.g. @imajin.id -> @mdip.id) updates existing databases in place, keeping the password.
+    """
+    now = _now_iso()
+    for usr in INITIAL_USERS:
+        row = conn.execute("SELECT email FROM users WHERE id = ?", (usr["id"],)).fetchone()
+        if row is None:
+            taken = conn.execute("SELECT 1 FROM users WHERE email = ?", (usr["email"],)).fetchone()
+            if taken:
+                continue
+            pw_hash, salt = _hash_password(DEFAULT_DEMO_PASSWORD)
+            conn.execute(
+                "INSERT INTO users (id, email, name, role, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (usr["id"], usr["email"], usr["name"], usr["role"], pw_hash, salt, now),
+            )
+        elif row[0] != usr["email"]:
+            taken = conn.execute(
+                "SELECT 1 FROM users WHERE email = ? AND id <> ?", (usr["email"], usr["id"])
+            ).fetchone()
+            if not taken:
+                conn.execute("UPDATE users SET email = ? WHERE id = ?", (usr["email"], usr["id"]))
+
+
+def _sync_demo_user_emails_to_supabase() -> None:
+    """Apply demo-persona email changes to Supabase rows that already exist (matched by id)."""
+    for usr in INITIAL_USERS:
+        try:
+            _sb_request(
+                "PATCH",
+                "users",
+                query=f"id=eq.{urllib.parse.quote(usr['id'])}&email=neq.{urllib.parse.quote(usr['email'])}",
+                body={"email": usr["email"]},
+                prefer="return=minimal",
+                timeout=3.0,
+            )
+        except Exception:
+            # Missing row, unique-email clash or Supabase offline: leave that account unchanged.
+            continue
 
 
 def init_db() -> None:
@@ -395,15 +439,7 @@ def init_db() -> None:
                     ),
                 )
 
-        count_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        if count_users == 0:
-            now = _now_iso()
-            for usr in INITIAL_USERS:
-                pw_hash, salt = _hash_password(DEFAULT_DEMO_PASSWORD)
-                conn.execute(
-                    "INSERT INTO users (id, email, name, role, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (usr["id"], usr["email"], usr["name"], usr["role"], pw_hash, salt, now),
-                )
+        _ensure_demo_users(conn)
 
     _seed_supabase_if_empty()
 

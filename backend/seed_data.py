@@ -228,10 +228,10 @@ INITIAL_SOPS: List[Dict[str, Any]] = [
 ]
 
 INITIAL_USERS: List[Dict[str, str]] = [
-    {"id": "usr-ops", "email": "ops.lead@imajin.id", "name": "Budi Santoso", "role": "Operations Manager"},
-    {"id": "usr-plant", "email": "plant.manager@imajin.id", "name": "Hendra Wijaya", "role": "Plant Manager"},
-    {"id": "usr-prod", "email": "production.supervisor@imajin.id", "name": "Agus H.", "role": "Production Supervisor"},
-    {"id": "usr-maint", "email": "maintenance.lead@imajin.id", "name": "Fajar Nugraha", "role": "Maintenance Lead"},
-    {"id": "usr-qa", "email": "quality.manager@imajin.id", "name": "Siti Rahma", "role": "Quality Manager"},
-    {"id": "usr-scm", "email": "supply.chain.lead@imajin.id", "name": "Rina Wijaya", "role": "Supply Chain Lead"},
+    {"id": "usr-ops", "email": "ops.lead@mdip.id", "name": "Budi Santoso", "role": "Operations Manager"},
+    {"id": "usr-plant", "email": "plant.manager@mdip.id", "name": "Hendra Wijaya", "role": "Plant Manager"},
+    {"id": "usr-prod", "email": "production.supervisor@mdip.id", "name": "Agus H.", "role": "Production Supervisor"},
+    {"id": "usr-maint", "email": "maintenance.lead@mdip.id", "name": "Fajar Nugraha", "role": "Maintenance Lead"},
+    {"id": "usr-qa", "email": "quality.manager@mdip.id", "name": "Siti Rahma", "role": "Quality Manager"},
+    {"id": "usr-scm", "email": "supply.chain.lead@mdip.id", "name": "Rina Wijaya", "role": "Supply Chain Lead"},
 ]

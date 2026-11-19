@@ -95,9 +95,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="font-semibold text-[#eef0f5] text-[15px] truncate">
               MDIP Copilot
             </div>
-            <div className="text-[11px] text-[#8f98ab] font-mono-numbers truncate">
-              BINUS RTT &amp; IMAJIN
-            </div>
           </div>
         </div>
 

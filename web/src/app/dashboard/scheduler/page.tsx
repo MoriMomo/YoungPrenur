@@ -15,7 +15,6 @@ import {
 } from "@/lib/api";
 import { WBS_TASKS, RISK_DRIVERS } from "@/lib/mock-data";
 import { WbsTask, RiskDriver } from "@/types";
-import { Info } from "lucide-react";
 
 export default function SchedulerPage() {
   const { showToast, setActions } = useDashboard();
@@ -86,9 +85,6 @@ export default function SchedulerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-mono-numbers text-[#2563eb] mb-1">
-          BINUS RTT D1521 · PT IMAJIN
-        </div>
         <h1 className="text-xl sm:text-2xl font-medium text-[#111827] tracking-tight">
           AI Project Scheduler &amp; Delay-Risk Engine
         </h1>
@@ -157,15 +153,6 @@ export default function SchedulerPage() {
             <ModelCardStrip card={modelCard} />
           </div>
 
-          <div className="p-3.5 bg-[#fafafa] border border-[#e5e7eb] rounded-xl text-xs text-[#374151] space-y-1">
-            <div className="flex items-center gap-1.5 font-medium text-[#111827]">
-              <Info className="w-4 h-4 text-[#2563eb]" strokeWidth={1.5} />
-              <span>Verified BINUS RTT Research Reference</span>
-            </div>
-            <p className="text-[#4b5565] text-[11px] leading-snug">
-              &quot;Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek&quot; (Dr. Ir. Indrajani, S.Kom., M.M.)
-            </p>
-          </div>
         </div>
       </div>
 

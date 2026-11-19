@@ -8,7 +8,6 @@ import { MdipLogo } from "@/components/ui/MdipLogo";
 const NAV_LINKS = [
   { href: "#features", label: "Platform" },
   { href: "#role-matrix", label: "Solutions" },
-  { href: "#research", label: "How we work" },
 ];
 
 export const Navbar: React.FC = () => {

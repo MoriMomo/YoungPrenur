@@ -25,7 +25,6 @@ import gsap from "gsap";
 export default function DashboardOverviewPage() {
   const {
     selectedRole,
-    deploymentMode,
     isApiLive,
     actions,
     auditLog,
@@ -86,10 +85,6 @@ export default function DashboardOverviewPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-mono-numbers text-[#64748b] mb-1">
-            MDIP Operations Cockpit · {currentRolePreset.buyingCenterRole} ·{" "}
-            {deploymentMode === "internal" ? "On-Prem VPC (CAD Isolated)" : "Managed SaaS"}
-          </div>
           <h1 className="text-2xl font-medium text-[#111827] tracking-tight">
             {currentRolePreset.title}
           </h1>
@@ -216,7 +211,7 @@ export default function DashboardOverviewPage() {
                 TRL 4 → TRL 6 Pilot Validation Checklist (BMC Table VI)
               </h2>
               <p className="text-xs text-[#64748b]">
-                Benchmarking criteria for the planned 8-week IMAJIN pilot &amp; n=15 user evaluation
+                Benchmarking criteria for the planned 8-week pilot &amp; n=15 user evaluation
               </p>
             </div>
           </div>

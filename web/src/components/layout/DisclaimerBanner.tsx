@@ -8,7 +8,7 @@ export const DisclaimerBanner: React.FC = () => {
       <span className="text-[#111827] font-medium">
         TRL 4 Prototype &amp; Governance Disclosure:
       </span>{" "}
-      Metrics, delay-risk probabilities (CPM + XGBoost model trained on synthetic schedules; retraining on historical partner data planned for the pilot), and IRoom records shown here are simulated demonstration data from BINUS RTT (D1521) and PT IMAJIN research. Consequential shop-floor actions require human supervisor authorization before dispatch.
+      Metrics, delay-risk probabilities and IRoom records shown here are demonstration data. Consequential shop-floor actions require human supervisor authorization before dispatch.
     </div>
   );
 };
