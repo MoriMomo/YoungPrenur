@@ -22,7 +22,7 @@ import openpyxl
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ml.features import CATEGORIES, FEATURE_NAMES, infer_category, task_features  # noqa: E402
+from ml.features import FEATURE_NAMES, infer_category, task_features  # noqa: E402
 from schedule_parser import compute_cpm  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -164,14 +164,11 @@ def extract_dslib_rows(excel_dir: str = DSLIB_EXCEL_DIR) -> Tuple[List[Dict[str,
             act_dur = _parse_dslib_duration_days(row[p_cols["actual duration"]])
             rem_col = p_cols.get("remaining duration")
             rem_dur = _parse_dslib_duration_days(row[rem_col]) if rem_col is not None and rem_col < len(row) else None
-            pct_col = p_cols.get("percentage completed")
-            pct_val = row[pct_col] if pct_col is not None and pct_col < len(row) else None
             start_col = p_cols.get("actual start")
             act_start = row[start_col] if start_col is not None and start_col < len(row) else None
             tracking_by_id[aid] = {
                 "actual_days": act_dur,
                 "remaining_days": rem_dur,
-                "pct": pct_val,
                 "actual_start": act_start,
             }
 
@@ -204,11 +201,11 @@ def extract_dslib_rows(excel_dir: str = DSLIB_EXCEL_DIR) -> Tuple[List[Dict[str,
             })
 
         # Keep leaf WBS nodes only (drop parent summary rollups).
-        parent_wbs = set()
+        parent_wbs: set[str] = set()
         for w in wbs_values:
-            prefix = f"{w}."
-            if any(other.startswith(prefix) for other in wbs_values):
-                parent_wbs.add(w)
+            parts = w.split(".")
+            for i in range(1, len(parts)):
+                parent_wbs.add(".".join(parts[:i]))
 
         tasks: List[Dict[str, Any]] = []
         for item in raw_activities:
