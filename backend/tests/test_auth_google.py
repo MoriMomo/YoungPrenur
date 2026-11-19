@@ -107,6 +107,17 @@ class TestGoogleAuth(unittest.TestCase):
                 auth_api.google_login(GoogleAuthPayload(id_token="expired", role="Plant Manager"))
         self.assertEqual(ctx.exception.status_code, 401)
 
+    def test_google_config_endpoint(self):
+        self.assertEqual(
+            auth_api.google_auth_config(),
+            {"enabled": True, "client_id": self.CLIENT_ID},
+        )
+        os.environ.pop("GOOGLE_CLIENT_ID", None)
+        self.assertEqual(
+            auth_api.google_auth_config(),
+            {"enabled": False, "client_id": None},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,34 +30,34 @@ export function MaterialTab({ searchQuery, handleInspectWithAI, materials }: Mat
                 m.supplier.toLowerCase().includes(searchQuery.toLowerCase())
             )
             .map((mat) => (
-              <tr key={mat.id} className="hover:bg-[#f8fafc] transition-colors">
+              <tr key={mat.id} className="hover:bg-paper transition-colors">
                 <td className="py-3 px-3">
-                  <div className="font-medium text-[#111827]">{mat.partNumber}</div>
-                  <div className="text-[11px] text-[#64748b] truncate max-w-xs">
+                  <div className="font-medium text-ink">{mat.partNumber}</div>
+                  <div className="text-xs text-ink-3 truncate max-w-xs">
                     {mat.description}
                   </div>
                 </td>
-                <td className="py-3 px-3 text-[#374151] font-medium">{mat.supplier}</td>
+                <td className="py-3 px-3 text-ink-2 font-medium">{mat.supplier}</td>
                 <td className="py-3 px-3">
-                  <div className="font-medium text-[#111827]">{mat.eta}</div>
-                  <div className="text-[11px] text-[#dc2626] font-mono-numbers font-medium">
+                  <div className="font-medium text-ink">{mat.eta}</div>
+                  <div className="text-xs text-hold font-mono-numbers font-medium">
                     {mat.stockCoverHours}h stock cover left
                   </div>
                 </td>
                 <td className="py-3 px-3">
                   <span
-                    className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
+                    className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${
                       mat.status === "Critical"
-                        ? "bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]"
+                        ? "bg-hold-wash text-hold border-hold-line"
                         : mat.status === "At Risk"
-                        ? "bg-[#fef3c7] text-[#b45309] border-[#fde68a]"
-                        : "bg-[#e6f7f0] text-[#0d9263] border-[#a7f3d0]"
+                        ? "bg-warn-wash text-warn border-warn-line"
+                        : "bg-pass-wash text-pass border-pass-line"
                     }`}
                   >
                     {mat.status} ({(mat.riskScore * 100).toFixed(0)}%)
                   </span>
                 </td>
-                <td className="py-3 px-3 font-mono-numbers text-[#2563eb] font-semibold">
+                <td className="py-3 px-3 font-mono-numbers text-stamp font-semibold">
                   {mat.openPo}
                 </td>
                 <td className="py-3 px-3 text-right">
@@ -69,9 +69,9 @@ export function MaterialTab({ searchQuery, handleInspectWithAI, materials }: Mat
                         `Stock cover ${mat.stockCoverHours}h vs Lead time ${mat.supplierLeadDays}d, PO ${mat.openPo}`
                       )
                     }
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#0c1a2d] hover:bg-[#1a3354] text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    <MessageSquareText className="w-3 h-3 text-[#60a5fa]" />
+                    <MessageSquareText className="w-3 h-3 text-stamp" />
                     <span>Mitigate</span>
                   </button>
                 </td>

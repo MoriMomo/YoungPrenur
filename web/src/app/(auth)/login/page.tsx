@@ -4,11 +4,12 @@ import React, { Suspense, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ManufacturingRole } from "@/types";
-import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
-import { AuthError, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
+import { ROLES } from "@/lib/mock-data";
+import { AuthError, fetchGoogleAuthConfig, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
 import { MdipLogo } from "@/components/ui/MdipLogo";
+import CRTWarp from "@/components/ui/CRTWarp";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
-import gsap from "gsap";
+import { usePageMotion } from "@/lib/usePageMotion";
 
 function AuthModeSync({ onRegisterMode }: { onRegisterMode: () => void }) {
   const searchParams = useSearchParams();
@@ -44,15 +45,6 @@ declare global {
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
-const ROLE_EMAILS: Record<ManufacturingRole, string> = {
-  "Operations Manager": "ops.lead@mdip.id",
-  "Plant Manager": "plant.manager@mdip.id",
-  "Production Supervisor": "production.supervisor@mdip.id",
-  "Maintenance Lead": "maintenance.lead@mdip.id",
-  "Quality Manager": "quality.manager@mdip.id",
-  "Supply Chain Lead": "supply.chain.lead@mdip.id",
-};
-
 export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -62,26 +54,43 @@ export default function LoginPage() {
   const [selectedDemoRole, setSelectedDemoRole] = useState<ManufacturingRole>("Operations Manager");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState<string>(GOOGLE_CLIENT_ID);
+  const [googleReady, setGoogleReady] = useState(false);
 
-  const cardRef = useRef<HTMLDivElement>(null);
-  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const selectedRoleRef = useRef<ManufacturingRole>(selectedDemoRole);
+
+  usePageMotion(pageRef);
 
   useEffect(() => {
     selectedRoleRef.current = selectedDemoRole;
   }, [selectedDemoRole]);
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !googleBtnRef.current) return;
+    if (GOOGLE_CLIENT_ID) return;
+    let active = true;
+    fetchGoogleAuthConfig().then((cfg) => {
+      if (active && cfg.enabled && cfg.client_id) {
+        setGoogleClientId(cfg.client_id);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId || !googleBtnRef.current) return;
 
     const initGoogle = () => {
       const gid = window.google?.accounts?.id;
       const target = googleBtnRef.current;
       if (!gid || !target) return;
       target.replaceChildren();
+      const width = Math.min(380, Math.max(240, Math.floor(target.parentElement?.clientWidth || 320)));
       gid.initialize({
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: googleClientId,
         callback: async (resp: { credential?: string }) => {
           if (!resp.credential) {
             setErrorMsg("Google sign-in did not return a credential.");
@@ -99,17 +108,18 @@ export default function LoginPage() {
         },
       });
       gid.renderButton(target, {
-        theme: "filled_black",
+        theme: "outline",
         size: "large",
         shape: "rectangular",
-        text: "continue_with",
-        width: 360,
+        text: authMode === "register" ? "signup_with" : "continue_with",
+        width,
       });
+      setGoogleReady(true);
     };
 
     if (window.google?.accounts?.id) {
-      initGoogle();
-      return;
+      const frame = requestAnimationFrame(initGoogle);
+      return () => cancelAnimationFrame(frame);
     }
 
     const existing = document.getElementById("google-gsi-script") as HTMLScriptElement | null;
@@ -126,24 +136,17 @@ export default function LoginPage() {
     script.addEventListener("load", initGoogle);
     document.head.appendChild(script);
     return () => script.removeEventListener("load", initGoogle);
-  }, [router]);
+  }, [googleClientId, authMode, router]);
 
-  useEffect(() => {
-    if (cardRef.current) {
-      gsap.fromTo(
-        cardRef.current,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
+  const handleGoogleFallbackClick = () => {
+    if (!googleClientId) {
+      setErrorMsg(
+        "Google Sign-In needs a Google Cloud Web OAuth Client ID. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in web/.env.local and GOOGLE_CLIENT_ID in backend/.env, then restart."
       );
+      return;
     }
-    if (leftPanelRef.current) {
-      gsap.fromTo(
-        leftPanelRef.current,
-        { opacity: 0, x: -12 },
-        { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }
-      );
-    }
-  }, []);
+    setErrorMsg("Google Sign-In could not initialize. Check your connection or continue with work email.");
+  };
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -161,39 +164,23 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickRoleLogin = async (role: ManufacturingRole) => {
-    setErrorMsg(null);
-    setAuthMode("login");
-    setSelectedDemoRole(role);
-    const demoEmail = ROLE_EMAILS[role];
-    setEmail(demoEmail);
-    setPassword("imajin2026");
-    setIsSubmitting(true);
-    try {
-      const session = await loginUser(demoEmail, "imajin2026");
-      router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
-    } catch (err) {
-      setErrorMsg(err instanceof AuthError ? err.message : "Quick sign-in failed.");
-      setIsSubmitting(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#0b0d14] text-[#eef0f5] flex flex-col justify-between selection:bg-[#2563eb] selection:text-white">
+    <div ref={pageRef} className="min-h-screen bg-paper text-ink flex flex-col justify-between">
       <Suspense fallback={null}>
         <AuthModeSync
           onRegisterMode={() => {
             setAuthMode("register");
             setPassword("");
+            setIsSubmitting(false);
           }}
         />
       </Suspense>
 
-      <header className="h-14 border-b border-white/8 px-6 sm:px-10 flex items-center justify-between">
+      <header data-gsap="reveal" className="h-14 border-b border-rule-strong px-6 sm:px-10 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          <MdipLogo variant="light" size={30} className="shrink-0" />
+          <MdipLogo variant="color" size={30} className="shrink-0" />
           <div>
-            <div className="font-medium text-[#eef0f5] text-sm group-hover:text-[#60a5fa] transition-colors">
+            <div className="font-medium text-ink text-sm group-hover:text-stamp transition-colors">
               MDIP Operations Gateway
             </div>
           </div>
@@ -201,7 +188,7 @@ export default function LoginPage() {
 
         <Link
           href="/"
-          className="flex items-center gap-1.5 text-xs text-[#a3a9b8] hover:text-[#eef0f5] font-medium transition-colors"
+          className="flex items-center gap-1.5 text-xs text-ink-2 hover:text-ink font-medium transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
           <span>Back to Overview</span>
@@ -209,82 +196,61 @@ export default function LoginPage() {
       </header>
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 bg-[#11141c] border border-white/8 rounded-2xl overflow-hidden">
+        <div className="cert-frame w-full grid grid-cols-1 lg:grid-cols-12 bg-sheet overflow-hidden">
           <div
-            ref={leftPanelRef}
-            className="lg:col-span-5 p-6 sm:p-8 bg-[#07080d] border-b lg:border-b-0 lg:border-r border-white/8 flex flex-col justify-between space-y-6"
+            data-gsap="reveal"
+            className="lg:col-span-5 p-6 sm:p-8 bg-paper border-b lg:border-b-0 lg:border-r border-rule-strong flex flex-col justify-between space-y-6"
           >
             <div>
 
-              <h1 className="text-xl sm:text-2xl font-medium text-[#eef0f5] tracking-tight mb-2">
+              <h1 className="font-display text-[32px] font-extrabold uppercase leading-[0.98] text-ink mb-3">
                 Manufacturing Decision Intelligence Platform
               </h1>
-              <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
+              <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
                 Sign in with your Google or plant account to open your role-scoped cockpit and HITL approval queue.
               </p>
             </div>
 
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#a3a9b8] mb-2 flex items-center justify-between">
-                <span>Quick Shift Personas</span>
-                <span className="text-[11px] font-mono-numbers text-[#8f98ab]">6 roles</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
-                {ROLES.map((role) => {
-                  const preset = ROLE_PRESETS[role];
-                  return (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => handleQuickRoleLogin(role)}
-                      className={`w-full text-left p-2.5 rounded-lg border transition-colors flex items-center justify-between group cursor-pointer ${
-                        selectedDemoRole === role
-                          ? "border-white/20 bg-[#1a1e28]"
-                          : "border-white/8 hover:border-white/20 bg-[#11141c] hover:bg-[#1a1e28]"
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="font-medium text-[#eef0f5] text-xs transition-colors truncate">
-                          {role}
-                        </div>
-                        <div className="text-[11px] text-[#8f98ab] truncate">
-                          {preset.buyingCenterRole} · {preset.priorityDepartment}
-                        </div>
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-[#8f98ab] group-hover:text-[#eef0f5] shrink-0" strokeWidth={1.5} />
-                    </button>
-                  );
-                })}
-              </div>
+            <div
+              className="relative w-full h-[260px] sm:h-[300px] lg:flex-1 lg:min-h-[320px] rounded-lg border border-rule-strong bg-paper overflow-hidden"
+              aria-hidden="true"
+            >
+              <CRTWarp
+                color="#2b3fbf"
+                backgroundColor="#f3f5f1"
+                lightMode
+                mask="aperture"
+                curvature={0.25}
+                persistence={0.4}
+                brightness={1.05}
+              />
             </div>
 
-            <div className="pt-3 border-t border-white/8 text-[11px] text-[#8f98ab] flex items-center justify-between">
-              <span>Session Auth · SQLite &amp; Supabase</span>
-            </div>
           </div>
 
-          <div ref={cardRef} className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
+          <div data-gsap="reveal" className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
             <div className="max-w-md w-full mx-auto space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-medium text-[#eef0f5] tracking-tight mb-1">
+                  <h2 className="font-display text-[26px] font-bold leading-tight text-ink mb-1">
                     {authMode === "register" ? "Create Operator Account" : "Sign In to Cockpit"}
                   </h2>
-                  <p className="text-xs text-[#a3a9b8]">
+                  <p className="text-xs text-ink-2">
                     {authMode === "register"
-                      ? "Register a plant account stored in the backend database."
-                      : "Continue with Google or use your plant email and password."}
+                      ? "Register a plant account stored in the backend database"
+                      : "Continue with Google or use your plant email and password"}
                   </p>
                 </div>
-                <div className="flex bg-[#0b0d14] p-0.5 rounded-lg border border-white/10 text-xs shrink-0">
+                <div className="flex bg-sheet p-0.5 rounded-lg border border-rule-strong text-xs shrink-0">
                   <button
                     type="button"
                     onClick={() => {
                       setAuthMode("login");
                       setErrorMsg(null);
+                      setIsSubmitting(false);
                     }}
                     className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors ${
-                      authMode === "login" ? "bg-[#2563eb] text-white" : "text-[#8f98ab] hover:text-[#eef0f5]"
+                      authMode === "login" ? "bg-stamp text-white" : "text-ink-2 hover:text-ink"
                     }`}
                   >
                     Sign In
@@ -295,9 +261,10 @@ export default function LoginPage() {
                       setAuthMode("register");
                       setErrorMsg(null);
                       setPassword("");
+                      setIsSubmitting(false);
                     }}
                     className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors ${
-                      authMode === "register" ? "bg-[#2563eb] text-white" : "text-[#8f98ab] hover:text-[#eef0f5]"
+                      authMode === "register" ? "bg-stamp text-white" : "text-ink-2 hover:text-ink"
                     }`}
                   >
                     Sign Up
@@ -306,21 +273,21 @@ export default function LoginPage() {
               </div>
 
               {errorMsg && (
-                <div className="p-3 rounded-lg bg-[#dc2626]/15 border border-[#dc2626]/40 text-xs text-[#fca5a5] flex items-center gap-2">
+                <div className="p-3 rounded-lg bg-hold-wash border border-hold-line text-xs text-hold flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               <div>
-                <label htmlFor="demo-role" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                <label htmlFor="demo-role" className="block text-xs font-medium text-ink-2 mb-1.5">
                   Plant Role
                 </label>
                 <select
                   id="demo-role"
                   value={selectedDemoRole}
                   onChange={(e) => setSelectedDemoRole(e.target.value as ManufacturingRole)}
-                  className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg px-3.5 h-10 text-xs sm:text-sm"
+                  className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg px-3.5 h-10 text-xs sm:text-sm"
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -330,39 +297,56 @@ export default function LoginPage() {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                {GOOGLE_CLIENT_ID ? (
-                  <div ref={googleBtnRef} className="min-h-10 flex items-center justify-center" />
-                ) : (
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full h-10 px-4 bg-[#1a1e28] text-[#8f98ab] border border-white/10 text-xs sm:text-sm font-medium rounded-lg flex items-center justify-center gap-2 opacity-75 cursor-not-allowed"
-                    >
-                      <span>Continue with Google</span>
-                    </button>
-                    <p className="text-[11px] font-mono-numbers text-[#8f98ab] text-center">
-                      Set NEXT_PUBLIC_GOOGLE_CLIENT_ID + GOOGLE_CLIENT_ID to activate Google OAuth
-                    </p>
-                  </div>
+              <div className="space-y-3">
+                <div
+                  ref={googleBtnRef}
+                  className={googleReady ? "min-h-10 flex items-center justify-center" : "hidden"}
+                />
+                {!googleReady && (
+                  <button
+                    type="button"
+                    onClick={handleGoogleFallbackClick}
+                    disabled={isSubmitting}
+                    className="w-full h-10 px-4 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+                  >
+                    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                    <span>
+                      {authMode === "register" ? "Sign up with Google" : "Continue with Google"}
+                    </span>
+                  </button>
                 )}
-              </div>
-
-              <div className="flex items-center gap-3 text-[11px] text-[#8f98ab]">
-                <span className="h-px flex-1 bg-white/8" />
-                <span>or continue with work email</span>
-                <span className="h-px flex-1 bg-white/8" />
+                <div className="flex items-center gap-3 text-xs text-ink-2">
+                  <span className="h-px flex-1 bg-rule" />
+                  <span>or continue with work email</span>
+                  <span className="h-px flex-1 bg-rule" />
+                </div>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 {authMode === "register" && (
                   <div>
-                    <label htmlFor="demo-name" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                    <label htmlFor="demo-name" className="block text-xs font-medium text-ink-2 mb-1.5">
                       Full Name
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
+                      <User className="w-4 h-4 text-ink-2 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
                       <input
                         id="demo-name"
                         name="name"
@@ -371,7 +355,7 @@ export default function LoginPage() {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         required
-                        className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                        className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                         placeholder="e.g. Ahmad Fauzi"
                       />
                     </div>
@@ -379,11 +363,11 @@ export default function LoginPage() {
                 )}
 
                 <div>
-                  <label htmlFor="demo-email" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                  <label htmlFor="demo-email" className="block text-xs font-medium text-ink-2 mb-1.5">
                     Corporate Email
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
+                    <Mail className="w-4 h-4 text-ink-2 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
                     <input
                       id="demo-email"
                       name="email"
@@ -394,7 +378,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                      className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                       placeholder="you@company.com"
                     />
                   </div>
@@ -402,15 +386,15 @@ export default function LoginPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor="demo-password" className="text-xs font-medium text-[#a3a9b8]">
+                    <label htmlFor="demo-password" className="text-xs font-medium text-ink-2">
                       Password
                     </label>
-                    <span className="text-[11px] text-[#8f98ab] font-mono-numbers">
+                    <span className="text-xs text-ink-2">
                       {authMode === "register" ? "Min 6 chars" : "Demo password pre-filled"}
                     </span>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
+                    <Lock className="w-4 h-4 text-ink-2 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
                     <input
                       id="demo-password"
                       name="password"
@@ -421,7 +405,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={authMode === "register" ? 6 : 1}
-                      className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                      className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                     />
                   </div>
                 </div>
@@ -429,7 +413,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full h-10 px-4 bg-[#eef0f5] hover:bg-white text-[#0b0d14] text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  className="w-full h-10 px-4 bg-stamp hover:bg-stamp-deep text-sheet text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
                   <span>
                     {isSubmitting
@@ -442,12 +426,9 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <div className="p-3.5 rounded-lg bg-[#0b0d14] border border-white/8 text-xs text-[#8f98ab] flex items-center justify-between">
+              <div className="p-3.5 rounded-lg bg-sheet border border-rule-strong text-xs text-ink-2 flex items-center justify-between">
                 <span>
-                  Selected role: <span className="text-[#eef0f5] font-medium">{selectedDemoRole}</span>
-                </span>
-                <span className="text-[11px] text-[#4cc38a] font-mono-numbers">
-                  Production Gateway
+                  Selected role: <span className="text-ink font-medium">{selectedDemoRole}</span>
                 </span>
               </div>
             </div>
@@ -455,7 +436,7 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="h-12 border-t border-white/8 px-6 sm:px-10 flex items-center justify-between text-xs text-[#8f98ab]">
+      <footer className="h-12 border-t border-rule-strong px-6 sm:px-10 flex items-center justify-between text-xs text-ink-2">
         <span>Manufacturing Decision Intelligence Platform (MDIP)</span>
       </footer>
     </div>

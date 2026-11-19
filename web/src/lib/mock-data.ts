@@ -5,9 +5,7 @@ import {
   AuditLogEntry,
   PilotCheckItem,
   RiskItem,
-  WbsTask,
   KnowledgeDoc,
-  RiskDriver,
   MaterialDeliveryItem,
   ProjectProgressItem,
   DrawingApprovalItem,
@@ -92,7 +90,7 @@ export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
     priorityDepartment: "Supply Chain",
     kpis: [
       { title: "Alloy M-204 Stock Cover", value: "36 hrs", trend: "Critical shortage risk", subtle: "Vendor lead time: 3 days", icon: "⇄", status: "alert" },
-      { title: "Supplier On-Time Delivery", value: "88.6%", trend: "↓ 3.4% Vendor PT Baja", subtle: "Last 14 shipments", icon: "▥", status: "warn" },
+      { title: "Supplier On-Time Delivery", value: "88.6%", trend: "↓ 3.4% Vendor A", subtle: "Last 14 shipments", icon: "▥", status: "warn" },
       { title: "Expedited Air Freight Cost", value: "Rp 15M", trend: "Air cargo 500 units", subtle: "Protects 2 PO deliveries", icon: "◉", status: "warn" },
       { title: "At-Risk Customer Orders", value: "2 Orders", trend: "PO-089 & PO-092", subtle: "Delay penalty window", icon: "⚑", status: "alert" }
     ]
@@ -137,7 +135,7 @@ export const INITIAL_ACTIONS: DecisionAction[] = [
     checklist: [
       "Verify on-hand warehouse count for INGOT-AL7075-T6 / M-204 (<48h cover)",
       "Confirm expedited freight quote <= Rp 25.000.000 ceiling (SOP-SCM-12 Cl. 5.3)",
-      "Lock supplier airway bill against PO-2026-IMJ-0891"
+      "Lock supplier airway bill against PO-2026-MD-0891"
     ]
   },
   {
@@ -299,158 +297,6 @@ export const RISKS_AND_OPPORTUNITIES: RiskItem[] = [
   }
 ];
 
-export const WBS_TASKS: WbsTask[] = [
-  {
-    code: "WBS-1.1",
-    task: "Drawing Technical Review & CAD/CAM Sign-off",
-    startDay: 0,
-    plannedDays: 4,
-    actualDays: 6,
-    floatDays: 0,
-    critical: true,
-    delayRisk: 0.72,
-    status: "Delayed (+2d)",
-    varianceDays: 2,
-    workCenter: "Tooling R&D / CAD",
-    owner: "Hendra Wijaya, ST"
-  },
-  {
-    code: "WBS-1.2",
-    task: "Raw Material Procurement (Alloy EN24 & M-204)",
-    startDay: 1,
-    plannedDays: 6,
-    actualDays: 8,
-    floatDays: 0,
-    critical: true,
-    delayRisk: 0.85,
-    status: "At Risk",
-    varianceDays: 2,
-    workCenter: "Supply Chain / Receiving",
-    owner: "Supply Chain Lead"
-  },
-  {
-    code: "WBS-1.3",
-    task: "Tooling & Stamping Die Fabrication (Die-04)",
-    startDay: 4,
-    plannedDays: 5,
-    actualDays: 5,
-    floatDays: 2,
-    critical: false,
-    delayRisk: 0.28,
-    status: "On Track",
-    varianceDays: 0,
-    workCenter: "Wire EDM Cell 03",
-    owner: "Rudi Hermawan"
-  },
-  {
-    code: "WBS-2.1",
-    task: "CNC 5-Axis Milling & Surface Profiling",
-    startDay: 6,
-    plannedDays: 7,
-    actualDays: 7,
-    floatDays: 2,
-    critical: false,
-    delayRisk: 0.22,
-    status: "On Track",
-    varianceDays: 0,
-    workCenter: "CNC Milling Cell A (Makino D800Z)",
-    owner: "Bambang S."
-  },
-  {
-    code: "WBS-2.2",
-    task: "Precision Stamping & Forming (Press P-07)",
-    startDay: 9,
-    plannedDays: 5,
-    actualDays: 6,
-    floatDays: 0,
-    critical: true,
-    delayRisk: 0.68,
-    status: "Bottleneck",
-    varianceDays: 1,
-    workCenter: "Stamping Press Bay P-07",
-    owner: "Agus H."
-  },
-  {
-    code: "WBS-3.1",
-    task: "Cell 02 Sub-Assembly & Precision Tolerancing",
-    startDay: 14,
-    plannedDays: 6,
-    actualDays: 8,
-    floatDays: 0,
-    critical: true,
-    delayRisk: 0.79,
-    status: "Lagging -11%",
-    varianceDays: 2,
-    workCenter: "Assembly Cell 02",
-    owner: "Production Supervisor"
-  },
-  {
-    code: "WBS-3.2",
-    task: "Heat Treatment & Surface Hardening (Subcontract)",
-    startDay: 16,
-    plannedDays: 4,
-    actualDays: 4,
-    floatDays: 2,
-    critical: false,
-    delayRisk: 0.35,
-    status: "Scheduled",
-    varianceDays: 0,
-    workCenter: "Subcontract Furnace",
-    owner: "Rina Wijaya"
-  },
-  {
-    code: "WBS-4.1",
-    task: "CMM Metrology & Quality Acceptance Test",
-    startDay: 22,
-    plannedDays: 3,
-    actualDays: 3,
-    floatDays: 0,
-    critical: true,
-    delayRisk: 0.30,
-    status: "Pending Prior Stage",
-    varianceDays: 0,
-    workCenter: "CMM Metrology Lab",
-    owner: "Siti M."
-  },
-  {
-    code: "WBS-4.2",
-    task: "Final Factory Acceptance (FAT) & Customer Dispatch",
-    startDay: 25,
-    plannedDays: 2,
-    actualDays: 2,
-    floatDays: 1,
-    critical: false,
-    delayRisk: 0.15,
-    status: "Scheduled",
-    varianceDays: 0,
-    workCenter: "Logistics Dock A",
-    owner: "Rian T."
-  }
-];
-
-export const RISK_DRIVERS: RiskDriver[] = [
-  {
-    factor: "Drawing Technical Review Variance",
-    weight: "34%",
-    impact: "High (DWG-2026-04 revisions pending sign-off)"
-  },
-  {
-    factor: "Component M-204 Vendor Lead Time",
-    weight: "28%",
-    impact: "High (36h cover remaining against 3-day supplier transit)"
-  },
-  {
-    factor: "Press P-07 Mechanical Constraint",
-    weight: "22%",
-    impact: "Medium (Hydraulic vibration +18% above nominal baseline)"
-  },
-  {
-    factor: "Cell 02 Operator Staffing Deficit",
-    weight: "16%",
-    impact: "Medium (1 technician shortage on evening shift)"
-  }
-];
-
 export const KNOWLEDGE_DOCS: KnowledgeDoc[] = [
   {
     id: "sop-prs-04",
@@ -558,37 +404,37 @@ export const IROOM_MATERIALS: MaterialDeliveryItem[] = [
     id: "mat-01",
     partNumber: "INGOT-AL7075-T6",
     description: "Aerospace Grade 7075 Aluminum Round Bar 120mm",
-    supplier: "PT Metalindo Perkasa Steel",
+    supplier: "Alloy bar supplier A",
     eta: "Tomorrow, 14:00 WIB",
     stockCoverHours: 36,
     supplierLeadDays: 3,
     status: "Critical",
     riskScore: 0.88,
-    openPo: "PO-2026-IMJ-0891"
+    openPo: "PO-2026-MD-0891"
   },
   {
     id: "mat-02",
     partNumber: "FASTENER-TI-M6",
     description: "Titanium Alloy Hex Socket Cap Screws M6x25",
-    supplier: "Fastener Global Solution Pte",
+    supplier: "Fastener distributor B",
     eta: "16 Oct 2026",
     stockCoverHours: 72,
     supplierLeadDays: 5,
     status: "At Risk",
     riskScore: 0.62,
-    openPo: "PO-2026-IMJ-0894"
+    openPo: "PO-2026-MD-0894"
   },
   {
     id: "mat-03",
     partNumber: "STEEL-SKD11-PL",
     description: "Cold-Work Tool Steel Plate 35mm Pre-machined",
-    supplier: "Nippon Steel Indonesia Dist.",
+    supplier: "Tool steel distributor C",
     eta: "18 Oct 2026",
     stockCoverHours: 140,
     supplierLeadDays: 7,
     status: "Normal",
     riskScore: 0.15,
-    openPo: "PO-2026-IMJ-0888"
+    openPo: "PO-2026-MD-0888"
   }
 ];
 
@@ -596,8 +442,8 @@ export const IROOM_PROJECTS: ProjectProgressItem[] = [
   {
     id: "prj-01",
     projectCode: "PRJ-AERO-2026",
-    name: "Boeing 737 Cargo Door Bracket Tooling",
-    customer: "PT Dirgantara Indonesia (PTDI)",
+    name: "Aircraft Cargo Door Bracket Tooling",
+    customer: "Aerospace customer",
     currentMilestone: "CNC 5-Axis Rough Machining",
     progressPercent: 64,
     targetCompletion: "28 Oct 2026",
@@ -608,7 +454,7 @@ export const IROOM_PROJECTS: ProjectProgressItem[] = [
     id: "prj-02",
     projectCode: "PRJ-AUTO-409",
     name: "EV Battery Enclosure Extrusion Stamping Die",
-    customer: "Hyundai Motor Manufacturing",
+    customer: "Automotive OEM customer",
     currentMilestone: "Wire EDM Profile Slicing",
     progressPercent: 78,
     targetCompletion: "22 Oct 2026",
@@ -619,7 +465,7 @@ export const IROOM_PROJECTS: ProjectProgressItem[] = [
     id: "prj-03",
     projectCode: "PRJ-MED-102",
     name: "Surgical Titanium Implant Molding Core",
-    customer: "Kalbe Farma Precision",
+    customer: "Medical device customer",
     currentMilestone: "CMM Metrology Final FAT",
     progressPercent: 92,
     targetCompletion: "19 Oct 2026",
@@ -667,9 +513,9 @@ export const IROOM_DRAWINGS: DrawingApprovalItem[] = [
 export const IROOM_QUOTATIONS: QuotationPoItem[] = [
   {
     id: "po-01",
-    poNumber: "PO-2026-IMJ-0891",
+    poNumber: "PO-2026-MD-0891",
     quotationRef: "QTN-MET-2026-442",
-    vendorName: "PT Metalindo Perkasa Steel",
+    vendorName: "Alloy bar supplier A",
     totalValueIdr: "Rp 148.500.000",
     status: "PO Issued",
     paymentTerm: "Net 30 Days",
@@ -677,9 +523,9 @@ export const IROOM_QUOTATIONS: QuotationPoItem[] = [
   },
   {
     id: "po-02",
-    poNumber: "PO-2026-IMJ-0894",
+    poNumber: "PO-2026-MD-0894",
     quotationRef: "QTN-FST-2026-108",
-    vendorName: "Fastener Global Solution Pte",
+    vendorName: "Fastener distributor B",
     totalValueIdr: "Rp 64.200.000",
     status: "Pending Approval",
     paymentTerm: "CBD (Advance 50%)",
@@ -687,9 +533,9 @@ export const IROOM_QUOTATIONS: QuotationPoItem[] = [
   },
   {
     id: "po-03",
-    poNumber: "PO-2026-IMJ-0888",
+    poNumber: "PO-2026-MD-0888",
     quotationRef: "QTN-NP-2026-902",
-    vendorName: "Nippon Steel Indonesia Dist.",
+    vendorName: "Tool steel distributor C",
     totalValueIdr: "Rp 312.000.000",
     status: "PO Issued",
     paymentTerm: "Net 45 Days",
@@ -701,7 +547,7 @@ export const IROOM_OPERATIONS: OperationTrackerItem[] = [
   {
     id: "op-01",
     workCenter: "CNC Milling Cell 01",
-    machineId: "DMG-MORI-NLX2500",
+    machineId: "MILL-CELL-01",
     operator: "Budi Santoso (Cert L2)",
     shift: "Shift 1 (Morning)",
     oeePercent: 88.5,
@@ -712,7 +558,7 @@ export const IROOM_OPERATIONS: OperationTrackerItem[] = [
   {
     id: "op-02",
     workCenter: "Hydraulic Press Stamping",
-    machineId: "KOMATSU-PRESS-P07",
+    machineId: "PRESS-P07",
     operator: "Fajar Nugraha",
     shift: "Shift 1 (Morning)",
     oeePercent: 68.2,
@@ -723,7 +569,7 @@ export const IROOM_OPERATIONS: OperationTrackerItem[] = [
   {
     id: "op-03",
     workCenter: "Wire EDM Cell 03",
-    machineId: "SODICK-ALC600G",
+    machineId: "EDM-CELL-03",
     operator: "Rudi Hermawan (Cert L3)",
     shift: "Shift 1 (Morning)",
     oeePercent: 95.8,

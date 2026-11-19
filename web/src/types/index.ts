@@ -92,6 +92,8 @@ export interface WbsTask {
   varianceDays?: number;
   workCenter?: string;
   owner?: string;
+  /** Model's top risk drivers for this task, most influential first. */
+  drivers?: string[];
 }
 
 export interface KnowledgeClause {
@@ -122,6 +124,16 @@ export interface ChatMessage {
   text: string;
   citations?: CitationItem[];
   timestamp: string;
+  llmEnhanced?: boolean;
+  model?: string | null;
+  llmError?: string | null;
+}
+
+export interface CopilotStatus {
+  llm_configured: boolean;
+  provider: "gemini" | "retrieval";
+  model: string | null;
+  indexed_sops: number;
 }
 
 export interface RiskDriver {
@@ -131,6 +143,10 @@ export interface RiskDriver {
 }
 
 export interface DelayRiskPrediction {
+  source?: "file" | "upload";
+  filename?: string;
+  extraction_method?: string;
+  document_summary?: string | null;
   project_name: string;
   overall_delay_probability: number;
   critical_path_tasks_count: number;

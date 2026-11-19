@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 import database
 from app.schemas import CopilotQuery, SopDocumentPayload
-from app.services.copilot import _run_grounded_copilot
+from app.services.copilot import _run_grounded_copilot, get_copilot_status
 
 router = APIRouter()
 
@@ -13,6 +13,11 @@ router = APIRouter()
 @router.get("/api/v1/knowledge/docs")
 def get_knowledge_docs():
     return database.get_sops()
+
+
+@router.get("/api/v1/copilot/status")
+def copilot_status():
+    return get_copilot_status()
 
 
 @router.post("/api/v1/knowledge/ingest")
@@ -30,4 +35,5 @@ def ingest_knowledge_doc(payload: SopDocumentPayload):
 def copilot_chat(payload: CopilotQuery):
     msg = (payload.message or payload.question or "").strip()
     role = payload.active_role or payload.role or "Operations Manager"
-    return _run_grounded_copilot(msg, role)
+    history = [item.model_dump() for item in payload.history]
+    return _run_grounded_copilot(msg, role, history=history)

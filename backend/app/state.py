@@ -61,6 +61,9 @@ def _re_score_active_analysis() -> None:
     updated = {
         "source": ACTIVE_ANALYSIS.get("source", "file"),
         "filename": ACTIVE_ANALYSIS.get("filename", DEFAULT_SCHEDULE_FILENAME),
+        "extraction_method": ACTIVE_ANALYSIS.get("extraction_method"),
+        "document_summary": ACTIVE_ANALYSIS.get("document_summary"),
+        "document_excerpt": ACTIVE_ANALYSIS.get("document_excerpt"),
         **analyze_schedule(compute_cpm(tasks_in), ACTIVE_ANALYSIS.get("project_name", DEFAULT_PROJECT_NAME)),
     }
     ACTIVE_ANALYSIS = updated

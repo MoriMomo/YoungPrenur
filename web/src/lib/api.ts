@@ -1,8 +1,6 @@
 import {
   ROLE_PRESETS,
   INITIAL_ACTIONS,
-  WBS_TASKS,
-  RISK_DRIVERS,
   KNOWLEDGE_DOCS,
   PERFORMANCE_CHART_DATA,
   IROOM_MATERIALS,
@@ -19,6 +17,7 @@ import {
   AuditLogEntry,
   WbsTask,
   DelayRiskPrediction,
+  CopilotStatus,
   PerformanceMetricKey,
   MaterialDeliveryItem,
   ProjectProgressItem,
@@ -40,6 +39,7 @@ interface BackendWbsTask {
   variance_days?: number;
   work_center?: string;
   owner?: string;
+  drivers?: { label: string }[];
 }
 
 interface BackendDecisionAction {
@@ -80,6 +80,7 @@ function mapBackendWbs(tasks: BackendWbsTask[]): WbsTask[] {
       varianceDays: t.variance_days ?? Math.max(0, t.actual_days - t.planned_days),
       workCenter: t.work_center,
       owner: t.owner,
+      drivers: t.drivers?.map((d) => d.label),
     };
   });
 }
@@ -121,15 +122,18 @@ export interface ScheduleUploadResponse {
   high_risk_tasks?: number;
   overall_delay_probability?: number;
   estimated_project_slippage_days?: number;
+  extraction_method?: string;
+  document_summary?: string | null;
+  ai_parsed?: boolean;
   message?: string;
   tasks: WbsTask[];
-  source: "backend" | "mock";
+  source: "backend";
 }
 
 /**
- * Sends a schedule file (CSV/XLSX) to the backend, which parses it, runs CPM and scores
- * delay risk with the XGBoost model. Passing no file reloads the bundled sample project.
- * Returns null when the backend is unreachable so callers can fall back to local parsing.
+ * Sends a schedule file (CSV/XLSX/Word/PDF) to the backend, which parses it (using Gemini AI when
+ * needed for PDF/Word documents), runs CPM and scores delay risk with the XGBoost model.
+ * Returns null when the backend is unreachable so callers can parse CSVs locally.
  * Throws ScheduleUploadError when the backend rejects the file (e.g. missing columns).
  */
 export async function uploadScheduleFile(file?: File | Blob, filename?: string): Promise<ScheduleUploadResponse | null> {
@@ -140,7 +144,7 @@ export async function uploadScheduleFile(file?: File | Blob, filename?: string):
     res = await fetch(`${API_BASE}/scheduler/upload`, {
       method: "POST",
       body: form,
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(45000),
     });
   } catch {
     return null;
@@ -163,58 +167,46 @@ export async function uploadScheduleFile(file?: File | Blob, filename?: string):
   };
 }
 
-/** Local mock result used when no backend is available (e.g. GitHub Pages without an API). */
-export function mockScheduleUpload(filename: string): ScheduleUploadResponse {
-  return {
-    success: true,
-    filename,
-    tasks_extracted: WBS_TASKS.length,
-    critical_path_tasks: WBS_TASKS.filter(t => t.critical).length,
-    high_risk_tasks: WBS_TASKS.filter(t => t.delayRisk > 0.6).length,
-    message: `Extracted and normalized ${WBS_TASKS.length} WBS activities from ${filename}.`,
-    tasks: WBS_TASKS,
-    source: "mock",
-  };
-}
-
 /**
- * Fetches delay risk prediction and root-cause drivers.
+ * Fetches delay risk prediction and root-cause drivers for a user-uploaded schedule.
+ * Returns null when no user schedule has been uploaded or when the backend is unreachable.
  */
-export async function fetchDelayRiskPrediction(): Promise<DelayRiskPrediction> {
+export async function fetchDelayRiskPrediction(): Promise<DelayRiskPrediction | null> {
   try {
     const res = await fetch(`${API_BASE}/risks/prediction`, {
       signal: AbortSignal.timeout(2000),
     });
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        project_name: data.project_name,
-        overall_delay_probability: data.overall_delay_probability,
-        critical_path_tasks_count: data.critical_path_tasks_count,
-        high_risk_tasks_count: data.high_risk_tasks_count,
-        estimated_project_slippage_days: data.estimated_project_slippage_days,
-        risk_drivers: (data.risk_drivers || []).map((d: { factor: string; weight?: string; impact: string; severity?: string }) => ({
-          factor: d.factor,
-          weight: d.weight || d.severity || "HIGH",
-          impact: d.impact,
-        })),
-        tasks: Array.isArray(data.tasks) ? mapBackendWbs(data.tasks) : WBS_TASKS,
-        methodology: data.methodology || "CPM + XGBoost delay-risk model",
-      };
+    if (!res.ok) return null;
+    const data = await res.json();
+    const isBundledSample =
+      data.source === "file" ||
+      (!data.source &&
+        (data.filename === "master_project_schedule_rev3.csv" ||
+          data.project_name === "Project Alpha - Precision Stamping & Aerospace Tooling"));
+    if (isBundledSample || !Array.isArray(data.tasks) || data.tasks.length === 0) {
+      return null;
     }
+    return {
+      source: data.source,
+      filename: data.filename,
+      extraction_method: data.extraction_method,
+      document_summary: data.document_summary ?? null,
+      project_name: data.project_name,
+      overall_delay_probability: data.overall_delay_probability,
+      critical_path_tasks_count: data.critical_path_tasks_count,
+      high_risk_tasks_count: data.high_risk_tasks_count,
+      estimated_project_slippage_days: data.estimated_project_slippage_days,
+      risk_drivers: (data.risk_drivers || []).map((d: { factor: string; weight?: string; impact: string; severity?: string }) => ({
+        factor: d.factor,
+        weight: d.weight || d.severity || "HIGH",
+        impact: d.impact,
+      })),
+      tasks: mapBackendWbs(data.tasks),
+      methodology: data.methodology || "CPM + XGBoost delay-risk model",
+    };
   } catch {
-    // Fallback
+    return null;
   }
-  return {
-    project_name: "Project Alpha - Precision Stamping & Aerospace Tooling",
-    overall_delay_probability: 65.2,
-    critical_path_tasks_count: WBS_TASKS.filter(t => t.critical).length,
-    high_risk_tasks_count: WBS_TASKS.filter(t => t.delayRisk > 0.6).length,
-    estimated_project_slippage_days: 3.5,
-    risk_drivers: RISK_DRIVERS,
-    tasks: WBS_TASKS,
-    methodology: "Offline demo data (backend not connected)"
-  };
 }
 
 /**
@@ -290,16 +282,51 @@ export async function flagDecisionAction(
   };
 }
 
+export async function fetchCopilotStatus(): Promise<CopilotStatus> {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/status`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        llm_configured: Boolean(data?.llm_configured),
+        provider: data?.provider === "gemini" ? "gemini" : "retrieval",
+        model: typeof data?.model === "string" ? data.model : null,
+        indexed_sops:
+          typeof data?.indexed_sops === "number" ? data.indexed_sops : KNOWLEDGE_DOCS.length,
+      };
+    }
+  } catch {
+    // Offline fallback below
+  }
+  return {
+    llm_configured: false,
+    provider: "retrieval",
+    model: null,
+    indexed_sops: KNOWLEDGE_DOCS.length,
+  };
+}
+
 /**
  * Queries the grounded RAG Copilot with local deterministic retrieval fallback.
  */
-export async function askManufacturingCopilot(message: string, activeRole: ManufacturingRole) {
+export async function askManufacturingCopilot(
+  message: string,
+  activeRole: ManufacturingRole,
+  history: Array<{ role: "user" | "model"; text: string }> = [],
+  localDocs: KnowledgeDoc[] = KNOWLEDGE_DOCS
+) {
   try {
     const res = await fetch(`${API_BASE}/copilot/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, active_role: activeRole }),
-      signal: AbortSignal.timeout(3500),
+      body: JSON.stringify({
+        message,
+        active_role: activeRole,
+        history: history.slice(-6),
+      }),
+      signal: AbortSignal.timeout(20000),
     });
     if (res.ok) {
       return await res.json();
@@ -309,43 +336,61 @@ export async function askManufacturingCopilot(message: string, activeRole: Manuf
   }
 
   const qLower = message.toLowerCase();
-  const scoredDocs = KNOWLEDGE_DOCS.map((doc) => {
-    let score = 0;
-    if (qLower.includes(doc.code.toLowerCase())) score += 3;
-    if (doc.code === "SOP-ENG-02" && (qLower.includes("dwg-") || qLower.includes("drawing") || qLower.includes("blueprint"))) {
-      score += 2;
-    }
-    for (const kw of doc.keywords) {
-      if (qLower.includes(kw)) score += 1;
-    }
-    return { doc, score };
-  })
+  const qAlnum = qLower.replace(/[^a-z0-9]/g, "");
+  const qTokens = Array.from(new Set(qLower.match(/[a-z0-9]{2,}/g) || []));
+
+  const scoredDocs = localDocs
+    .map((doc) => {
+      let score = 0;
+      const codeAlnum = doc.code.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (qLower.includes(doc.code.toLowerCase()) || (codeAlnum && qAlnum.includes(codeAlnum))) {
+        score += 6;
+      }
+      if (
+        doc.code === "SOP-ENG-02" &&
+        (qLower.includes("dwg-") || qLower.includes("drawing") || qLower.includes("blueprint"))
+      ) {
+        score += 2;
+      }
+      for (const kw of doc.keywords) {
+        if (kw && qLower.includes(kw.toLowerCase())) score += 2;
+      }
+      const haystack = `${doc.code} ${doc.title} ${doc.summary} ${doc.sections
+        .map((s) => `${s.clause} ${s.content}`)
+        .join(" ")}`.toLowerCase();
+      for (const tok of qTokens) {
+        if (haystack.includes(tok)) score += 1;
+      }
+      return { doc, score };
+    })
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score);
 
   if (scoredDocs.length > 0) {
     const { doc } = scoredDocs[0];
-    const sec = doc.sections[0];
-    const sec2 = doc.sections[1];
+    const sectionLines = doc.sections.map((s) => `- **${s.clause}**: ${s.content}`);
     return {
       success: true,
-      reply: `Grounded guidance from ${doc.code} (${doc.title}) for ${activeRole}:\n\n1. ${sec.clause}: ${sec.content}${sec2 ? `\n2. ${sec2.clause}: ${sec2.content}` : ""}`,
-      citations: scoredDocs.slice(0, 2).map(({ doc: d }) => ({
+      reply: `Grounded guidance from **${doc.code} (${doc.title})** for ${activeRole}:\n\n${sectionLines.join("\n")}`,
+      citations: scoredDocs.slice(0, 3).map(({ doc: d }) => ({
         doc_code: d.code,
-        clause: d.sections[0].clause,
+        clause: d.sections[0]?.clause || "Clause 1.0",
         title: d.title,
-        excerpt: d.sections[0].content,
+        excerpt: d.sections[0]?.content || d.summary,
       })),
       confidence: 0.92,
       is_grounded: true,
-      source_documents_indexed: KNOWLEDGE_DOCS.length
+      llm_enhanced: false,
+      model: null,
+      llm_error: null,
+      source_documents_indexed: localDocs.length,
     };
   }
 
   if (qLower.includes("wbs") || qLower.includes("delay") || qLower.includes("cnc") || qLower.includes("slip")) {
     return {
       success: true,
-      reply: `CPM & Heuristic Schedule Analysis (${activeRole} view): WBS-1.2 (Raw Material Procurement) carries 85% risk score (+2d variance) and WBS-3.1 (Cell 02 Sub-Assembly) carries 79% risk score (+2d variance), driving +3.5d overall project slippage. Verify INGOT-AL7075-T6 air-freight authorization (SOP-SCM-12) and Cell 02 operator shift transfer (SOP-LINE2-OPT).`,
+      reply: `CPM & Schedule Analysis (${activeRole} view):\n\n- **WBS-1.2 (Raw Material Procurement)**: 85% risk score (+2d variance); verify INGOT-AL7075-T6 air-freight authorization (**SOP-SCM-12**).\n- **WBS-3.1 (Cell 02 Sub-Assembly)**: 79% risk score (+2d variance); evaluate operator shift transfer (**SOP-LINE2-OPT**).`,
       citations: [
         {
           doc_code: "SOP-SCM-12",
@@ -362,13 +407,16 @@ export async function askManufacturingCopilot(message: string, activeRole: Manuf
       ],
       confidence: 0.91,
       is_grounded: true,
-      source_documents_indexed: KNOWLEDGE_DOCS.length
+      llm_enhanced: false,
+      model: null,
+      llm_error: null,
+      source_documents_indexed: localDocs.length,
     };
   }
 
   return {
     success: true,
-    reply: `Top operational priorities for ${activeRole}:\n1. Mitigate Alloy M-204 / INGOT-AL7075-T6 stock cover (36h left vs 3-day vendor lead time; protects Rp 480M PO-089 & PO-092).\n2. Inspect Press P-07 hydraulic seal before next stamping cycle (+18% vibration vs baseline, exceeding +15% threshold in SOP-PRS-04).\n3. Rebalance Cell 02 shift staffing to recover ~120 units/shift under SOP-LINE2-OPT.`,
+    reply: `Top operational priorities for ${activeRole}:\n\n- Mitigate **INGOT-AL7075-T6** stock cover (36h left vs 3-day vendor lead time) per **SOP-SCM-12**.\n- Inspect **Press P-07** hydraulic seal before next stamping cycle (+18% vibration vs nominal baseline) per **SOP-PRS-04**.\n- Rebalance **Cell 02** shift staffing to recover output under **SOP-LINE2-OPT**.`,
     citations: [
       {
         doc_code: "SOP-SCM-12",
@@ -385,7 +433,10 @@ export async function askManufacturingCopilot(message: string, activeRole: Manuf
     ],
     confidence: 0.94,
     is_grounded: true,
-    source_documents_indexed: KNOWLEDGE_DOCS.length
+    llm_enhanced: false,
+    model: null,
+    llm_error: null,
+    source_documents_indexed: localDocs.length,
   };
 }
 
@@ -401,7 +452,7 @@ export function downloadOperationalExport(
   const timestamp = new Date().toISOString();
   const lines = [
     "MDIP: AI MANUFACTURING DECISION INTELLIGENCE PLATFORM",
-    "TRL 4 PROTOTYPE OPERATIONAL BRIEF (SIMULATED SAMPLE DATA)",
+    "OPERATIONAL BRIEF (SAMPLE DATA)",
     "================================================================",
     `Generated At : ${timestamp}`,
     `Active Role  : ${role} (${preset.buyingCenterRole})`,
@@ -421,7 +472,7 @@ export function downloadOperationalExport(
     "",
     "INTEGRITY NOTICE:",
     "All telemetry figures, delay-risk heuristics, and recommendations in this export",
-    "are TRL 4 simulated data. Validate against physical ERP/MES/IRoom records and",
+    "are sample data. Validate against physical ERP/MES/IRoom records and",
     "obtain supervisor sign-off before shop-floor execution.",
   ];
 
@@ -693,6 +744,32 @@ export function loginWithGoogle(
   );
 }
 
+export async function fetchGoogleAuthConfig(): Promise<{
+  enabled: boolean;
+  client_id: string | null;
+}> {
+  const envClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "").trim();
+  try {
+    const res = await fetch(`${API_BASE}/auth/google/config`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const clientId = (typeof data?.client_id === "string" ? data.client_id.trim() : "") || envClientId || null;
+      return {
+        enabled: Boolean(data?.enabled && clientId),
+        client_id: clientId,
+      };
+    }
+  } catch {
+    // Fall back to build-time client ID when backend is offline
+  }
+  return {
+    enabled: Boolean(envClientId),
+    client_id: envClientId || null,
+  };
+}
+
 export interface MlModelMetrics {
   n_tasks?: number;
   n_projects?: number;
@@ -793,7 +870,7 @@ export async function fetchLiveOverviewKpis(role: ManufacturingRole): Promise<Kp
             title: k.label,
             value: k.value,
             trend: k.change,
-            subtle: "Live backend",
+            subtle: "sample data",
             icon: "activity",
             status: k.status === "OK" ? "normal" : "warn",
           })
@@ -823,10 +900,22 @@ export async function fetchKnowledgeDocs(): Promise<KnowledgeDoc[]> {
       return rows.map((row) => {
         const local = extraByCode.get(row.doc_code.toUpperCase());
         if (local) {
+          const hasClause = local.sections.some(
+            (s) => s.clause.toLowerCase() === row.clause.toLowerCase()
+          );
+          const updatedSections = hasClause
+            ? local.sections.map((s) =>
+                s.clause.toLowerCase() === row.clause.toLowerCase()
+                  ? { clause: row.clause, content: row.excerpt }
+                  : s
+              )
+            : [{ clause: row.clause, content: row.excerpt }, ...local.sections];
           return {
             ...local,
             title: row.title || local.title,
             keywords: row.keywords.length > 0 ? row.keywords : local.keywords,
+            summary: row.excerpt || local.summary,
+            sections: updatedSections,
           };
         }
         return {
@@ -852,7 +941,7 @@ export async function ingestKnowledgeDoc(payload: {
   clause: string;
   keywords: string[];
   excerpt: string;
-}): Promise<{ success: boolean } | null> {
+}): Promise<{ success: boolean; total_documents?: number } | null> {
   try {
     const res = await fetch(`${API_BASE}/knowledge/ingest`, {
       method: "POST",

@@ -1,69 +1,186 @@
 @import "tailwindcss";
 
-:root {
-  --nav-bg: #0d131c;
-  --nav-surface: #151d2a;
-  --nav-hover: #1c2636;
-  --nav-text: #eef0f5;
-  --nav-muted: #7a8296;
-  --canvas-bg: #f6f7f9;
-  --panel-bg: #ffffff;
-  --panel-border: #e5e7eb;
-  --ink-primary: #111827;
-  --ink-secondary: #4b5565;
-  --ink-muted: #64748b;
-  --accent-blue: #2563eb;
-  --accent-blue-light: #eff6ff;
-  --accent-cyan: #0891b2;
-  --accent-cyan-light: #ecfeff;
-  --status-normal: #16a34a;
-  --status-normal-light: #f0fdf4;
-  --status-warn: #d97706;
-  --status-warn-light: #fffbeb;
-  --status-alert: #dc2626;
-  --status-alert-light: #fef2f2;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
-  --scrollbar-thumb: #64748b;
-  --scrollbar-thumb-hover: #475569;
-  --scrollbar-track: transparent;
+/*
+ * MDIP design tokens: the "inspection certificate" world.
+ * One token source for landing, login and dashboard. Use the generated
+ * utilities (bg-paper, text-ink, border-rule, bg-stamp, text-hold, ...);
+ * never hard-code hex values in components.
+ */
+@theme {
+  /* Ground & surfaces: cool security paper */
+  --color-paper: #f3f5f1;
+  --color-sheet: #fbfcfa;
+  --color-sheet-sunk: #eceff0;
+  --color-white: #fbfcfa;
+
+  /* Print ink */
+  --color-ink: #14181c;
+  --color-ink-2: #3b434b;
+  --color-ink-3: #5f6870;
+
+  /* Rules */
+  --color-rule: #d5ddd6;
+  --color-rule-soft: #e6ebe6;
+  --color-rule-strong: #aab6ac;
+  --color-guilloche: #c9d5cb;
+
+  /* The one accent: ink-pad stamp blue (primary action, stamp, links, selection) */
+  --color-stamp: #2b3fbf;
+  --color-stamp-deep: #1f2f95;
+  --color-stamp-wash: #e7eaf8;
+  --color-stamp-line: #c2c9ef;
+
+  /* Verdicts */
+  --color-pass: #2a7449;
+  --color-pass-wash: #e3f0e8;
+  --color-pass-line: #b8d8c5;
+  --color-hold: #c0302a;
+  --color-hold-wash: #f8e5e3;
+  --color-hold-line: #ecbfba;
+  --color-warn: #82500a;
+  --color-warn-wash: #f6edd9;
+  --color-warn-line: #e6d0a1;
+
+
+  /* Type */
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: var(--font-data), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font-sofia-condensed), "Arial Narrow", ui-sans-serif, sans-serif;
+
+  /* Certificate corners: crisp, never pill-soft (rounded-full stays for dots) */
+  --radius-sm: 2px;
+  --radius: 3px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
+
+  /* Depth: print has no glow; one offset shadow for floating layers only */
+  --shadow-sm: 0 1px 1px rgb(20 24 28 / 0.04);
+  --shadow: 0 1px 2px rgb(20 24 28 / 0.06);
+  --shadow-md: 0 2px 6px rgb(20 24 28 / 0.07);
+  --shadow-lg: 0 8px 20px rgb(20 24 28 / 0.1);
+  --shadow-xl: 0 12px 28px rgb(20 24 28 / 0.12);
+  --shadow-2xl: 0 18px 40px rgb(20 24 28 / 0.16);
 }
 
-* {
-  box-sizing: border-box;
-  -ms-overflow-style: none;
+@layer base {
+  html,
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--color-stamp);
+    color: var(--color-sheet);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 2px;
+  }
+
+  input,
+  textarea,
+  select {
+    caret-color: var(--color-stamp);
+  }
+
+  ::placeholder {
+    color: var(--color-ink-3);
+    opacity: 1;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-rule-strong);
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-3);
+  }
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--canvas-bg);
-  color: var(--ink-primary);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
-
-/* Monospace Utilities */
+/* Measured values: tabular, slashed zero. Use for numbers, codes and readings only. */
 .font-mono-numbers {
-  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Certificate frame: double rule around a sheet */
+@utility cert-frame {
+  border: 1px solid var(--color-rule-strong);
+  outline: 1px solid var(--color-rule-strong);
+  outline-offset: 4px;
+}
+
+/*
+ * Security-paper guilloche band for certificate header strips only (never behind body text).
+ * Authored SVG: four interlaced sine waves, phase-shifted, as engraved on banknotes and certificates.
+ */
+@utility guilloche {
+  background-color: var(--color-sheet);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='44' viewBox='0 0 96 44'%3E%3Cg fill='none' stroke='%23c9d5cb' stroke-width='0.9'%3E%3Cpath d='M0 22 C12 4 36 4 48 22 S84 40 96 22'/%3E%3Cpath d='M0 22 C12 40 36 40 48 22 S84 4 96 22'/%3E%3Cpath d='M0 14 C16 2 32 2 48 14 S80 26 96 14'/%3E%3Cpath d='M0 30 C16 42 32 42 48 30 S80 18 96 30'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 96px 44px;
+}
+
+/* The inspector's stamp: the page's one authored motion */
+@keyframes stamp-land {
+  0% {
+    opacity: 0.9;
+    transform: scale(1.06) rotate(-11deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.98) rotate(-8deg);
+  }
+  100% {
+    opacity: 0.94;
+    transform: scale(1) rotate(-9deg);
+  }
+}
+@utility animate-stamp {
+  animation: stamp-land 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp {
+    animation: none;
+    opacity: 0.94;
+    transform: rotate(-9deg);
+  }
 }

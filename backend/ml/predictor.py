@@ -203,6 +203,16 @@ def project_risk_drivers(tasks: List[Dict[str, Any]], total_slip: float, top_n: 
     return drivers
 
 
+def _validation_phrase(card: Dict[str, Any]) -> str:
+    """Quote the real held-out validation when it exists; it is the claim the product makes publicly."""
+    real = card.get("real_validation_metrics") or {}
+    if isinstance(real.get("roc_auc"), (int, float)):
+        projects = real.get("n_projects")
+        where = f"{projects} held-out real projects" if projects else "held-out real projects"
+        return f"ROC-AUC {real['roc_auc']:.2f} on {where}"
+    return f"test ROC-AUC {card['test_metrics']['roc_auc']:.2f}"
+
+
 def analyze_schedule(tasks: List[Dict[str, Any]], project_name: str, buffer_days: float = None) -> Dict[str, Any]:
     """Score CPM-processed tasks and build the /risks/prediction payload."""
     score_tasks(tasks)
@@ -245,7 +255,7 @@ def analyze_schedule(tasks: List[Dict[str, Any]], project_name: str, buffer_days
         "risk_drivers": drivers,
         "tasks": out_tasks,
         "methodology": (
-            f"CPM + XGBoost delay-risk model (test ROC-AUC {card['test_metrics']['roc_auc']:.2f}) "
+            f"CPM + XGBoost delay-risk model ({_validation_phrase(card)}) "
             f"+ Monte Carlo ({sim['simulations']:,} runs vs. {sim['project_buffer_days']:.1f}d project buffer)"
         ),
         "model": {

@@ -126,14 +126,14 @@ export const PerformanceChart: React.FC = () => {
       : "Daily Unplanned Downtime vs. 2.5h Tolerance (Last 7 Days)";
 
   return (
-    <div className="bg-white border border-[#e5e7eb] rounded-xl p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] relative">
+    <div className="bg-white border border-rule rounded-xl p-5 sm:p-6 relative">
       {/* Title & Metric Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-[15px] font-medium text-[#111827]">
+          <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
             {chartQuestion}
           </h2>
-          <p className="text-xs text-[#64748b] mt-0.5">
+          <p className="text-xs text-ink-3 mt-0.5">
             Simulated 7-day baseline telemetry · Hover across days to inspect variance
           </p>
         </div>
@@ -141,7 +141,7 @@ export const PerformanceChart: React.FC = () => {
         <select
           value={metric}
           onChange={(e) => setMetric(e.target.value as PerformanceMetricKey)}
-          className="h-8 text-xs font-medium px-3 border border-[#e5e7eb] rounded-lg bg-white text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 cursor-pointer self-start sm:self-auto"
+          className="h-8 text-xs font-medium px-3 border border-rule rounded-lg bg-white text-ink focus:outline-none focus:ring-2 focus:ring-stamp/20 cursor-pointer self-start sm:self-auto"
           aria-label="Select performance metric"
         >
           <option value="output">Units produced</option>
@@ -151,18 +151,18 @@ export const PerformanceChart: React.FC = () => {
       </div>
 
       {/* Legend & Unit */}
-      <div className="flex items-center justify-between text-xs text-[#64748b] mb-3">
+      <div className="flex items-center justify-between text-xs text-ink-3 mb-3">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#2563eb]" />
-            <span className="font-medium text-[#111827]">Actual</span>
+            <span className="w-2 h-2 rounded-full bg-stamp" />
+            <span className="font-medium text-ink">Actual</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#94a3b8]" />
+            <span className="w-2 h-2 rounded-full bg-ink-3" />
             <span>Target</span>
           </span>
         </div>
-        <span className="text-xs font-mono-numbers text-[#64748b]">
+        <span className="text-xs font-mono-numbers text-ink-3">
           {chartData.unit}
         </span>
       </div>
@@ -180,7 +180,7 @@ export const PerformanceChart: React.FC = () => {
           aria-label={chartQuestion}
         >
           {/* Horizontal Gridlines */}
-          <g stroke="#f1f5f9" strokeWidth="1">
+          <g stroke="var(--color-rule-soft)" strokeWidth="1">
             <line x1="42" y1="25" x2="585" y2="25" />
             <line x1="42" y1="65" x2="585" y2="65" />
             <line x1="42" y1="105" x2="585" y2="105" />
@@ -188,7 +188,7 @@ export const PerformanceChart: React.FC = () => {
           </g>
 
           {/* Y Axis Labels */}
-          <g fill="#64748b" fontSize="10" className="font-mono-numbers">
+          <g fill="var(--color-ink-3)" fontSize="11" className="font-mono-numbers">
             <text x="0" y="28">{chartData.labels[0]}</text>
             <text x="0" y="68">{chartData.labels[1]}</text>
             <text x="0" y="108">{chartData.labels[2]}</text>
@@ -196,13 +196,13 @@ export const PerformanceChart: React.FC = () => {
           </g>
 
           {/* Area Under Actual Curve */}
-          <path d={areaPoints} fill="#dbeafe" opacity="0.4" />
+          <path d={areaPoints} fill="var(--color-stamp-wash)" opacity="0.4" />
 
           {/* Target Dashed Line */}
           <polyline
             points={targetPoints}
             fill="none"
-            stroke="#94a3b8"
+            stroke="var(--color-ink-3)"
             strokeWidth="1.5"
             strokeDasharray="5 5"
           />
@@ -211,7 +211,7 @@ export const PerformanceChart: React.FC = () => {
           <polyline
             points={actualPoints}
             fill="none"
-            stroke="#2563eb"
+            stroke="var(--color-stamp)"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -225,7 +225,7 @@ export const PerformanceChart: React.FC = () => {
                 y1={20}
                 x2={actualCoords[hoverIndex].x}
                 y2={145}
-                stroke="#2563eb"
+                stroke="var(--color-stamp)"
                 strokeWidth="1.5"
                 strokeDasharray="3 3"
                 opacity="0.75"
@@ -234,23 +234,23 @@ export const PerformanceChart: React.FC = () => {
                 cx={targetCoords[hoverIndex].x}
                 cy={targetCoords[hoverIndex].y}
                 r="4"
-                fill="#94a3b8"
-                stroke="#ffffff"
+                fill="var(--color-ink-3)"
+                stroke="var(--color-sheet)"
                 strokeWidth="1.5"
               />
               <circle
                 cx={actualCoords[hoverIndex].x}
                 cy={actualCoords[hoverIndex].y}
                 r="5.5"
-                fill="#ffffff"
-                stroke="#2563eb"
+                fill="var(--color-sheet)"
+                stroke="var(--color-stamp)"
                 strokeWidth="2.5"
               />
             </g>
           )}
 
           {/* Data Points */}
-          <g fill="#2563eb">
+          <g fill="var(--color-stamp)">
             {actualCoords.map((pt, idx) => (
               <circle
                 key={idx}
@@ -289,34 +289,34 @@ export const PerformanceChart: React.FC = () => {
                 transform: "translate(-50%, -100%)",
               }}
             >
-              <div className="bg-[#0d131c] text-white p-3 rounded-xl shadow-sm border border-white/12 text-xs w-52">
+              <div className="bg-ink text-white p-3 rounded-xl shadow-sm border border-white/12 text-xs w-52">
                 <div className="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
-                  <span className="font-medium text-white text-[11px]">
+                  <span className="font-medium text-white text-xs">
                     {days[hoverIndex].full}
                   </span>
                   <span
-                    className={`font-mono-numbers text-[11px] font-medium px-1.5 py-0.5 rounded ${
+                    className={`font-mono-numbers text-xs font-medium px-1.5 py-0.5 rounded ${
                       details.isPositive
-                        ? "bg-[#059669]/30 text-[#34d399]"
-                        : "bg-[#dc2626]/30 text-[#f87171]"
+                        ? "bg-pass/30 text-pass-line"
+                        : "bg-hold/30 text-hold-line"
                     }`}
                   >
                     {details.deltaFormatted}
                   </span>
                 </div>
 
-                <div className="space-y-1 font-mono-numbers text-[11px]">
-                  <div className="flex items-center justify-between text-[#eef0f5]">
-                    <span className="text-[#8f98ab]">Actual:</span>
+                <div className="space-y-1 font-mono-numbers text-xs">
+                  <div className="flex items-center justify-between text-sheet">
+                    <span className="text-rule">Actual:</span>
                     <span className="font-medium text-white">{details.actualFormatted}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[#eef0f5]">
-                    <span className="text-[#8f98ab]">Target:</span>
+                  <div className="flex items-center justify-between text-sheet">
+                    <span className="text-rule">Target:</span>
                     <span>{details.targetFormatted}</span>
                   </div>
                 </div>
 
-                <div className="mt-2 pt-1.5 border-t border-white/10 text-[11px] text-[#93c5fd]">
+                <div className="mt-2 pt-1.5 border-t border-white/10 text-xs text-stamp-line">
                   {details.status}
                 </div>
               </div>
@@ -325,7 +325,7 @@ export const PerformanceChart: React.FC = () => {
         })()}
 
         {/* X Axis Labels */}
-        <div className="flex justify-between text-[11px] font-medium text-[#64748b] mt-1 px-6">
+        <div className="flex justify-between text-xs font-medium text-ink-3 mt-1 px-6">
           {days.map((day, idx) => (
             <button
               key={idx}
@@ -333,7 +333,7 @@ export const PerformanceChart: React.FC = () => {
               onMouseEnter={() => setHoverIndex(idx)}
               onFocus={() => setHoverIndex(idx)}
               className={`cursor-pointer transition-colors ${
-                hoverIndex === idx ? "text-[#2563eb] font-medium" : ""
+                hoverIndex === idx ? "text-stamp font-medium" : ""
               }`}
             >
               {day.short}

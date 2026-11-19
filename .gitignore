@@ -13,6 +13,7 @@ out/
 
 # Local tooling / OS artifacts
 .commandcode/
+.impeccable/
 .DS_Store
 Thumbs.db
 .env*

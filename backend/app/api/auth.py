@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import time
+import urllib.parse
 import urllib.request
 from typing import Dict, Optional
 
@@ -104,6 +105,12 @@ def _verify_google_id_token(id_token: str) -> Dict[str, str]:
 
     name = str(data.get("name") or "").strip() or email.split("@", 1)[0]
     return {"email": email, "name": name}
+
+
+@router.get("/api/v1/auth/google/config")
+def google_auth_config():
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+    return {"enabled": bool(client_id), "client_id": client_id or None}
 
 
 @router.post("/api/v1/auth/google")

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MaterialDeliveryItem,
   ProjectProgressItem,
@@ -31,8 +31,29 @@ import { ProgressTab } from "./tabs/ProgressTab";
 import { DrawingTab } from "./tabs/DrawingTab";
 import { QuotationTab } from "./tabs/QuotationTab";
 import { OperationsTab } from "./tabs/OperationsTab";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { usePageMotion } from "@/lib/usePageMotion";
 
 export type IRoomTab = "material" | "progress" | "drawing" | "quotation" | "operations";
+
+const HOW_IROOM_WORKS = [
+  {
+    step: "01",
+    title: "Pick a stream",
+    body: "Switch tabs to check materials, project progress, drawings, POs, or machine status.",
+  },
+  {
+    step: "02",
+    title: "Spot or log alerts",
+    body: "Red dots mark items needing attention. Search any table or click Add record to log a new entry.",
+  },
+  {
+    step: "03",
+    title: "Act with Copilot",
+    body: "Click a row action to open SOP-backed recommendations and route fixes for sign-off.",
+  },
+] as const;
 
 interface IRoomWorkspaceProps {
   initialTab?: IRoomTab;
@@ -62,6 +83,16 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   const [draftCode, setDraftCode] = useState("");
   const [draftParty, setDraftParty] = useState("");
   const [draftMetric, setDraftMetric] = useState("");
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const tabPanelRef = useRef<HTMLDivElement>(null);
+
+  usePageMotion(workspaceRef);
+  usePageMotion(tabPanelRef, {
+    triggerKey: activeTab,
+    selector: '[data-gsap="tab-panel"]',
+    y: 6,
+    skipInitial: true,
+  });
 
   useEffect(() => {
     let active = true;
@@ -227,97 +258,84 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Module Header */}
-      <div className="bg-[#0c1a2d] border border-[#1e3450] rounded-xl p-6 text-white">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
-              Unified IRoom Telemetry Hub
-            </h1>
-            <p className="text-xs sm:text-sm text-[#94a3b8] max-w-2xl mt-1">
-              Correlates 5 operational modules (Material, Progress, Drawing, PO, Operations) into role-based decision support with human approval gates.
-            </p>
-          </div>
+    <div ref={workspaceRef} className="space-y-6">
+      <PageHeader
+        title="IRoom streams"
+        description={`Material delivery, project progress, drawing approval, quotations and operations in one place, each feeding the decisions that need sign-off. ${
+          isApiLive ? "Live from the MDIP service." : "Sample data while the service is offline."
+        }`}
+      />
 
-          <div className="bg-[#081220] border border-[#234268] rounded-xl px-4 py-2 text-right self-start md:self-auto">
-            <div className="text-[11px] text-[#93c5fd] font-medium">
-              IRoom Connector Status
-            </div>
-            <div className="text-xs sm:text-sm font-medium flex items-center gap-2 justify-end mt-0.5">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isApiLive ? "bg-[#10b981]" : "bg-[#f59e0b]"
-                }`}
-              />
-              <span className={isApiLive ? "text-[#34d399]" : "text-[#fbbf24]"}>
-                {isApiLive ? "FastAPI PoC Connected" : "Simulated Pilot Dataset"}
-              </span>
-            </div>
-          </div>
+      <section
+        data-gsap="reveal"
+        aria-labelledby="iroom-how-it-works-heading"
+        className="rounded-xl border border-rule bg-sheet"
+      >
+        <div className="border-b border-rule px-4 py-2">
+          <h2 id="iroom-how-it-works-heading" className="text-xs font-semibold text-ink">
+            How IRoom works
+          </h2>
         </div>
+        <ol className="grid grid-cols-1 divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0">
+          {HOW_IROOM_WORKS.map((item) => (
+            <li key={item.step} className="px-4 py-3">
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono-numbers text-xs font-medium text-stamp">{item.step}</span>
+                <span className="text-xs font-semibold text-ink">{item.title}</span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-ink-2">{item.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-        {/* 5-Stream Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-5 pt-5 border-t border-[#1e3450]">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isSelected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${
-                  isSelected
-                    ? "bg-[#2563eb] text-white"
-                    : "bg-[#142842] hover:bg-[#1e395c] text-[#cad8e8]"
-                }`}
-              >
-                <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-[#60a5fa]"}`} />
-                <span className="truncate flex-1">{tab.label}</span>
-                {tab.alert && (
-                  <span className="w-2 h-2 rounded-full bg-[#f87171] shrink-0" title="Attention needed" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+      <div data-gsap="reveal" role="tablist" aria-label="IRoom streams" className="flex flex-wrap border-b border-rule-strong">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isSelected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              type="button"
+              aria-selected={isSelected}
+              onClick={() => setActiveTab(tab.id)}
+              className={`-mb-px flex cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                isSelected ? "border-stamp text-ink" : "border-transparent text-ink-2 hover:text-ink"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" strokeWidth={1.6} />
+              {tab.label}
+              {tab.alert && <span className="h-2 w-2 shrink-0 rounded-full bg-hold" title="Needs attention" aria-label="needs attention" />}
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Content Card */}
-      <div className="bg-white border border-[#e2eaf3] rounded-xl p-5 sm:p-6">
+      <div data-gsap="reveal" className="bg-white border border-rule rounded-xl p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder={`Search ${activeTab} records, codes, or suppliers`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs pl-9 pr-3 py-2 border border-[#cbd5e1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563eb] bg-[#f8fafc]"
+              className="w-full text-xs pl-9 pr-3 py-2 border border-rule-strong rounded-xl focus:outline-none focus:ring-2 focus:ring-stamp bg-paper"
             />
           </div>
 
-          <div className="flex items-center gap-2.5 text-xs text-[#64748b] font-medium">
-            <span>Active stream:</span>
-            <strong className="text-[#101e30] capitalize bg-[#f1f5f9] px-2.5 py-1 rounded-md font-mono-numbers">
-              {activeTab}
-            </strong>
-            <button
-              type="button"
-              onClick={() => setShowAddForm((prev) => !prev)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#0c1a2d] hover:bg-[#1a3354] text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-            >
-              {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-              <span>{showAddForm ? "Cancel" : "Add Record"}</span>
-            </button>
-          </div>
+          <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
+            {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {showAddForm ? "Cancel" : "Add record"}
+          </Button>
         </div>
 
         {showAddForm && (
           <form
             onSubmit={handleAddRecord}
-            className="mb-5 p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2eaf3] grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-center"
+            className="mb-5 p-3.5 rounded-xl bg-paper border border-rule grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-center"
           >
             <input
               type="text"
@@ -335,7 +353,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                   ? "PO Number (e.g. PO-2026-991)"
                   : "Work Center (e.g. CNC Cell B)"
               }
-              className="px-3 py-2 bg-white border border-[#cbd5e1] rounded-lg text-xs"
+              className="px-3 py-2 bg-white border border-rule-strong rounded-lg text-xs"
             />
             <input
               type="text"
@@ -350,7 +368,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                   ? "Machine ID"
                   : "Project / Vendor name"
               }
-              className="px-3 py-2 bg-white border border-[#cbd5e1] rounded-lg text-xs"
+              className="px-3 py-2 bg-white border border-rule-strong rounded-lg text-xs"
             />
             <input
               type="text"
@@ -367,68 +385,72 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                   ? "Value IDR (e.g. Rp 55.000.000)"
                   : "OEE % (e.g. 91.5)"
               }
-              className="px-3 py-2 bg-white border border-[#cbd5e1] rounded-lg text-xs"
+              className="px-3 py-2 bg-white border border-rule-strong rounded-lg text-xs"
             />
             <button
               type="submit"
-              className="px-3 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+              className="px-3 py-2 bg-stamp hover:bg-stamp-deep text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
             >
               Save to Stream
             </button>
           </form>
         )}
 
-        {/* 1. Material Delivery */}
-        {activeTab === "material" && (
-          <MaterialTab
-            searchQuery={searchQuery}
-            handleInspectWithAI={handleInspectWithAI}
-            materials={materials}
-          />
-        )}
+        <div ref={tabPanelRef}>
+          <div data-gsap="tab-panel">
+            {/* 1. Material Delivery */}
+            {activeTab === "material" && (
+              <MaterialTab
+                searchQuery={searchQuery}
+                handleInspectWithAI={handleInspectWithAI}
+                materials={materials}
+              />
+            )}
 
-        {/* 2. Project Progress */}
-        {activeTab === "progress" && (
-          <ProgressTab
-            searchQuery={searchQuery}
-            handleInspectWithAI={handleInspectWithAI}
-            projects={projects}
-          />
-        )}
+            {/* 2. Project Progress */}
+            {activeTab === "progress" && (
+              <ProgressTab
+                searchQuery={searchQuery}
+                handleInspectWithAI={handleInspectWithAI}
+                projects={projects}
+              />
+            )}
 
-        {/* 3. Drawing Approval + Dynamic CAD Inspector */}
-        {activeTab === "drawing" && (
-          <DrawingTab
-            searchQuery={searchQuery}
-            handleInspectWithAI={handleInspectWithAI}
-            drawings={drawings}
-            selectedDrawing={selectedDrawing}
-            setSelectedDwgId={setSelectedDwgId}
-            activeRevision={activeRevision}
-            setActiveRevision={setActiveRevision}
-            showGdtOverlay={showGdtOverlay}
-            setShowGdtOverlay={setShowGdtOverlay}
-            handleApproveSelectedDrawing={handleApproveSelectedDrawing}
-          />
-        )}
+            {/* 3. Drawing Approval + Dynamic CAD Inspector */}
+            {activeTab === "drawing" && (
+              <DrawingTab
+                searchQuery={searchQuery}
+                handleInspectWithAI={handleInspectWithAI}
+                drawings={drawings}
+                selectedDrawing={selectedDrawing}
+                setSelectedDwgId={setSelectedDwgId}
+                activeRevision={activeRevision}
+                setActiveRevision={setActiveRevision}
+                showGdtOverlay={showGdtOverlay}
+                setShowGdtOverlay={setShowGdtOverlay}
+                handleApproveSelectedDrawing={handleApproveSelectedDrawing}
+              />
+            )}
 
-        {/* 4. Quotation & PO */}
-        {activeTab === "quotation" && (
-          <QuotationTab
-            searchQuery={searchQuery}
-            handleInspectWithAI={handleInspectWithAI}
-            quotations={quotations}
-          />
-        )}
+            {/* 4. Quotation & PO */}
+            {activeTab === "quotation" && (
+              <QuotationTab
+                searchQuery={searchQuery}
+                handleInspectWithAI={handleInspectWithAI}
+                quotations={quotations}
+              />
+            )}
 
-        {/* 5. Operation Tracker */}
-        {activeTab === "operations" && (
-          <OperationsTab
-            searchQuery={searchQuery}
-            handleInspectWithAI={handleInspectWithAI}
-            operations={operations}
-          />
-        )}
+            {/* 5. Operation Tracker */}
+            {activeTab === "operations" && (
+              <OperationsTab
+                searchQuery={searchQuery}
+                handleInspectWithAI={handleInspectWithAI}
+                operations={operations}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

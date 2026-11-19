@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { ChatMessage, ManufacturingRole } from "@/types";
-import { CitationBadge } from "./CitationBadge";
-import { MessageSquareText, X, Send, Bot, User, Loader2 } from "lucide-react";
+import React, { useEffect } from "react";
+import { ChatMessage, CopilotStatus, ManufacturingRole } from "@/types";
+import { CopilotThread } from "./CopilotThread";
 
 interface ChatDrawerProps {
   isOpen: boolean;
@@ -11,8 +10,11 @@ interface ChatDrawerProps {
   activeRole: ManufacturingRole;
   messages: ChatMessage[];
   isLoading: boolean;
+  isApiLive: boolean;
+  copilotStatus: CopilotStatus;
   onSendQuery: (query: string) => Promise<void>;
-  onReviewFirstPending: () => void;
+  onClearChat: () => void;
+  onReviewPendingAction?: () => void;
 }
 
 export const ChatDrawer: React.FC<ChatDrawerProps> = ({
@@ -21,197 +23,49 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   activeRole,
   messages,
   isLoading,
+  isApiLive,
+  copilotStatus,
   onSendQuery,
-  onReviewFirstPending,
+  onClearChat,
+  onReviewPendingAction,
 }) => {
-  const [inputValue, setInputValue] = useState("");
-  const logEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const suggestions = [
-    "What should I address first today?",
-    "Where is the SOP for press changeover?",
-    "Why is Cell 02 assembly lagging?",
-    "How to mitigate Alloy M-204 shortage?",
-  ];
-
   useEffect(() => {
     if (!isOpen) return;
-    const timer = setTimeout(() => inputRef.current?.focus(), 100);
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleEsc);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener("keydown", handleEsc);
     };
   }, [isOpen, onClose]);
 
-  useEffect(() => {
-    if (isOpen) {
-      logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, isLoading, isOpen]);
-
   if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = inputValue.trim();
-    if (!query || isLoading) return;
-    setInputValue("");
-    await onSendQuery(query);
-  };
 
   return (
     <div
-      className="fixed inset-0 bg-[#0c1a2d]/65 backdrop-blur-xs z-50 flex justify-end"
+      className="fixed inset-0 bg-ink/35 z-50 flex justify-end"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="Manufacturing AI Copilot Drawer"
+      aria-label="MDIP Copilot Drawer"
     >
-      <div className="bg-white w-full max-w-lg h-full shadow-2xl border-l border-[#e2eaf3] flex flex-col justify-between overflow-hidden">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[#e2eaf3] flex items-center justify-between bg-[#f8fafc]">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#0c1a2d] flex items-center justify-center text-white">
-              <MessageSquareText className="w-5 h-5 text-[#60a5fa]" />
-            </div>
-            <div>
-              <h2 className="text-[15px] font-medium text-[#111827]">
-                Manufacturing AI Copilot
-              </h2>
-              <p className="text-[11px] text-[#64748b]">
-                Grounded SOP Retrieval · Role: <strong>{activeRole}</strong>
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-[#64748b] hover:text-[#101e30] hover:bg-[#e2e8f0] rounded-lg transition-colors cursor-pointer"
-            aria-label="Close Copilot Drawer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Message Log */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-[#f8fafc]/50">
-          {messages.map((msg) => {
-            const isCopilot = msg.sender === "copilot";
-            return (
-              <div
-                key={msg.id}
-                className={`flex gap-3 text-xs sm:text-sm ${
-                  isCopilot ? "items-start" : "items-start flex-row-reverse"
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white ${
-                    isCopilot ? "bg-[#2563eb]" : "bg-[#0c1a2d]"
-                  }`}
-                >
-                  {isCopilot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                </div>
-
-                <div
-                  className={`max-w-[82%] p-3.5 rounded-2xl leading-relaxed ${
-                    isCopilot
-                      ? "bg-white text-[#101e30] border border-[#e2eaf3] rounded-tl-sm"
-                      : "bg-[#2563eb] text-white rounded-tr-sm"
-                  }`}
-                >
-                  <p className="whitespace-pre-line text-xs sm:text-[13px]">{msg.text}</p>
-
-                  {msg.citations && msg.citations.length > 0 && (
-                    <div className="mt-3 pt-2.5 border-t border-[#f1f5f9] space-y-2">
-                      <div className="flex flex-wrap gap-1.5 items-center">
-                        <span className="text-[10px] text-[#64748b] font-semibold mr-1">
-                          Sources:
-                        </span>
-                        {msg.citations.map((cite, i) => (
-                          <CitationBadge key={`${cite.doc_code}-${i}`} citation={cite} />
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1 bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2.5 py-1.5">
-                        <span className="text-[11px] text-[#16a34a] font-medium">
-                          Grounded Verification Active
-                        </span>
-                        <button
-                          type="button"
-                          onClick={onReviewFirstPending}
-                          className="px-2.5 py-1 bg-[#0c1a2d] hover:bg-[#1a3354] text-white rounded-md text-[11px] font-semibold transition-colors cursor-pointer"
-                        >
-                          Review action →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    className={`text-[10px] mt-1.5 text-right ${
-                      isCopilot ? "text-[#94a3b8]" : "text-blue-100"
-                    }`}
-                  >
-                    {msg.timestamp}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {isLoading && (
-            <div className="flex items-center gap-2 text-xs text-[#64748b] p-3 bg-white rounded-xl border border-[#e2eaf3] w-fit">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2563eb]" />
-              <span>Retrieving grounded SOP clauses...</span>
-            </div>
-          )}
-
-          <div ref={logEndRef} />
-        </div>
-
-        {/* Suggestion Pills */}
-        <div className="px-4 py-2 bg-white border-t border-[#e2eaf3] overflow-x-auto flex gap-1.5">
-          {suggestions.map((sug) => (
-            <button
-              key={sug}
-              type="button"
-              onClick={() => void onSendQuery(sug)}
-              className="px-2.5 py-1 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0"
-            >
-              {sug}
-            </button>
-          ))}
-        </div>
-
-        {/* Input Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="p-3 bg-white border-t border-[#e2eaf3] flex items-center gap-2"
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about WBS slippage, SOP clauses, or machine constraints"
-            className="flex-1 px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8fafc] border border-[#cbd5e1] focus:border-[#2563eb] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
-          />
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isLoading}
-            className="p-2.5 bg-[#0c1a2d] hover:bg-[#1a3354] disabled:opacity-50 text-white rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
-            aria-label="Send message"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
+      <div className="bg-sheet w-full max-w-lg h-full shadow-2xl border-l border-rule-strong flex flex-col overflow-hidden">
+        <CopilotThread
+          compact
+          headerTitle="MDIP Copilot"
+          onClose={onClose}
+          activeRole={activeRole}
+          messages={messages}
+          isLoading={isLoading}
+          isApiLive={isApiLive}
+          copilotStatus={copilotStatus}
+          onSendQuery={onSendQuery}
+          onClearChat={onClearChat}
+          onReviewPendingAction={onReviewPendingAction}
+        />
       </div>
     </div>
   );

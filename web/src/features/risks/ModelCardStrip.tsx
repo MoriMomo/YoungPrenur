@@ -12,64 +12,53 @@ function fmtAuc(v: number | null | undefined): string {
   return typeof v === "number" ? v.toFixed(2) : "n/a";
 }
 
-export const ModelCardStrip: React.FC<ModelCardStripProps> = ({ card, compact = false }) => {
+/**
+ * The model's validation, led by the one claim the product makes publicly
+ * (ROC-AUC on held-out real projects vs rule-based scoring), with the breakdown beneath.
+ */
+export const ModelCardStrip: React.FC<ModelCardStripProps> = ({ card }) => {
   const real = card.real_validation_metrics;
   const dslib = real?.by_source?.dslib;
   const cnc = real?.by_source?.cnc;
+  const auc = real?.roc_auc ?? card.synthetic_test_metrics.roc_auc;
+  const baseline = real?.baseline_rule_roc_auc ?? card.synthetic_test_metrics.baseline_rule_roc_auc;
+  const projects = real?.n_projects ?? (dslib?.n_projects ?? 0) + (cnc?.n_projects ?? 0);
 
-  const stats = [
+  const breakdown = [
+    { label: "Project schedules (DSLIB)", value: fmtAuc(dslib?.roc_auc), meta: `${dslib?.n_projects ?? 15} projects` },
+    { label: "CNC production orders (4TU)", value: fmtAuc(cnc?.roc_auc), meta: `${cnc?.n_projects ?? 36} orders` },
     {
-      label: "Real Held-Out AUC",
-      value: fmtAuc(real?.roc_auc ?? card.synthetic_test_metrics.roc_auc),
-      meta: `vs ${fmtAuc(real?.baseline_rule_roc_auc ?? card.synthetic_test_metrics.baseline_rule_roc_auc)} rule`,
+      label: "Average slip error",
+      value: `${(real?.slip_mae_days ?? card.synthetic_test_metrics.slip_mae_days).toFixed(2)} d`,
+      meta: "on late tasks",
     },
-    {
-      label: "DSLIB DAGs",
-      value: fmtAuc(dslib?.roc_auc),
-      meta: `${dslib?.n_projects ?? 15} held-out projects`,
-    },
-    {
-      label: "4TU CNC Orders",
-      value: fmtAuc(cnc?.roc_auc),
-      meta: `${cnc?.n_projects ?? 36} held-out orders`,
-    },
-    {
-      label: "Slip MAE",
-      value: `${(real?.slip_mae_days ?? card.synthetic_test_metrics.slip_mae_days).toFixed(2)}d`,
-      meta: "XGBoost hurdle",
-    },
-    {
-      label: "Real Corpus",
-      value: card.n_real_tasks.toLocaleString(),
-      meta: `${card.n_projects.toLocaleString()} total projects`,
-    },
+    { label: "Real training tasks", value: card.n_real_tasks.toLocaleString(), meta: "plus synthetic schedules" },
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-[#e5e7eb] px-5 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#f1f5f9]">
-        <div className="flex items-center gap-2 text-xs font-medium text-[#111827]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
-          <span>XGBoost Hurdle Validation Readout</span>
-        </div>
-        <span className="text-xs font-mono-numbers text-[#64748b]">
-          {real ? `${(real.n_tasks ?? 0).toLocaleString()} held-out real tasks` : "Synthetic baseline"}
-        </span>
+    <section aria-label="Model validation" className="border border-rule-strong bg-sheet">
+      <div className="border-b border-rule-strong px-5 py-4">
+        <p className="text-xs text-ink-2">{real ? "Validated on held-out real projects" : "Validated on synthetic test data"}</p>
+        <p className="mt-1.5 whitespace-nowrap font-mono-numbers text-[30px] font-medium leading-none text-ink">
+          {fmtAuc(auc)} <span className="text-sm text-ink-2">ROC-AUC</span>
+        </p>
+        <p className="mt-2 text-xs text-ink-2">
+          {real ? `${projects} real projects the model never saw` : "Synthetic test split"} · rule-based scoring:{" "}
+          <span className="whitespace-nowrap font-mono-numbers text-ink">{fmtAuc(baseline)}</span>
+        </p>
       </div>
-
-      <div className={`grid grid-cols-2 ${compact ? "sm:grid-cols-5" : "sm:grid-cols-3 lg:grid-cols-5"} gap-4 pt-3`}>
-        {stats.map((item) => (
-          <div key={item.label} className="min-w-0">
-            <div className="text-xs text-[#64748b] truncate">{item.label}</div>
-            <div className="text-lg font-medium text-[#111827] font-mono-numbers mt-0.5">
-              {item.value}
-            </div>
-            <div className="text-xs font-mono-numbers text-[#64748b] truncate">
-              {item.meta}
-            </div>
+      <dl className="grid grid-cols-2">
+        {breakdown.map((item, idx) => (
+          <div
+            key={item.label}
+            className={`px-4 py-4 ${idx < 2 ? "border-b border-rule" : ""} ${idx % 2 === 0 ? "border-r border-rule" : ""}`}
+          >
+            <dt className="text-xs text-ink-2">{item.label}</dt>
+            <dd className="mt-1 whitespace-nowrap font-mono-numbers text-lg font-medium text-ink">{item.value}</dd>
+            <dd className="text-xs text-ink-3">{item.meta}</dd>
           </div>
         ))}
-      </div>
-    </div>
+      </dl>
+    </section>
   );
 };

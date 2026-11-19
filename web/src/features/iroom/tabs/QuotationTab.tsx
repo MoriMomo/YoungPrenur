@@ -30,31 +30,31 @@ export function QuotationTab({ searchQuery, handleInspectWithAI, quotations }: Q
                 q.vendorName.toLowerCase().includes(searchQuery.toLowerCase())
             )
             .map((po) => (
-              <tr key={po.id} className="hover:bg-[#f8fafc] transition-colors">
+              <tr key={po.id} className="hover:bg-paper transition-colors">
                 <td className="py-3 px-3">
-                  <div className="font-medium text-[#111827] flex items-center gap-1.5">
+                  <div className="font-medium text-ink flex items-center gap-1.5">
                     <span className="font-mono-numbers">{po.poNumber}</span>
                     {po.expedited && (
-                      <span className="px-1.5 py-0.5 bg-[#fffbeb] text-[#b45309] font-medium text-[10px] rounded">
+                      <span className="px-1.5 py-0.5 bg-warn-wash text-warn font-medium text-xs rounded">
                         Expedite
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-[#64748b] font-mono-numbers">
+                  <div className="text-xs text-ink-3 font-mono-numbers">
                     Ref: {po.quotationRef}
                   </div>
                 </td>
-                <td className="py-3 px-3 text-[#374151] font-medium">{po.vendorName}</td>
-                <td className="py-3 px-3 font-mono-numbers text-[#111827] font-medium">
+                <td className="py-3 px-3 text-ink-2 font-medium">{po.vendorName}</td>
+                <td className="py-3 px-3 font-mono-numbers text-ink font-medium">
                   {po.totalValueIdr}
                 </td>
-                <td className="py-3 px-3 text-[#64748b]">{po.paymentTerm}</td>
+                <td className="py-3 px-3 text-ink-3">{po.paymentTerm}</td>
                 <td className="py-3 px-3">
                   <span
-                    className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
+                    className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${
                       po.status === "PO Issued"
-                        ? "bg-[#e6f7f0] text-[#0d9263] border-[#a7f3d0]"
-                        : "bg-[#fef3c7] text-[#b45309] border-[#fde68a]"
+                        ? "bg-pass-wash text-pass border-pass-line"
+                        : "bg-warn-wash text-warn border-warn-line"
                     }`}
                   >
                     {po.status}
@@ -69,9 +69,9 @@ export function QuotationTab({ searchQuery, handleInspectWithAI, quotations }: Q
                         `Vendor ${po.vendorName}, value ${po.totalValueIdr}, term ${po.paymentTerm}`
                       )
                     }
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#0c1a2d] hover:bg-[#1a3354] text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    <MessageSquareText className="w-3 h-3 text-[#60a5fa]" />
+                    <MessageSquareText className="w-3 h-3 text-stamp" />
                     <span>Assess PO</span>
                   </button>
                 </td>

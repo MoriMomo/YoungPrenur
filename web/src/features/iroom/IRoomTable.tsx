@@ -11,10 +11,10 @@ export function IRoomTable({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-xs">
+    <div className="relative overflow-x-auto">
+      <table className="w-full min-w-[760px] text-left text-xs">
         <thead>
-          <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
+          <tr className="border-b border-rule text-ink-3 text-xs font-semibold">
             {headers.map((header, idx) => (
               <th
                 key={header}
@@ -25,7 +25,7 @@ export function IRoomTable({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#f1f5f9]">{children}</tbody>
+        <tbody className="divide-y divide-rule-soft">{children}</tbody>
       </table>
     </div>
   );

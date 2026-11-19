@@ -16,9 +16,9 @@ export const MdipLogo: React.FC<MdipLogoProps> = ({
   const gradId = useId();
   const strokePaint =
     variant === "light"
-      ? "#FFFFFF"
+      ? "var(--color-sheet)"
       : variant === "dark"
-      ? "#0A0A0A"
+      ? "var(--color-ink)"
       : `url(#${gradId})`;
 
   return (
@@ -41,9 +41,9 @@ export const MdipLogo: React.FC<MdipLogoProps> = ({
             y2="8"
             gradientUnits="userSpaceOnUse"
           >
-            <stop offset="0%" stopColor="#0F203D" />
-            <stop offset="52%" stopColor="#0D556E" />
-            <stop offset="100%" stopColor="#15A87D" />
+            <stop offset="0%" stopColor="var(--color-sheet-sunk)" />
+            <stop offset="52%" stopColor="var(--color-stamp)" />
+            <stop offset="100%" stopColor="var(--color-pass)" />
           </linearGradient>
         </defs>
       )}

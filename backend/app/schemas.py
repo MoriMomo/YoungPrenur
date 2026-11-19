@@ -19,12 +19,18 @@ class TaskItem(BaseModel):
     drawing_revisions: Optional[int] = 0
 
 
+class CopilotHistoryItem(BaseModel):
+    role: str
+    text: str
+
+
 class CopilotQuery(BaseModel):
     question: Optional[str] = None
     message: Optional[str] = None
     role: Optional[str] = "Operations Manager"
     active_role: Optional[str] = None
     context_module: Optional[str] = None
+    history: List[CopilotHistoryItem] = []
 
 
 class FlagActionPayload(BaseModel):

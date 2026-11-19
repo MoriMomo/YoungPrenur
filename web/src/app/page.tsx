@@ -1,441 +1,425 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import React, { useRef, useState } from "react";
+import { FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
+import { uploadScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
-import { ArrowRight, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import gsap from "gsap";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Verdict, VerdictTone } from "@/components/ui/Verdict";
+import { Stamp } from "@/components/ui/Stamp";
+import { usePageMotion } from "@/lib/usePageMotion";
 
-const HERO_WBS_PREVIEW = [
+type InspectionRow = {
+  code: string;
+  task: string;
+  planned: number;
+  forecast: number;
+  float: number | null;
+  risk: number | null;
+  driver?: string;
+  done?: boolean;
+};
+
+/** Illustrative rows for the sample project, shown until a real schedule is inspected. */
+const SAMPLE_ROWS: InspectionRow[] = [
+  { code: "WBS-1.1", task: "Raw ingot delivery and intake", planned: 4, forecast: 4, float: 0, risk: null, done: true },
+  { code: "WBS-1.2", task: "CNC 5-axis rough machining", planned: 6, forecast: 8, float: 0, risk: 0.44, driver: "Forecast overrun vs. plan" },
+  { code: "WBS-1.3", task: "Heat treatment and stress relieving", planned: 3, forecast: 3, float: 0, risk: 0.8, driver: "Upstream predecessor slippage" },
+  { code: "WBS-1.4", task: "Final stamping and tooling FAT", planned: 5, forecast: 7, float: 0, risk: 0.8, driver: "Forecast overrun vs. plan" },
+  { code: "WBS-1.5", task: "CMM quality inspection", planned: 2, forecast: 2, float: 0, risk: 0.34, driver: "Thin schedule float buffer" },
+  { code: "WBS-1.6", task: "Packaging and logistics", planned: 1, forecast: 1, float: 0, risk: 0.33, driver: "Upstream predecessor slippage" },
+];
+
+const METHOD = [
   {
-    code: "WBS-1.2",
-    task: "Raw Alloy M-204 Air Freight",
-    leftPct: 12,
-    widthPct: 32,
-    barColor: "bg-[#e5484d]",
-    delta: "+2d slip",
-    deltaColor: "text-[#e5484d]",
+    title: "Ingest the schedule",
+    body: "CSV or Excel exports with planned and forecast durations. Column names in English or Indonesian are recognised and normalised into WBS work packages.",
   },
   {
-    code: "WBS-2.1",
-    task: "CNC 5-Axis Milling Cell 01",
-    leftPct: 30,
-    widthPct: 44,
-    barColor: "bg-[#15a87d]",
-    delta: "On track",
-    deltaColor: "text-[#a3a9b8]",
+    title: "Trace the critical path",
+    body: "A forward and backward pass computes start days, float and the critical path, and carries slip from late predecessors to the tasks that depend on them.",
   },
   {
-    code: "WBS-3.1",
-    task: "Cell 02 Sub-Assembly Integration",
-    leftPct: 54,
-    widthPct: 36,
-    barColor: "bg-[#f59e0b]",
-    delta: "+2d slip",
-    deltaColor: "text-[#f59e0b]",
+    title: "Score and explain",
+    body: "An XGBoost model scores each task's chance of finishing beyond its float and names the drivers behind it. 2,000 Monte Carlo runs turn task risk into project risk.",
+  },
+  {
+    title: "Sign off",
+    body: "Recommended actions cite the SOP clause they rely on. A named supervisor authorizes or overrides each one, and every decision lands in the audit log.",
   },
 ];
 
-const HERO_DECISIONS = [
-  {
-    dot: "bg-[#e5484d]",
-    title: "Prevent M-204 Shortage",
-    meta: "Supply Chain · SOP-SCM-12",
-    impact: "Rp 480M protected",
-  },
-  {
-    dot: "bg-[#f59e0b]",
-    title: "Rebalance Cell 02 Schedule",
-    meta: "Production · SOP-LINE2-OPT",
-    impact: "+120 units/shift",
-  },
-  {
-    dot: "bg-[#15a87d]",
-    title: "Inspect Press P-07 Vibration",
-    meta: "Maintenance · SOP-PRS-04",
-    impact: "Seal check pre-cycle",
-  },
-];
-
-function getStatusDot(status: "normal" | "warn" | "alert") {
-  if (status === "alert") return "bg-[#dc2626]";
-  if (status === "warn") return "bg-[#d97706]";
-  return "bg-[#16a34a]";
+function RiskCell({ row, tone }: { row: InspectionRow; tone: VerdictTone }) {
+  if (row.risk === null) {
+    return <span className="text-xs text-ink-3">{row.done ? "Finished" : "Not scored"}</span>;
+  }
+  const pct = Math.round(row.risk * 100);
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-24 bg-sheet-sunk" aria-hidden="true">
+        <div
+          className={`h-full ${tone === "hold" ? "bg-hold" : tone === "warn" ? "bg-warn" : "bg-pass"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="font-mono-numbers text-xs text-ink">{pct}%</span>
+    </div>
+  );
 }
 
-function getTrendColor(status: "normal" | "warn" | "alert") {
-  if (status === "alert") return "text-[#dc2626]";
-  if (status === "warn") return "text-[#d97706]";
-  return "text-[#16a34a]";
+function verdictFor(row: InspectionRow): { tone: VerdictTone; label: string } {
+  if (row.done) return { tone: "neutral", label: "Complete" };
+  if (row.risk === null) return { tone: "neutral", label: "Not scored" };
+  if (row.risk >= 0.6) return { tone: "hold", label: "Hold" };
+  if (row.risk >= 0.35) return { tone: "warn", label: "Watch" };
+  return { tone: "pass", label: "Pass" };
 }
 
 export default function LandingPage() {
-  const [activeRoleTab, setActiveRoleTab] = useState<ManufacturingRole>("Operations Manager");
-  const heroRef = useRef<HTMLDivElement>(null);
+  const [rows, setRows] = useState<InspectionRow[]>(SAMPLE_ROWS);
+  const [subject, setSubject] = useState("Sample project · precision stamping die set");
+  const [isSample, setIsSample] = useState(true);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [stampKey, setStampKey] = useState(0);
+  const [activeRole, setActiveRole] = useState<ManufacturingRole>("Operations Manager");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const rolePanelRef = useRef<HTMLDivElement>(null);
+  const role = ROLE_PRESETS[activeRole];
 
-  useEffect(() => {
-    if (heroRef.current) {
-      gsap.fromTo(
-        heroRef.current,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
+  usePageMotion(pageRef, { scroll: true });
+  usePageMotion(rolePanelRef, {
+    triggerKey: activeRole,
+    selector: '[data-gsap="role-panel"]',
+    y: 6,
+    skipInitial: true,
+  });
+
+  const inspect = async (blob: Blob, name: string) => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await uploadScheduleFile(blob, name);
+      if (!result) {
+        setNotice("The inspection service is not reachable from this site, so the sample certificate stays in place.");
+        return;
+      }
+      setRows(
+        result.tasks.map((t) => ({
+          code: t.code,
+          task: t.task,
+          planned: t.plannedDays,
+          forecast: t.actualDays,
+          float: typeof t.floatDays === "number" ? t.floatDays : null,
+          risk: /complete|done|selesai/i.test(t.status) ? null : t.delayRisk,
+          driver: t.drivers?.[0],
+          done: /complete|done|selesai/i.test(t.status),
+        }))
       );
+      setSubject(name.replace(/\.(csv|xlsx|xls)$/i, ""));
+      setIsSample(false);
+      if (typeof result.overall_delay_probability === "number") {
+        const p50 = result.estimated_project_slippage_days ?? 0;
+        setSummary(
+          `${result.overall_delay_probability.toFixed(1)}% chance the project misses its due date · median slip +${p50.toFixed(1)} days`
+        );
+      }
+      setStampKey((k) => k + 1);
+    } catch (err) {
+      setNotice(err instanceof ScheduleUploadError ? err.message : `Could not inspect ${name}.`);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
-  }, []);
+  };
 
-  const roleData = ROLE_PRESETS[activeRoleTab];
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void inspect(file, file.name);
+  };
+
+  const useSample = async () => {
+    const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const res = await fetch(`${base}/sample_master_schedule_wbs.csv`);
+    if (!res.ok) {
+      setNotice("The sample schedule could not be loaded.");
+      return;
+    }
+    await inspect(new Blob([await res.text()], { type: "text/csv" }), "sample_master_schedule_wbs.csv");
+  };
+
+  const hold = rows.filter((r) => verdictFor(r).tone === "hold").length;
 
   return (
-    <div className="min-h-screen bg-white text-[#111827] selection:bg-[#0d556e] selection:text-white flex flex-col justify-between">
-      <Navbar />
+    <div ref={pageRef} className="min-h-screen bg-paper px-3 py-4 sm:px-6 sm:py-8">
+      <div className="cert-frame mx-auto max-w-[1240px] bg-sheet">
+        <Navbar />
 
-      {/* Asymmetric Split Hero */}
-      <section className="px-6 sm:px-10 py-14 lg:py-20 w-full bg-white">
-        <div
-          ref={heroRef}
-          className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center"
-        >
-          {/* Left Copy Column */}
-          <div className="lg:col-span-5 space-y-5 text-left">
-
-            <h1 className="text-3xl sm:text-[42px] font-medium text-[#0a0a0a] tracking-[-0.025em] leading-[1.08]">
-              Predict WBS schedule slippage before a work cell stalls
+        {/* Subject and action */}
+        <section className="grid gap-8 border-b border-rule-strong px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
+          <div data-gsap="reveal" className="lg:col-span-7">
+            <h1 className="font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[76px]">
+              Know which tasks will slip before the work cell stalls
             </h1>
-
-            <p className="text-sm sm:text-base text-[#4b5565] leading-relaxed max-w-xl">
-              Consolidate factory schedules into normalized work packages, score delay risk with CPM and an XGBoost model validated on 251 real projects, ground recommendations in SOP clauses, and log supervisor approvals.
+            <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-ink-2">
+              MDIP inspects a project schedule the way your plant inspects a steel bar: every task&apos;s forecast measured
+              against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.
             </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link
-                href="/login?mode=register"
-                className="h-11 px-6 inline-flex items-center gap-2 bg-[#0a0a0a] hover:bg-[#1f2937] text-white font-medium text-sm rounded-full transition-colors"
-              >
-                <span>Start Free Account</span>
-                <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
-              </Link>
-
-              <Link
-                href="/login"
-                className="h-11 px-5 inline-flex items-center bg-white hover:bg-[#f9fafb] text-[#111827] font-medium text-sm rounded-full border border-[#e5e7eb] transition-colors"
-              >
-                Sign in with Google
-              </Link>
-            </div>
           </div>
 
-          {/* Right Coded MDIP Cockpit Moment (Framed Dark Instrument Panel on Light Hero) */}
-          <div className="lg:col-span-7">
-            <div className="rounded-2xl bg-[#0d131c] text-[#eef0f5] border border-[#1f2937] overflow-hidden">
-              {/* Cockpit Window Bar */}
-              <div className="px-5 py-3 bg-[#07080d] border-b border-white/8 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs font-mono-numbers text-[#eef0f5]">
-                  <span className="w-2 h-2 rounded-full bg-[#15a87d]" />
-                  <span>MDIP / Operations Delivery Cockpit</span>
-                </div>
-                <div className="flex items-center gap-3 text-[11px] font-mono-numbers text-[#8f98ab]">
-                  <span>251 Real Projects</span>
-                  <Link href="/login" className="text-[#4cc38a] hover:underline">
-                    Sign in to open →
-                  </Link>
-                </div>
+          <div data-gsap="reveal" className="lg:col-span-5 lg:self-end">
+            <div className="border border-rule-strong bg-paper p-5">
+              <label htmlFor="schedule-file" className="font-display text-xl font-bold text-ink">
+                Submit a schedule for inspection
+              </label>
+              <p className="mt-1 text-sm text-ink-2">CSV or Excel with tasks, planned days and, if you have them, forecast days and dependencies.</p>
+              <input
+                id="schedule-file"
+                ref={fileRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={onFile}
+                className="sr-only"
+              />
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button size="lg" onClick={() => fileRef.current?.click()} disabled={busy}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
+                  {busy ? "Inspecting…" : "Choose schedule file"}
+                </Button>
+                <Button size="lg" variant="secondary" onClick={useSample} disabled={busy}>
+                  <FileSpreadsheet className="h-4 w-4" strokeWidth={1.75} />
+                  Use the sample schedule
+                </Button>
               </div>
-
-              <div className="p-5 space-y-5">
-                {/* 3 Pure-Number Stat Cells */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-xl bg-[#0b0d14] border border-white/8">
-                    <div className="flex items-center justify-between text-xs text-[#a3a9b8]">
-                      <span>Schedule Attainment</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
-                    </div>
-                    <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
-                      91.5%
-                    </div>
-                    <div className="text-[11px] text-[#f59e0b] font-mono-numbers mt-1">
-                      -2.5% vs baseline
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#0b0d14] border border-white/8">
-                    <div className="flex items-center justify-between text-xs text-[#a3a9b8]">
-                      <span>Critical Path Risk</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#e5484d]" />
-                    </div>
-                    <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
-                      59.9%
-                    </div>
-                    <div className="text-[11px] text-[#e5484d] font-mono-numbers mt-1">
-                      +5.1d slippage exposed
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#0b0d14] border border-white/8">
-                    <div className="flex items-center justify-between text-xs text-[#a3a9b8]">
-                      <span>Contract Exposure</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#4cc38a]" />
-                    </div>
-                    <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
-                      Rp 480M
-                    </div>
-                    <div className="text-[11px] text-[#8f98ab] font-mono-numbers mt-1">
-                      PO-089 &amp; PO-092
-                    </div>
-                  </div>
-                </div>
-
-                {/* Staggered WBS Critical Path Preview */}
-                <div className="p-4 rounded-xl bg-[#0b0d14] border border-white/8 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#eef0f5]">WBS Critical Path Forecast</span>
-                    <span className="text-[11px] font-mono-numbers text-[#8f98ab]">
-                      Weeks 1 to 4 · CPM + XGBoost
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {HERO_WBS_PREVIEW.map((row) => (
-                      <div key={row.code} className="grid grid-cols-12 items-center gap-2 text-xs">
-                        <div className="col-span-5 flex items-center gap-2 min-w-0">
-                          <span className="px-1.5 py-0.5 rounded bg-[#1a1e28] text-[#eef0f5] font-mono-numbers text-[11px] shrink-0">
-                            {row.code}
-                          </span>
-                          <span className="text-[#a3a9b8] truncate">{row.task}</span>
-                        </div>
-                        <div className="col-span-5 h-2.5 rounded bg-[#1a1e28] relative overflow-hidden">
-                          <div
-                            className={`absolute top-0 bottom-0 rounded ${row.barColor}`}
-                            style={{ left: `${row.leftPct}%`, width: `${row.widthPct}%` }}
-                          />
-                        </div>
-                        <div
-                          className={`col-span-2 text-right font-mono-numbers text-[11px] ${row.deltaColor}`}
-                        >
-                          {row.delta}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Grounded HITL Decision Rows */}
-                <div className="divide-y divide-white/8 rounded-xl bg-[#0b0d14] border border-white/8 px-4">
-                  {HERO_DECISIONS.map((item) => (
-                    <div
-                      key={item.title}
-                      className="py-2.5 flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.dot}`} />
-                        <span className="font-medium text-[#eef0f5] truncate">{item.title}</span>
-                        <span className="hidden sm:inline font-mono-numbers text-[11px] text-[#8f98ab]">
-                          {item.meta}
-                        </span>
-                      </div>
-                      <span className="font-mono-numbers text-[11px] text-[#a3a9b8] shrink-0">
-                        {item.impact}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {notice && (
+                <p role="status" className="mt-3 border border-warn-line bg-warn-wash px-3 py-2 text-sm text-warn">
+                  {notice}
+                </p>
+              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Platform Section (D1 to D6) */}
-      <section id="features" className="py-16 bg-[#f8fafc] border-y border-[#e5e7eb] px-6 sm:px-10">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="space-y-2 max-w-2xl">
-            <h2 className="text-2xl sm:text-3xl font-medium text-[#0a0a0a] tracking-tight">
-              Four interlocking decision layers
+        {/* Inspection table */}
+        <section aria-labelledby="inspection-title" className="px-5 pb-8 pt-7 sm:px-8">
+          <div data-gsap="reveal">
+            <h2 id="inspection-title" className="w-fit font-display text-2xl font-bold text-ink">
+              Inspection results
             </h2>
-            <p className="text-sm text-[#4b5565]">
-              Schedule consolidation, ML delay-risk scoring, grounded SOP citations, and supervisor approval control in one workspace.
+            <p className="mt-1 w-fit max-w-[calc(100%-140px)] text-sm text-ink-2">
+              Item inspected: <span className="font-medium text-ink">{subject}</span>
+              {isSample && <span className="ml-2 text-ink-3">(illustrative sample data)</span>}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* Wide Card: D1 & D2 */}
-            <div className="lg:col-span-7 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
-              <div className="space-y-2">
-                <h3 className="text-base font-medium text-[#111827]">AI Project Scheduler &amp; ML Delay Risk</h3>
-                <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
-                  Parses non-standard CSV and Excel schedules into normalized WBS work packages, computes Critical Path Method float, and scores each activity&apos;s delay risk with an XGBoost hurdle model plus 2,000-run Monte Carlo forecasting.
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#f1f5f9] font-mono-numbers text-xs">
-                <div>
-                  <div className="text-[#64748b] text-[11px]">Real Held-Out AUC</div>
-                  <div className="text-[#16a34a] font-medium mt-0.5">0.78 ROC-AUC</div>
-                </div>
-                <div>
-                  <div className="text-[#64748b] text-[11px]">Project P50 Slip</div>
-                  <div className="text-[#dc2626] font-medium mt-0.5">+5.1 days</div>
-                </div>
-                <div>
-                  <div className="text-[#64748b] text-[11px]">SLA Penalty Rate</div>
-                  <div className="text-[#111827] font-medium mt-0.5">Rp 15M/day</div>
-                </div>
-              </div>
+          <div className="relative mt-5">
+            <Stamp
+              key={stampKey}
+              top="Validated on real data"
+              center="AUC 0.78"
+              bottom="51 held-out projects"
+              size={112}
+              className="absolute -top-[40px] right-3 z-20 hidden md:block"
+            />
+
+            {/* Desktop and tablet: the ruled inspection table */}
+            <div data-gsap="reveal" className="relative hidden overflow-x-auto border border-rule-strong md:block">
+              <table className="w-full min-w-[820px] border-collapse text-sm">
+                <thead>
+                  <tr className="bg-paper text-left text-xs text-ink-2">
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">WBS</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Task</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Planned (d)</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Forecast (d)</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Float (d)</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Delay risk</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Main driver</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Verdict</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const v = verdictFor(r);
+                    const over = r.forecast > r.planned;
+                    return (
+                      <tr key={r.code} className="border-b border-rule last:border-b-0">
+                        <td className="whitespace-nowrap px-3 py-2.5 font-mono-numbers text-xs text-ink-2">{r.code}</td>
+                        <td className="px-3 py-2.5 text-ink">{r.task}</td>
+                        <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">{r.planned}</td>
+                        <td className={`px-3 py-2.5 text-right font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>
+                          {r.forecast}
+                          {over && <span className="sr-only"> (over plan)</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">
+                          {r.float === null ? <span className="text-ink-3">n/a</span> : r.float}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <RiskCell row={r} tone={v.tone} />
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-ink-2">
+                          {r.driver ?? <span className="text-ink-3">{r.done ? "Finished" : "None reported"}</span>}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Verdict tone={v.tone}>{v.label}</Verdict>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            {/* Compact Card: D3 */}
-            <div className="lg:col-span-5 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
-              <div className="space-y-2">
-                <h3 className="text-base font-medium text-[#111827]">Grounded RAG Copilot</h3>
-                <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
-                  Indexed repository of verified factory SOP documents returning clickable clause citations with every operational answer.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 pt-4 border-t border-[#f1f5f9] font-mono-numbers text-[11px]">
-                {["SOP-PRS-04", "SOP-SCM-12", "SOP-LINE2-OPT", "SOP-ENG-02"].map((code) => (
-                  <span
-                    key={code}
-                    className="px-2 py-1 rounded bg-[#f8fafc] border border-[#e5e7eb] text-[#374151]"
-                  >
-                    {code}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Compact Card: D4 */}
-            <div className="lg:col-span-5 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
-              <div className="space-y-2">
-                <h3 className="text-base font-medium text-[#111827]">IRoom 5-Stream Connectors</h3>
-                <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
-                  Live connectors linking Material Delivery, Project Progress, CAD Drawing Approval, Quotation &amp; PO, and Operation Tracker telemetry.
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-4 border-t border-[#f1f5f9] text-xs font-mono-numbers">
-                <span className="text-[#64748b]">Active streams</span>
-                <span className="text-[#111827] font-medium">5 modules synced</span>
-              </div>
-            </div>
-
-            {/* Wide Card: D5 & D6 */}
-            <div className="lg:col-span-7 p-6 rounded-xl bg-white border border-[#e5e7eb] flex flex-col justify-between gap-5">
-              <div className="space-y-2">
-                <h3 className="text-base font-medium text-[#111827]">Human-in-the-Loop Audit Governance</h3>
-                <p className="text-xs sm:text-sm text-[#4b5565] leading-relaxed">
-                  Supervisors authorize or override recommendations using pre-execution verification checklists recorded under ISO 9001 Cl. 7.5, backed by Supabase Postgres &amp; SQLite persistence.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-[#f1f5f9] text-xs font-mono-numbers">
-                <span className="inline-flex items-center gap-2 text-[#111827]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
-                  <span>Authorize / Override Audit Log</span>
-                </span>
-                <span className="inline-flex items-center gap-2 text-[#4b5565]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0d556e]" />
-                  <span>On-Prem VPC Option</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Solutions / Role Matrix */}
-      <section id="role-matrix" className="py-16 px-6 sm:px-10 w-full bg-white">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="space-y-2 max-w-2xl">
-            <h2 className="text-2xl sm:text-3xl font-medium text-[#0a0a0a] tracking-tight">
-              Six manufacturing personas &amp; Buying Center views
-            </h2>
-            <p className="text-sm text-[#4b5565]">
-              Select a persona to preview its Buying Center perspective before signing in to your cockpit.
-            </p>
+            {/* Phones: one stacked record per task, verdict always visible */}
+            <ol data-gsap="reveal" className="divide-y divide-rule border border-rule-strong md:hidden">
+              {rows.map((r) => {
+                const v = verdictFor(r);
+                const over = r.forecast > r.planned;
+                return (
+                  <li key={r.code} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono-numbers text-xs text-ink-2">{r.code}</p>
+                        <p className="text-sm font-medium text-ink">{r.task}</p>
+                      </div>
+                      <Verdict tone={v.tone}>{v.label}</Verdict>
+                    </div>
+                    <p className="mt-1.5 text-xs text-ink-2">
+                      Planned <span className="font-mono-numbers text-ink">{r.planned} d</span> · Forecast{" "}
+                      <span className={`font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>{r.forecast} d</span>
+                      {r.float !== null && (
+                        <>
+                          {" "}· Float <span className="font-mono-numbers text-ink">{r.float} d</span>
+                        </>
+                      )}
+                    </p>
+                    <div className="mt-2">
+                      <RiskCell row={r} tone={v.tone} />
+                    </div>
+                    {r.driver && <p className="mt-1 text-xs text-ink-2">Main driver: {r.driver}</p>}
+                  </li>
+                );
+              })}
+            </ol>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {ROLES.map((role) => (
+          <div className="mt-5 grid gap-5 border-t border-rule pt-5 md:grid-cols-12">
+            <div data-gsap="reveal" className="md:col-span-8">
+              <h3 className="text-sm font-semibold text-ink">Remarks</h3>
+              <p className="mt-1 max-w-[36rem] text-sm leading-relaxed text-ink-2">
+                {summary ? `${summary}. ` : `${hold} of ${rows.length} tasks are on hold. `}
+                Delay risk is the probability a task finishes later than its float allows. Verdicts are recommendations:
+                every action they trigger is authorized or overridden by a named supervisor and logged.
+              </p>
+            </div>
+            <div className="md:col-span-4">
+              <div className="h-12 border-b border-ink" />
+              <p className="mt-1 text-xs text-ink-3">Authorized by the responsible supervisor (name, role, date)</p>
+              <Stamp
+                key={`m-${stampKey}`}
+                top="Validated on real data"
+                center="AUC 0.78"
+                bottom="51 held-out projects"
+                size={116}
+                className="mt-3 md:hidden"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Method: one axis, four stations */}
+        <section id="method" data-gsap="scroll" aria-labelledby="method-title" className="border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
+          <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
+            How a verdict is reached
+          </h2>
+          <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
+            The model was trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules.
+            On 51 real projects it never saw, it ranks late tasks with a ROC-AUC of 0.78, against 0.53 for rule-based scoring.
+          </p>
+          <div className="relative mt-10">
+          <div aria-hidden="true" className="absolute left-0 right-0 top-[7px] hidden h-px bg-ink md:block" />
+          <ol className="relative grid gap-8 md:grid-cols-4 md:gap-6">
+            {METHOD.map((step) => (
+              <li key={step.title} data-gsap="scroll-item" className="relative">
+                <span aria-hidden="true" className="relative z-10 block h-[15px] w-[15px] border-2 border-ink bg-sheet" />
+                <h3 className="mt-4 font-display text-xl font-bold text-ink">{step.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+          </div>
+        </section>
+
+        {/* Roles */}
+        <section id="roles" data-gsap="scroll" aria-labelledby="roles-title" className="border-t border-rule-strong px-5 py-12 sm:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 id="roles-title" className="font-display text-[34px] font-bold leading-tight text-ink">
+                One certificate, six readers
+              </h2>
+              <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
+                Each role opens the same project and sees the measurements it is accountable for.
+              </p>
+            </div>
+            <LinkButton href="/login?mode=register" size="lg">
+              Sign up as {activeRole}
+            </LinkButton>
+          </div>
+
+          <div role="tablist" aria-label="Roles" className="mt-6 flex flex-wrap gap-0 border-b border-rule-strong">
+            {ROLES.map((r) => (
               <button
-                key={role}
+                key={r}
+                role="tab"
                 type="button"
-                onClick={() => setActiveRoleTab(role)}
-                className={`h-9 px-4 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                  activeRoleTab === role
-                    ? "bg-[#0a0a0a] text-white"
-                    : "bg-[#f8fafc] text-[#4b5565] border border-[#e5e7eb] hover:bg-[#edf7f5] hover:text-[#111827]"
+                aria-selected={activeRole === r}
+                onClick={() => setActiveRole(r)}
+                className={`-mb-px cursor-pointer border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  activeRole === r ? "border-stamp text-ink" : "border-transparent text-ink-2 hover:text-ink"
                 }`}
               >
-                {role}
+                {r}
               </button>
             ))}
           </div>
 
-          <div className="bg-[#f8fafc] border border-[#e5e7eb] rounded-xl p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e5e7eb]">
-              <div>
-                <h3 className="text-lg sm:text-xl font-medium text-[#111827] mt-1">
-                  {roleData.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-[#4b5565] mt-0.5">{roleData.sub}</p>
-              </div>
-
-              <Link
-                href="/login?mode=register"
-                className="h-9 px-5 bg-[#0a0a0a] hover:bg-[#1f2937] text-white text-xs font-medium rounded-full transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0"
-              >
-                <span>Sign up as {activeRoleTab}</span>
-                <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
-              </Link>
+          <div ref={rolePanelRef} role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12">
+            <div data-gsap="role-panel" className="md:col-span-5">
+              <h3 className="font-display text-2xl font-bold text-ink">{role.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{role.sub}</p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {roleData.kpis.map((k, idx) => {
-                const isUp = k.trend.includes("↑");
-                const isDown = k.trend.includes("↓");
-                const cleanTrend = k.trend.replace(/^[↑↓]\s*/, "");
-
-                return (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-xl bg-white border border-[#e5e7eb] space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-[#4b5565] truncate">{k.title}</span>
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${getStatusDot(k.status)}`} />
-                    </div>
-                    <div className="text-[28px] leading-none font-medium text-[#111827] font-mono-numbers">
-                      {k.value}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className={`font-medium inline-flex items-center gap-0.5 ${getTrendColor(k.status)}`}>
-                        {isUp && <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.5} />}
-                        {isDown && <ArrowDownRight className="w-3.5 h-3.5" strokeWidth={1.5} />}
-                        <span>{cleanTrend}</span>
-                      </span>
-                      {k.subtle && (
-                        <span className="text-[#64748b] truncate">{k.subtle}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div data-gsap="role-panel" className="md:col-span-7">
+              <p className="text-sm font-medium text-ink">Measurements on this role&apos;s certificate</p>
+              <ul className="mt-2 divide-y divide-rule border-y border-rule">
+                {role.kpis.map((k) => (
+                  <li key={k.title} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+                    <span className="text-ink">{k.title}</span>
+                    <span className="text-right text-xs text-ink-3">{k.subtle}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <footer className="h-14 bg-white border-t border-[#e5e7eb] px-6 sm:px-10 text-xs text-[#64748b]">
-        <div className="max-w-7xl mx-auto h-full flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>MDIP: Manufacturing Decision Intelligence Platform</div>
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="hover:text-[#111827] transition-colors">
-              Log in
-            </Link>
-            <Link href="/login?mode=register" className="text-[#111827] hover:underline font-medium">
-              Sign up
-            </Link>
+        <footer className="flex flex-col items-center justify-between gap-3 border-t border-rule-strong px-5 py-5 text-xs text-ink-3 sm:flex-row sm:px-8">
+          <span>MDIP · Manufacturing Decision Intelligence Platform</span>
+          <div className="flex items-center gap-5">
+            <a href="#method" className="hover:text-ink">
+              Method
+            </a>
+            <a href="#roles" className="hover:text-ink">
+              Roles
+            </a>
+            <a href="/login" className="font-medium text-ink hover:underline">
+              Sign in
+            </a>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }

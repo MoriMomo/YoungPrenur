@@ -2,7 +2,7 @@ WBS_Code,Activity_Name,Planned_Duration_Days,Actual_Forecast_Days,Predecessors,A
 WBS-1.1,Drawing Technical Review & CAD/CAM Sign-off,4,6,None,Tooling R&D / CAD,"Hendra Wijaya, ST",Delayed (+2d)
 WBS-1.2,Raw Material Procurement (Alloy EN24 & M-204),6,8,None,Supply Chain / Receiving,Supply Chain Lead,At Risk
 WBS-1.3,Tooling & Stamping Die Fabrication (Die-04),5,5,WBS-1.1,Wire EDM Cell 03,Rudi Hermawan,On Track
-WBS-2.1,CNC 5-Axis Milling & Surface Profiling,7,7,WBS-1.1;WBS-1.2,CNC Milling Cell A (Makino D800Z),Bambang S.,On Track
+WBS-2.1,CNC 5-Axis Milling & Surface Profiling,7,7,WBS-1.1;WBS-1.2,CNC Milling Cell A (5-axis mill),Bambang S.,On Track
 WBS-2.2,Precision Stamping & Forming (Press P-07),5,6,WBS-1.3;WBS-2.1,Stamping Press Bay P-07,Agus H.,Bottleneck
 WBS-3.1,Cell 02 Sub-Assembly & Precision Tolerancing,6,8,WBS-2.2,Assembly Cell 02,Production Supervisor,Lagging -11%
 WBS-3.2,Heat Treatment & Surface Hardening (Subcontract),4,4,WBS-2.1,Subcontract Furnace,Rina Wijaya,Scheduled

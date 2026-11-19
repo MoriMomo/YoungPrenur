@@ -46,9 +46,9 @@ export const Toast: React.FC<ToastProps> = ({ message, onClear }) => {
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
       <div
         ref={toastRef}
-        className="bg-[#102238] text-white px-4 py-2.5 rounded-xl shadow-2xl border border-[#2b4865] flex items-center gap-2.5 text-xs sm:text-sm font-medium"
+        className="bg-ink text-white px-4 py-2.5 rounded-xl shadow-2xl border border-ink-2 flex items-center gap-2.5 text-xs sm:text-sm font-medium"
       >
-        <CheckCircle className="w-4 h-4 text-[#38bdf8] shrink-0" />
+        <CheckCircle className="w-4 h-4 text-stamp-line shrink-0" />
         <span>{message}</span>
       </div>
     </div>

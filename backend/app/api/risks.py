@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.get("/api/v1/risks/prediction")
 def get_delay_prediction():
-    return {k: v for k, v in state.ACTIVE_ANALYSIS.items() if k != "source"}
+    return dict(state.ACTIVE_ANALYSIS)
 
 
 @router.get("/api/v1/risks/decisions")
