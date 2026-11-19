@@ -1,13 +1,30 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { Suspense, useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
 import { AuthError, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
+import { MdipLogo } from "@/components/ui/MdipLogo";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
 import gsap from "gsap";
+
+function AuthModeSync({ onRegisterMode }: { onRegisterMode: () => void }) {
+  const searchParams = useSearchParams();
+  const syncedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    if (syncedRef.current === mode) return;
+    syncedRef.current = mode;
+    if (mode === "register") {
+      onRegisterMode();
+    }
+  }, [searchParams, onRegisterMode]);
+
+  return null;
+}
 
 declare global {
   interface Window {
@@ -136,7 +153,7 @@ export default function LoginPage() {
       const session =
         authMode === "register"
           ? await registerUser(email, password, fullName, selectedDemoRole)
-          : await loginUser(email, password, selectedDemoRole);
+          : await loginUser(email, password);
       router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
     } catch (err) {
       setErrorMsg(err instanceof AuthError ? err.message : "Authentication failed.");
@@ -153,7 +170,7 @@ export default function LoginPage() {
     setPassword("imajin2026");
     setIsSubmitting(true);
     try {
-      const session = await loginUser(demoEmail, "imajin2026", role);
+      const session = await loginUser(demoEmail, "imajin2026");
       router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
     } catch (err) {
       setErrorMsg(err instanceof AuthError ? err.message : "Quick sign-in failed.");
@@ -163,11 +180,18 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0b0d14] text-[#eef0f5] flex flex-col justify-between selection:bg-[#2563eb] selection:text-white">
+      <Suspense fallback={null}>
+        <AuthModeSync
+          onRegisterMode={() => {
+            setAuthMode("register");
+            setPassword("");
+          }}
+        />
+      </Suspense>
+
       <header className="h-14 border-b border-white/8 px-6 sm:px-10 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-[#2563eb] flex items-center justify-center font-medium text-white text-sm">
-            M
-          </div>
+          <MdipLogo variant="light" size={30} className="shrink-0" />
           <div>
             <div className="font-medium text-[#eef0f5] text-sm group-hover:text-[#60a5fa] transition-colors">
               MDIP Operations Gateway

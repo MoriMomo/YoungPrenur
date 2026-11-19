@@ -1095,6 +1095,18 @@ def create_user(email: str, password: str, name: str, role: str) -> Dict[str, An
         "created_at": now,
     }
 
+    if _supabase_key():
+        try:
+            _sb_request(
+                "POST",
+                "users",
+                query="on_conflict=email",
+                body=record,
+                prefer="resolution=merge-duplicates,return=minimal",
+            )
+        except Exception as exc:
+            raise RuntimeError(f"Failed to save account to Supabase users table: {exc}") from exc
+
     with _connect() as conn:
         conn.execute(
             "INSERT INTO users (id, email, name, role, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -1108,18 +1120,6 @@ def create_user(email: str, password: str, name: str, role: str) -> Dict[str, An
                 record["created_at"],
             ),
         )
-
-    if _supabase_key():
-        try:
-            _sb_request(
-                "POST",
-                "users",
-                query="on_conflict=email",
-                body=record,
-                prefer="resolution=merge-duplicates,return=minimal",
-            )
-        except Exception:
-            pass
 
     return _public_user(record)
 
@@ -1143,11 +1143,6 @@ def upsert_google_user(email: str, name: str, role: str) -> Dict[str, Any]:
         return create_user(norm, secrets.token_urlsafe(32), clean_name, clean_role)
 
     updated_name = clean_name or existing.get("name") or norm.split("@", 1)[0]
-    with _connect() as conn:
-        conn.execute(
-            "UPDATE users SET role = ?, name = ? WHERE email = ?",
-            (clean_role, updated_name, norm),
-        )
     if _supabase_key():
         try:
             _sb_request(
@@ -1157,6 +1152,12 @@ def upsert_google_user(email: str, name: str, role: str) -> Dict[str, Any]:
                 body={"role": clean_role, "name": updated_name},
                 prefer="return=minimal",
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            raise RuntimeError(f"Failed to sync Google account to Supabase users table: {exc}") from exc
+
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE users SET role = ?, name = ? WHERE email = ?",
+            (clean_role, updated_name, norm),
+        )
     return _public_user({**existing, "role": clean_role, "name": updated_name})

@@ -574,6 +574,7 @@ export interface AuthSession {
   token: string;
   user: AuthUser;
   mode: "backend" | "sandbox";
+  storage?: string;
 }
 
 const SESSION_STORAGE_KEY = "mdip_auth_session";
@@ -608,57 +609,65 @@ export function clearStoredSession(): void {
 
 export class AuthError extends Error {}
 
+export async function verifySession(token: string): Promise<AuthUser | null> {
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.authenticated && data?.user ? (data.user as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function submitAuth(
   endpoint: string,
   body: Record<string, unknown>,
-  defaultError: string,
-  fallbackUser: AuthUser
+  defaultError: string
 ): Promise<AuthSession> {
+  let res: Response;
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    res = await fetch(`${API_BASE}${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) {
-      let detail = defaultError;
-      try {
-        const err = await res.json();
-        if (typeof err.detail === "string") detail = err.detail;
-      } catch {
-        // Keep default error text when response body is not JSON
-      }
-      throw new AuthError(detail);
-    }
-    const data = await res.json();
-    const session: AuthSession = { token: data.token, user: data.user, mode: "backend" };
-    saveSession(session);
-    return session;
-  } catch (err) {
-    if (err instanceof AuthError) throw err;
-    const session: AuthSession = {
-      token: "offline-sandbox",
-      user: fallbackUser,
-      mode: "sandbox",
-    };
-    saveSession(session);
-    return session;
+  } catch {
+    throw new AuthError(
+      "Cannot reach MDIP backend to verify and persist your account. Start FastAPI or verify NEXT_PUBLIC_API_URL."
+    );
   }
+  if (!res.ok) {
+    let detail = defaultError;
+    try {
+      const err = await res.json();
+      if (typeof err.detail === "string") detail = err.detail;
+    } catch {
+      // Keep default error text when response body is not JSON
+    }
+    throw new AuthError(detail);
+  }
+  const data = await res.json();
+  const session: AuthSession = {
+    token: data.token,
+    user: data.user,
+    mode: "backend",
+    storage: data.storage,
+  };
+  saveSession(session);
+  return session;
 }
 
 export function loginUser(
   email: string,
-  password: string,
-  fallbackRole: ManufacturingRole = "Operations Manager"
+  password: string
 ): Promise<AuthSession> {
-  const namePart = email.split("@")[0]?.replace(/[._-]+/g, " ") || fallbackRole;
-  return submitAuth("/auth/login", { email, password }, "Invalid email or password.", {
-    id: "sandbox-user",
-    email,
-    name: namePart,
-    role: fallbackRole,
-  });
+  return submitAuth("/auth/login", { email, password }, "Invalid email or password.");
 }
 
 export function registerUser(
@@ -670,34 +679,18 @@ export function registerUser(
   return submitAuth(
     "/auth/register",
     { email, password, name, role },
-    "Could not create account.",
-    { id: "sandbox-user", email, name: name || email, role }
+    "Could not create account."
   );
-}
-
-function decodeJwtClaims(token: string): { email?: string; name?: string } {
-  try {
-    const seg = token.split(".")[1];
-    if (!seg) return {};
-    const b64 = seg.replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(b64));
-  } catch {
-    return {};
-  }
 }
 
 export function loginWithGoogle(
   idToken: string,
   role: ManufacturingRole = "Operations Manager"
 ): Promise<AuthSession> {
-  const claims = decodeJwtClaims(idToken);
-  const email = claims.email || "google.user@imajin.id";
-  const name = claims.name || email.split("@")[0] || role;
   return submitAuth(
     "/auth/google",
     { id_token: idToken, role },
-    "Google sign-in failed.",
-    { id: "google-sandbox", email, name, role }
+    "Google sign-in failed."
   );
 }
 

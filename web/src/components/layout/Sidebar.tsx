@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MdipLogo } from "@/components/ui/MdipLogo";
 import {
   LayoutDashboard,
   CalendarClock,
@@ -89,9 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Brand Header */}
         <div className="p-4 border-b border-white/8 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#2563eb] flex items-center justify-center font-semibold text-white text-sm shrink-0">
-            M
-          </div>
+          <MdipLogo variant="light" size={30} className="shrink-0" />
           <div className="min-w-0">
             <div className="font-semibold text-[#eef0f5] text-[15px] truncate">
               MDIP Copilot

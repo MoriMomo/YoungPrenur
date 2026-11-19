@@ -780,8 +780,15 @@ def register_user(payload: RegisterPayload):
         user = database.create_user(email, payload.password, payload.name, payload.role)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
     token = database.create_session_token(user)
-    return {"success": True, "token": token, "user": user}
+    return {
+        "success": True,
+        "token": token,
+        "user": user,
+        "storage": database.db_status()["active_engine"],
+    }
 
 
 @app.post("/api/v1/auth/login")
@@ -790,7 +797,12 @@ def login_user(payload: LoginPayload):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password.")
     token = database.create_session_token(user)
-    return {"success": True, "token": token, "user": user}
+    return {
+        "success": True,
+        "token": token,
+        "user": user,
+        "storage": database.db_status()["active_engine"],
+    }
 
 
 @app.get("/api/v1/auth/me")
@@ -850,9 +862,18 @@ def _verify_google_id_token(id_token: str) -> Dict[str, str]:
 @app.post("/api/v1/auth/google")
 def google_login(payload: GoogleAuthPayload):
     info = _verify_google_id_token(payload.id_token)
-    user = database.upsert_google_user(info["email"], info["name"], payload.role)
+    try:
+        user = database.upsert_google_user(info["email"], info["name"], payload.role)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
     token = database.create_session_token(user)
-    return {"success": True, "token": token, "user": user, "provider": "google"}
+    return {
+        "success": True,
+        "token": token,
+        "user": user,
+        "provider": "google",
+        "storage": database.db_status()["active_engine"],
+    }
 
 
 # -------------------------------------------------------------

@@ -24,6 +24,7 @@ import {
   askManufacturingCopilot,
   fetchDecisionActions,
   getStoredSession,
+  verifySession,
 } from "@/lib/api";
 
 interface DashboardContextType {
@@ -111,6 +112,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
   const [selectedRole, setSelectedRole] = useState<ManufacturingRole>("Operations Manager");
   const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>("saas");
   const [isApiLive, setIsApiLive] = useState<boolean>(false);
@@ -151,20 +153,37 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let active = true;
+    const session = getStoredSession();
+    if (!session || session.mode !== "backend" || !session.token) {
+      router.replace("/login?mode=register");
+      return;
+    }
+
     checkApiHealth().then(async (live) => {
       if (!active) return;
-      const session = getStoredSession();
-      if (session?.user) {
-        setCurrentUser(session.user);
-        if (
-          typeof window !== "undefined" &&
-          !window.location.search.includes("role=") &&
-          ROLES.includes(session.user.role)
-        ) {
-          setSelectedRole(session.user.role);
+      let authenticatedUser: AuthUser | null = session.user;
+      if (live) {
+        const verified = await verifySession(session.token);
+        if (!active) return;
+        if (!verified) {
+          clearStoredSession();
+          router.replace("/login");
+          return;
         }
+        authenticatedUser = verified;
+      }
+
+      setCurrentUser(authenticatedUser);
+      if (
+        authenticatedUser &&
+        typeof window !== "undefined" &&
+        !window.location.search.includes("role=") &&
+        ROLES.includes(authenticatedUser.role)
+      ) {
+        setSelectedRole(authenticatedUser.role);
       }
       setIsApiLive(live);
+      setIsAuthReady(true);
       if (live) {
         const [remoteActions, remoteAudit] = await Promise.all([
           fetchDecisionActions(),
@@ -178,7 +197,7 @@ export default function DashboardLayout({
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   const handleSignOut = () => {
     clearStoredSession();
@@ -309,6 +328,14 @@ export default function DashboardLayout({
 
   const pendingActionsCount = actions.filter((a) => !a.flagged).length;
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-[#f6f7f9] flex items-center justify-center text-sm text-[#4b5565] font-mono-numbers">
+        Verifying session...
+      </div>
+    );
+  }
+
   return (
     <DashboardContext.Provider
       value={{
@@ -338,7 +365,7 @@ export default function DashboardLayout({
         />
       </Suspense>
 
-      <div className="flex min-h-screen bg-[#f4f7fb]">
+      <div className="flex min-h-screen bg-[#f6f7f9]">
         <Sidebar
           isOpenMobile={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
