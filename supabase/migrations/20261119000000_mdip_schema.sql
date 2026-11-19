@@ -55,16 +55,30 @@ create index if not exists idx_iroom_records_stream_order
 create index if not exists idx_audit_log_created_at
   on public.audit_log (created_at desc);
 
+create table if not exists public.users (
+  id text primary key,
+  email text unique not null,
+  name text not null,
+  role text not null,
+  password_hash text not null,
+  salt text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_users_email
+  on public.users (email);
+
 -- Enable Row Level Security across all exposed tables
 alter table public.active_schedule enable row level security;
 alter table public.iroom_records enable row level security;
 alter table public.sop_documents enable row level security;
 alter table public.decision_status enable row level security;
 alter table public.audit_log enable row level security;
+alter table public.users enable row level security;
 
--- Grant read-only Data API access to anon/authenticated and full access to service_role
+-- Grant read-only Data API access on non-sensitive operational tables; users stays service_role-only
 grant select on public.active_schedule, public.iroom_records, public.sop_documents, public.decision_status, public.audit_log to anon, authenticated;
-grant all on public.active_schedule, public.iroom_records, public.sop_documents, public.decision_status, public.audit_log to service_role;
+grant all on public.active_schedule, public.iroom_records, public.sop_documents, public.decision_status, public.audit_log, public.users to service_role;
 
 drop policy if exists "active_schedule_public_read" on public.active_schedule;
 create policy "active_schedule_public_read" on public.active_schedule

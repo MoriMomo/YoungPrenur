@@ -14,6 +14,7 @@ import {
   fetchIRoomDrawings,
   fetchIRoomQuotations,
   fetchIRoomOperations,
+  ingestIRoomRecord,
 } from "@/lib/api";
 import {
   PackageCheck,
@@ -25,6 +26,8 @@ import {
   Eye,
   CheckCircle2,
   Check,
+  Plus,
+  X,
   MessageSquareText,
 } from "lucide-react";
 
@@ -82,6 +85,10 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   const [selectedDwgId, setSelectedDwgId] = useState<string>("dwg-01");
   const [activeRevision, setActiveRevision] = useState<"Rev 2.0" | "Rev 3.1">("Rev 3.1");
   const [showGdtOverlay, setShowGdtOverlay] = useState<boolean>(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [draftCode, setDraftCode] = useState("");
+  const [draftParty, setDraftParty] = useState("");
+  const [draftMetric, setDraftMetric] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -148,15 +155,102 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     onToast?.(`Analyzing ${entityName} in Manufacturing Copilot.`);
   };
 
-  const handleApproveSelectedDrawing = () => {
+  const handleApproveSelectedDrawing = async () => {
+    const updated: DrawingApprovalItem = { ...selectedDrawing, status: "Approved" };
     setDrawings((prev) =>
-      prev.map((d) =>
-        d.id === selectedDrawing.id ? { ...d, status: "Approved" } : d
-      )
+      prev.map((d) => (d.id === selectedDrawing.id ? updated : d))
     );
+    const saved = await ingestIRoomRecord("drawings", { ...updated });
     onToast?.(
-      `Drawing ${selectedDrawing.dwgNumber} (${selectedDrawing.revision}) approved for Gate 3.`
+      saved
+        ? `Drawing ${selectedDrawing.dwgNumber} approved and persisted to database.`
+        : `Drawing ${selectedDrawing.dwgNumber} approved in local preview.`
     );
+  };
+
+  const handleAddRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draftCode.trim()) return;
+    const id = `${activeTab}-${Date.now().toString().slice(-4)}`;
+    if (activeTab === "material") {
+      const hours = Math.max(4, Number(draftMetric) || 32);
+      const item: MaterialDeliveryItem = {
+        id,
+        partNumber: draftCode.trim().toUpperCase(),
+        description: "Shop-floor ingested material lot",
+        supplier: draftParty.trim() || "Approved Vendor",
+        eta: "Scheduled",
+        stockCoverHours: hours,
+        supplierLeadDays: 3,
+        status: hours <= 48 ? "Critical" : hours <= 80 ? "At Risk" : "Normal",
+        riskScore: hours <= 48 ? 0.85 : 0.3,
+        openPo: `PO-${Date.now().toString().slice(-4)}`,
+      };
+      setMaterials((prev) => [item, ...prev]);
+      await ingestIRoomRecord("materials", { ...item });
+    } else if (activeTab === "progress") {
+      const pct = Math.min(100, Math.max(0, Number(draftMetric) || 50));
+      const item: ProjectProgressItem = {
+        id,
+        projectCode: draftCode.trim().toUpperCase(),
+        name: draftParty.trim() || draftCode.trim(),
+        customer: "IMAJIN Client Order",
+        currentMilestone: "In Machining",
+        progressPercent: pct,
+        targetCompletion: "Scheduled",
+        delayVarianceDays: pct < 60 ? 1.5 : 0,
+        status: pct < 60 ? "Delayed" : "On Schedule",
+      };
+      setProjects((prev) => [item, ...prev]);
+      await ingestIRoomRecord("progress", { ...item });
+    } else if (activeTab === "drawing") {
+      const item: DrawingApprovalItem = {
+        id,
+        dwgNumber: draftCode.trim().toUpperCase(),
+        title: draftParty.trim() || "Engineering revision drawing",
+        revision: draftMetric.trim() || "Rev A.0",
+        engineer: "Tooling Engineering",
+        department: "Tooling R&D",
+        submittedDate: "Just now",
+        status: "Pending Review",
+        criticalDwg: true,
+      };
+      setDrawings((prev) => [item, ...prev]);
+      await ingestIRoomRecord("drawings", { ...item });
+    } else if (activeTab === "quotation") {
+      const item: QuotationPoItem = {
+        id,
+        poNumber: draftCode.trim().toUpperCase(),
+        quotationRef: `QTN-${Date.now().toString().slice(-4)}`,
+        vendorName: draftParty.trim() || "Industrial Supplier",
+        totalValueIdr: draftMetric.trim() || "Rp 45.000.000",
+        status: "Pending Approval",
+        paymentTerm: "Net 30 Days",
+        expedited: true,
+      };
+      setQuotations((prev) => [item, ...prev]);
+      await ingestIRoomRecord("quotations", { ...item });
+    } else {
+      const oee = Math.min(100, Math.max(10, Number(draftMetric) || 88));
+      const item: OperationTrackerItem = {
+        id,
+        workCenter: draftCode.trim(),
+        machineId: draftParty.trim() || `CELL-${Date.now().toString().slice(-3)}`,
+        operator: "Assigned Operator",
+        shift: "Shift 1",
+        oeePercent: oee,
+        spindleUtilization: oee,
+        vibrationSensor: oee < 75 ? "ELEVATED" : "NORMAL",
+        activeJob: "Live Production Lot",
+      };
+      setOperations((prev) => [item, ...prev]);
+      await ingestIRoomRecord("operations", { ...item });
+    }
+    setDraftCode("");
+    setDraftParty("");
+    setDraftMetric("");
+    setShowAddForm(false);
+    onToast?.(`Ingested new ${activeTab} record into backend database.`);
   };
 
   return (
@@ -234,13 +328,85 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
             />
           </div>
 
-          <div className="text-xs text-[#64748b] font-medium flex items-center gap-2">
+          <div className="flex items-center gap-2.5 text-xs text-[#64748b] font-medium">
             <span>Active stream:</span>
             <strong className="text-[#101e30] capitalize bg-[#f1f5f9] px-2.5 py-1 rounded-md font-mono-numbers">
               {activeTab}
             </strong>
+            <button
+              type="button"
+              onClick={() => setShowAddForm((prev) => !prev)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#0c1a2d] hover:bg-[#1a3354] text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+            >
+              {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+              <span>{showAddForm ? "Cancel" : "Add Record"}</span>
+            </button>
           </div>
         </div>
+
+        {showAddForm && (
+          <form
+            onSubmit={handleAddRecord}
+            className="mb-5 p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2eaf3] grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-center"
+          >
+            <input
+              type="text"
+              required
+              value={draftCode}
+              onChange={(e) => setDraftCode(e.target.value)}
+              placeholder={
+                activeTab === "material"
+                  ? "Part Number (e.g. AL7075-PLATE)"
+                  : activeTab === "progress"
+                  ? "Project Code (e.g. PRJ-2026-11)"
+                  : activeTab === "drawing"
+                  ? "Drawing # (e.g. DWG-2026-09)"
+                  : activeTab === "quotation"
+                  ? "PO Number (e.g. PO-2026-991)"
+                  : "Work Center (e.g. CNC Cell B)"
+              }
+              className="px-3 py-2 bg-white border border-[#cbd5e1] rounded-lg text-xs"
+            />
+            <input
+              type="text"
+              value={draftParty}
+              onChange={(e) => setDraftParty(e.target.value)}
+              placeholder={
+                activeTab === "material"
+                  ? "Supplier name"
+                  : activeTab === "drawing"
+                  ? "Drawing title"
+                  : activeTab === "operations"
+                  ? "Machine ID"
+                  : "Project / Vendor name"
+              }
+              className="px-3 py-2 bg-white border border-[#cbd5e1] rounded-lg text-xs"
+            />
+            <input
+              type="text"
+              value={draftMetric}
+              onChange={(e) => setDraftMetric(e.target.value)}
+              placeholder={
+                activeTab === "material"
+                  ? "Stock cover hrs (e.g. 24)"
+                  : activeTab === "progress"
+                  ? "Progress % (e.g. 72)"
+                  : activeTab === "drawing"
+                  ? "Revision (e.g. Rev A.1)"
+                  : activeTab === "quotation"
+                  ? "Value IDR (e.g. Rp 55.000.000)"
+                  : "OEE % (e.g. 91.5)"
+              }
+              className="px-3 py-2 bg-white border border-[#cbd5e1] rounded-lg text-xs"
+            />
+            <button
+              type="submit"
+              className="px-3 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+            >
+              Save to Stream
+            </button>
+          </form>
+        )}
 
         {/* 1. Material Delivery */}
         {activeTab === "material" && (

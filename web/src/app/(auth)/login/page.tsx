@@ -5,14 +5,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
-import { Lock, Mail, ArrowRight, ArrowLeft } from "lucide-react";
+import { AuthError, loginUser, registerUser } from "@/lib/api";
+import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
 import gsap from "gsap";
+
+const ROLE_EMAILS: Record<ManufacturingRole, string> = {
+  "Operations Manager": "ops.lead@imajin.id",
+  "Plant Manager": "plant.manager@imajin.id",
+  "Production Supervisor": "production.supervisor@imajin.id",
+  "Maintenance Lead": "maintenance.lead@imajin.id",
+  "Quality Manager": "quality.manager@imajin.id",
+  "Supply Chain Lead": "supply.chain.lead@imajin.id",
+};
 
 export default function LoginPage() {
   const router = useRouter();
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("ops.lead@imajin.id");
-  const [password, setPassword] = useState("••••••••••••");
+  const [password, setPassword] = useState("imajin2026");
   const [selectedDemoRole, setSelectedDemoRole] = useState<ManufacturingRole>("Operations Manager");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -35,22 +48,37 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setErrorMsg(null);
     setIsSubmitting(true);
-    setTimeout(() => {
-      router.push(`/dashboard?role=${encodeURIComponent(selectedDemoRole)}`);
-    }, 350);
+    try {
+      const session =
+        authMode === "register"
+          ? await registerUser(email, password, fullName, selectedDemoRole)
+          : await loginUser(email, password, selectedDemoRole);
+      router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
+    } catch (err) {
+      setErrorMsg(err instanceof AuthError ? err.message : "Authentication failed.");
+      setIsSubmitting(false);
+    }
   };
 
-  const handleQuickRoleLogin = (role: ManufacturingRole) => {
+  const handleQuickRoleLogin = async (role: ManufacturingRole) => {
+    setErrorMsg(null);
+    setAuthMode("login");
     setSelectedDemoRole(role);
-    const roleSlug = role.toLowerCase().replace(/\s+/g, ".");
-    setEmail(`${roleSlug}@imajin.id`);
+    const demoEmail = ROLE_EMAILS[role];
+    setEmail(demoEmail);
+    setPassword("imajin2026");
     setIsSubmitting(true);
-    setTimeout(() => {
-      router.push(`/dashboard?role=${encodeURIComponent(role)}`);
-    }, 300);
+    try {
+      const session = await loginUser(demoEmail, "imajin2026", role);
+      router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
+    } catch (err) {
+      setErrorMsg(err instanceof AuthError ? err.message : "Quick sign-in failed.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -140,20 +168,100 @@ export default function LoginPage() {
           </div>
 
           <div ref={cardRef} className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
-            <div className="max-w-md w-full mx-auto space-y-6">
-              <div>
-                <h2 className="text-lg sm:text-xl font-medium text-[#eef0f5] tracking-tight mb-1">
-                  Enter Simulation Session
-                </h2>
-                <p className="text-xs text-[#a3a9b8]">
-                  Use the pre-filled demo credentials or pick a persona on the left.
-                </p>
+            <div className="max-w-md w-full mx-auto space-y-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-medium text-[#eef0f5] tracking-tight mb-1">
+                    {authMode === "register" ? "Create Operator Account" : "Sign In to Cockpit"}
+                  </h2>
+                  <p className="text-xs text-[#a3a9b8]">
+                    {authMode === "register"
+                      ? "Register a plant account stored in the backend database."
+                      : "Use demo credentials (imajin2026) or pick a persona on the left."}
+                  </p>
+                </div>
+                <div className="flex bg-[#0b0d14] p-0.5 rounded-lg border border-white/10 text-xs shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("login");
+                      setErrorMsg(null);
+                    }}
+                    className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors ${
+                      authMode === "login" ? "bg-[#2563eb] text-white" : "text-[#8f98ab] hover:text-[#eef0f5]"
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("register");
+                      setErrorMsg(null);
+                      setPassword("");
+                    }}
+                    className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors ${
+                      authMode === "register" ? "bg-[#2563eb] text-white" : "text-[#8f98ab] hover:text-[#eef0f5]"
+                    }`}
+                  >
+                    Sign Up
+                  </button>
+                </div>
               </div>
 
+              {errorMsg && (
+                <div className="p-3 rounded-lg bg-[#dc2626]/15 border border-[#dc2626]/40 text-xs text-[#fca5a5] flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
               <form onSubmit={handleLogin} className="space-y-4">
+                {authMode === "register" && (
+                  <>
+                    <div>
+                      <label htmlFor="demo-name" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                        Full Name
+                      </label>
+                      <div className="relative">
+                        <User className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
+                        <input
+                          id="demo-name"
+                          name="name"
+                          type="text"
+                          autoComplete="name"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                          className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                          placeholder="e.g. Ahmad Fauzi"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="demo-role" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                        Plant Role
+                      </label>
+                      <select
+                        id="demo-role"
+                        value={selectedDemoRole}
+                        onChange={(e) => setSelectedDemoRole(e.target.value as ManufacturingRole)}
+                        className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg px-3.5 h-10 text-xs sm:text-sm"
+                      >
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <label htmlFor="demo-email" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
-                    Demo Corporate Email
+                    Corporate Email
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
@@ -176,9 +284,11 @@ export default function LoginPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label htmlFor="demo-password" className="text-xs font-medium text-[#a3a9b8]">
-                      Sandbox Key
+                      Password
                     </label>
-                    <span className="text-[11px] text-[#8f98ab] font-mono-numbers">Pre-filled</span>
+                    <span className="text-[11px] text-[#8f98ab] font-mono-numbers">
+                      {authMode === "register" ? "Min 6 chars" : "Default: imajin2026"}
+                    </span>
                   </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
@@ -186,11 +296,12 @@ export default function LoginPage() {
                       id="demo-password"
                       name="password"
                       type="password"
-                      autoComplete="current-password"
+                      autoComplete={authMode === "register" ? "new-password" : "current-password"}
                       enterKeyHint="done"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      minLength={authMode === "register" ? 6 : 1}
                       className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                     />
                   </div>
@@ -201,7 +312,13 @@ export default function LoginPage() {
                   disabled={isSubmitting}
                   className="w-full h-10 px-4 bg-[#eef0f5] hover:bg-white text-[#0b0d14] text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
-                  <span>{isSubmitting ? "Opening Cockpit..." : "Sign in to Cockpit"}</span>
+                  <span>
+                    {isSubmitting
+                      ? "Authenticating..."
+                      : authMode === "register"
+                      ? "Create Account & Enter Cockpit"
+                      : "Sign in to Cockpit"}
+                  </span>
                   <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </button>
               </form>

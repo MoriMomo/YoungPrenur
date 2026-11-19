@@ -2,7 +2,6 @@ import {
   ROLE_PRESETS,
   INITIAL_ACTIONS,
   WBS_TASKS,
-  RISKS_AND_OPPORTUNITIES,
   RISK_DRIVERS,
   KNOWLEDGE_DOCS,
   PERFORMANCE_CHART_DATA,
@@ -14,6 +13,8 @@ import {
 } from "@/lib/mock-data";
 import {
   ManufacturingRole,
+  KpiItem,
+  KnowledgeDoc,
   DecisionAction,
   AuditLogEntry,
   WbsTask,
@@ -536,4 +537,262 @@ export async function fetchIRoomOperations(): Promise<OperationTrackerItem[]> {
     // Fallback
   }
   return IROOM_OPERATIONS;
+}
+
+export async function ingestIRoomRecord(
+  stream: "materials" | "progress" | "drawings" | "quotations" | "operations",
+  record: Record<string, unknown>
+): Promise<{ success: boolean; total_records?: number } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/iroom/${stream}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([record]),
+      signal: AbortSignal.timeout(3500),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Offline fallback handled by caller
+  }
+  return null;
+}
+
+// -------------------------------------------------------------
+// Live Auth, Audit Log, Overview KPIs & Knowledge Base
+// -------------------------------------------------------------
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: ManufacturingRole;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
+  mode: "backend" | "sandbox";
+}
+
+const SESSION_STORAGE_KEY = "mdip_auth_session";
+
+export function getStoredSession(): AuthSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AuthSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(session: AuthSession): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  } catch {
+    // Storage quota/privacy mode ignored
+  }
+}
+
+export function clearStoredSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // Ignored
+  }
+}
+
+export class AuthError extends Error {}
+
+async function submitAuth(
+  endpoint: string,
+  body: Record<string, unknown>,
+  defaultError: string,
+  fallbackUser: AuthUser
+): Promise<AuthSession> {
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!res.ok) {
+      let detail = defaultError;
+      try {
+        const err = await res.json();
+        if (typeof err.detail === "string") detail = err.detail;
+      } catch {
+        // Keep default error text when response body is not JSON
+      }
+      throw new AuthError(detail);
+    }
+    const data = await res.json();
+    const session: AuthSession = { token: data.token, user: data.user, mode: "backend" };
+    saveSession(session);
+    return session;
+  } catch (err) {
+    if (err instanceof AuthError) throw err;
+    const session: AuthSession = {
+      token: "offline-sandbox",
+      user: fallbackUser,
+      mode: "sandbox",
+    };
+    saveSession(session);
+    return session;
+  }
+}
+
+export function loginUser(
+  email: string,
+  password: string,
+  fallbackRole: ManufacturingRole = "Operations Manager"
+): Promise<AuthSession> {
+  const namePart = email.split("@")[0]?.replace(/[._-]+/g, " ") || fallbackRole;
+  return submitAuth("/auth/login", { email, password }, "Invalid email or password.", {
+    id: "sandbox-user",
+    email,
+    name: namePart,
+    role: fallbackRole,
+  });
+}
+
+export function registerUser(
+  email: string,
+  password: string,
+  name: string,
+  role: ManufacturingRole
+): Promise<AuthSession> {
+  return submitAuth(
+    "/auth/register",
+    { email, password, name, role },
+    "Could not create account.",
+    { id: "sandbox-user", email, name: name || email, role }
+  );
+}
+
+export async function fetchAuditLog(): Promise<AuditLogEntry[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/risks/audit-log`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const rows: Array<{
+        id: string;
+        action_id: string;
+        action_title: string;
+        decision: string;
+        reviewer_role: string;
+        notes: string;
+        sop_ref: string;
+        timestamp: string;
+      }> = await res.json();
+      return rows.map((r) => ({
+        id: r.id,
+        actionId: r.action_id,
+        actionTitle: r.action_title,
+        decision: r.decision === "OVERRIDDEN" ? "OVERRIDDEN" : "AUTHORIZED",
+        reviewerRole: r.reviewer_role,
+        notes: r.notes,
+        sopRef: r.sop_ref,
+        timestamp: r.timestamp,
+      }));
+    }
+  } catch {
+    // Fallback to client memory
+  }
+  return null;
+}
+
+export async function fetchLiveOverviewKpis(role: ManufacturingRole): Promise<KpiItem[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/overview?role=${encodeURIComponent(role)}`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.kpis)) {
+        return data.kpis.map(
+          (k: { label: string; value: string; change: string; status: string }): KpiItem => ({
+            title: k.label,
+            value: k.value,
+            trend: k.change,
+            subtle: "Live backend",
+            icon: "activity",
+            status: k.status === "OK" ? "normal" : "warn",
+          })
+        );
+      }
+    }
+  } catch {
+    // Fallback to role preset KPIs
+  }
+  return null;
+}
+
+export async function fetchKnowledgeDocs(): Promise<KnowledgeDoc[]> {
+  try {
+    const res = await fetch(`${API_BASE}/knowledge/docs`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const rows: Array<{
+        doc_code: string;
+        title: string;
+        clause: string;
+        keywords: string[];
+        excerpt: string;
+      }> = await res.json();
+      const extraByCode = new Map(KNOWLEDGE_DOCS.map((d) => [d.code.toUpperCase(), d]));
+      return rows.map((row) => {
+        const local = extraByCode.get(row.doc_code.toUpperCase());
+        if (local) {
+          return {
+            ...local,
+            title: row.title || local.title,
+            keywords: row.keywords.length > 0 ? row.keywords : local.keywords,
+          };
+        }
+        return {
+          id: `sop-${row.doc_code.toLowerCase()}`,
+          title: row.title,
+          code: row.doc_code,
+          category: "Plant SOP",
+          keywords: row.keywords,
+          summary: row.excerpt,
+          sections: [{ clause: row.clause, content: row.excerpt }],
+        };
+      });
+    }
+  } catch {
+    // Offline fallback
+  }
+  return KNOWLEDGE_DOCS;
+}
+
+export async function ingestKnowledgeDoc(payload: {
+  doc_code: string;
+  title: string;
+  clause: string;
+  keywords: string[];
+  excerpt: string;
+}): Promise<{ success: boolean } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/knowledge/ingest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3500),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Offline fallback
+  }
+  return null;
 }

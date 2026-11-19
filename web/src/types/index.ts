@@ -51,7 +51,7 @@ export interface AuditLogEntry {
   actionId: string;
   actionTitle: string;
   decision: "AUTHORIZED" | "OVERRIDDEN";
-  reviewerRole: ManufacturingRole;
+  reviewerRole: string;
   notes: string;
   sopRef: string;
   timestamp: string;

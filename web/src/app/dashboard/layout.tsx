@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { Toast } from "@/components/ui/Toast";
@@ -16,10 +16,14 @@ import {
 } from "@/types";
 import { INITIAL_ACTIONS, INITIAL_AUDIT_LOG, ROLES } from "@/lib/mock-data";
 import {
+  AuthUser,
   checkApiHealth,
+  clearStoredSession,
+  fetchAuditLog,
   flagDecisionAction,
   askManufacturingCopilot,
   fetchDecisionActions,
+  getStoredSession,
 } from "@/lib/api";
 
 interface DashboardContextType {
@@ -105,6 +109,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedRole, setSelectedRole] = useState<ManufacturingRole>("Operations Manager");
   const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>("saas");
   const [isApiLive, setIsApiLive] = useState<boolean>(false);
@@ -123,15 +129,21 @@ export default function DashboardLayout({
     const live = await checkApiHealth();
     setIsApiLive(live);
     if (live) {
-      const remoteActions = await fetchDecisionActions();
+      const [remoteActions, remoteAudit] = await Promise.all([
+        fetchDecisionActions(),
+        fetchAuditLog(),
+      ]);
       if (remoteActions && remoteActions.length > 0) {
         setActions(remoteActions);
+      }
+      if (remoteAudit && remoteAudit.length > 0) {
+        setAuditLog(remoteAudit);
       }
     }
     if (announce) {
       showToast(
         live
-          ? "Telemetry refreshed from FastAPI PoC backend."
+          ? "Telemetry refreshed from live FastAPI backend."
           : "Telemetry refreshed from TRL 4 simulation sandbox."
       );
     }
@@ -139,13 +151,40 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let active = true;
-    checkApiHealth().then((live) => {
-      if (active) setIsApiLive(live);
+    checkApiHealth().then(async (live) => {
+      if (!active) return;
+      const session = getStoredSession();
+      if (session?.user) {
+        setCurrentUser(session.user);
+        if (
+          typeof window !== "undefined" &&
+          !window.location.search.includes("role=") &&
+          ROLES.includes(session.user.role)
+        ) {
+          setSelectedRole(session.user.role);
+        }
+      }
+      setIsApiLive(live);
+      if (live) {
+        const [remoteActions, remoteAudit] = await Promise.all([
+          fetchDecisionActions(),
+          fetchAuditLog(),
+        ]);
+        if (!active) return;
+        if (remoteActions && remoteActions.length > 0) setActions(remoteActions);
+        if (remoteAudit && remoteAudit.length > 0) setAuditLog(remoteAudit);
+      }
     });
     return () => {
       active = false;
     };
   }, []);
+
+  const handleSignOut = () => {
+    clearStoredSession();
+    setCurrentUser(null);
+    router.push("/login");
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -200,19 +239,24 @@ export default function DashboardLayout({
       });
     }
 
+    const reviewerLabel = currentUser ? `${currentUser.name} (${selectedRole})` : selectedRole;
     const newEntry: AuditLogEntry = {
       id: `AUD-${Date.now().toString().slice(-4)}`,
       actionId,
       actionTitle: target?.title || actionId,
       decision,
-      reviewerRole: selectedRole,
+      reviewerRole: reviewerLabel,
       notes: notes.trim() || (decision === "AUTHORIZED" ? "Checklist verified by supervisor." : "Schedule change overridden."),
       sopRef: target?.sourceDoc || "SOP-MDIP",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
     };
 
     setAuditLog((prev) => [newEntry, ...prev]);
-    await flagDecisionAction(actionId, selectedRole, decision, notes);
+    await flagDecisionAction(actionId, reviewerLabel, decision, notes);
+    const syncedAudit = await fetchAuditLog();
+    if (syncedAudit && syncedAudit.length > 0) {
+      setAuditLog(syncedAudit);
+    }
     showToast(
       decision === "OVERRIDDEN"
         ? "Override reason recorded in ISO 9001 audit log."
@@ -314,6 +358,8 @@ export default function DashboardLayout({
             isApiLive={isApiLive}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             onOpenCopilot={() => setIsChatOpen(true)}
+            userName={currentUser?.name || null}
+            onSignOut={handleSignOut}
           />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">

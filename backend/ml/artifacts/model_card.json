@@ -1,7 +1,7 @@
 {
   "model": "XGBoost hurdle model (late classifier + conditional slip regressor on late==1)",
   "target": "Activity finishes later than its CPM total float (+0.5d tolerance)",
-  "trained_at": "2026-11-19T04:46:33+00:00",
+  "trained_at": "2026-11-19T05:05:50+00:00",
   "training_data": "Synthetic project-manufacturing schedules (ml/generate_dataset.py); ingest historical planned-vs-actual schedules via POST /api/v1/ml/retrain",
   "n_tasks": 7855,
   "n_real_tasks": 0,

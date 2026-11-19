@@ -7,12 +7,17 @@ Postgres and mirrored to local SQLite (`backend/data/mdip.db`). Otherwise it run
 against SQLite alone.
 """
 
+import base64
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import hashlib
+import hmac
 import json
 import os
+import secrets
 import sqlite3
 import threading
+import time
 from typing import Any, Dict, List, Optional
 import urllib.error
 import urllib.parse
@@ -272,6 +277,75 @@ INITIAL_SOPS: List[Dict[str, Any]] = [
     },
 ]
 
+INITIAL_USERS: List[Dict[str, str]] = [
+    {"id": "usr-ops", "email": "ops.lead@imajin.id", "name": "Budi Santoso", "role": "Operations Manager"},
+    {"id": "usr-plant", "email": "plant.manager@imajin.id", "name": "Hendra Wijaya", "role": "Plant Manager"},
+    {"id": "usr-prod", "email": "production.supervisor@imajin.id", "name": "Agus H.", "role": "Production Supervisor"},
+    {"id": "usr-maint", "email": "maintenance.lead@imajin.id", "name": "Fajar Nugraha", "role": "Maintenance Lead"},
+    {"id": "usr-qa", "email": "quality.manager@imajin.id", "name": "Siti Rahma", "role": "Quality Manager"},
+    {"id": "usr-scm", "email": "supply.chain.lead@imajin.id", "name": "Rina Wijaya", "role": "Supply Chain Lead"},
+]
+DEFAULT_DEMO_PASSWORD = os.environ.get("MDIP_DEMO_PASSWORD", "imajin2026")
+
+
+def _auth_secret() -> bytes:
+    secret = os.environ.get("MDIP_AUTH_SECRET") or "mdip-local-dev-auth-secret-change-in-prod"
+    return secret.encode("utf-8")
+
+
+def _hash_password(password: str, salt_hex: Optional[str] = None) -> tuple[str, str]:
+    salt = bytes.fromhex(salt_hex) if salt_hex else secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200_000).hex()
+    return digest, salt.hex()
+
+
+def verify_password(password: str, salt_hex: str, expected_hash: str) -> bool:
+    actual_hash, _ = _hash_password(password, salt_hex=salt_hex)
+    return hmac.compare_digest(actual_hash, expected_hash)
+
+
+def _b64_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def _b64_decode(val: str) -> bytes:
+    pad = "=" * (-len(val) % 4)
+    return base64.urlsafe_b64decode(val + pad)
+
+
+def create_session_token(user: Dict[str, Any], ttl_hours: int = 24) -> str:
+    """Mint an HMAC-SHA256 signed bearer session token."""
+    payload = {
+        "sub": user["id"],
+        "email": user["email"],
+        "name": user["name"],
+        "role": user["role"],
+        "exp": int(time.time()) + ttl_hours * 3600,
+    }
+    body = _b64_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    sig = _b64_encode(hmac.new(_auth_secret(), body.encode("ascii"), hashlib.sha256).digest())
+    return f"{body}.{sig}"
+
+
+def verify_session_token(token: str) -> Optional[Dict[str, Any]]:
+    """Verify HMAC signature and expiry of a bearer token; return user claims or None."""
+    try:
+        body, sig = token.split(".", 1)
+        expected = _b64_encode(hmac.new(_auth_secret(), body.encode("ascii"), hashlib.sha256).digest())
+        if not hmac.compare_digest(sig, expected):
+            return None
+        claims = json.loads(_b64_decode(body).decode("utf-8"))
+        if int(claims.get("exp", 0)) < int(time.time()):
+            return None
+        return {
+            "id": claims["sub"],
+            "email": claims["email"],
+            "name": claims["name"],
+            "role": claims["role"],
+        }
+    except Exception:
+        return None
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -423,6 +497,21 @@ def _seed_supabase_if_empty() -> None:
                     body=sop_rows,
                     prefer="resolution=merge-duplicates,return=minimal",
                 )
+
+        existing_users = _sb_request("GET", "users", query="select=id&limit=1", timeout=3.0)
+        if isinstance(existing_users, list) and len(existing_users) == 0:
+            with _connect() as conn:
+                local_users = conn.execute(
+                    "SELECT id, email, name, role, password_hash, salt, created_at FROM users"
+                ).fetchall()
+            if local_users:
+                _sb_request(
+                    "POST",
+                    "users",
+                    query="on_conflict=email",
+                    body=[dict(r) for r in local_users],
+                    prefer="resolution=merge-duplicates,return=minimal",
+                )
     except Exception:
         # Supabase unreachable or schema not applied yet; local SQLite handles requests cleanly.
         pass
@@ -493,6 +582,19 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                salt TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
 
         count_iroom = conn.execute("SELECT COUNT(*) FROM iroom_records").fetchone()[0]
         if count_iroom == 0:
@@ -519,6 +621,16 @@ def init_db() -> None:
                         doc["excerpt"],
                         now,
                     ),
+                )
+
+        count_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        if count_users == 0:
+            now = _now_iso()
+            for usr in INITIAL_USERS:
+                pw_hash, salt = _hash_password(DEFAULT_DEMO_PASSWORD)
+                conn.execute(
+                    "INSERT INTO users (id, email, name, role, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (usr["id"], usr["email"], usr["name"], usr["role"], pw_hash, salt, now),
                 )
 
     _seed_supabase_if_empty()
@@ -932,3 +1044,90 @@ def get_audit_log() -> List[Dict[str, Any]]:
             "FROM audit_log ORDER BY rowid DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def _public_user(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "name": row["name"],
+        "role": row["role"],
+    }
+
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    norm = email.strip().lower()
+    if _supabase_key():
+        try:
+            rows = _sb_request(
+                "GET",
+                "users",
+                query=f"select=id,email,name,role,password_hash,salt,created_at&email=eq.{urllib.parse.quote(norm)}&limit=1",
+            )
+            if isinstance(rows, list) and rows:
+                return rows[0]
+        except Exception:
+            pass
+
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id, email, name, role, password_hash, salt, created_at FROM users WHERE email = ? LIMIT 1",
+            (norm,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def create_user(email: str, password: str, name: str, role: str) -> Dict[str, Any]:
+    norm = email.strip().lower()
+    if get_user_by_email(norm):
+        raise ValueError("An account with this email already exists.")
+
+    uid = f"usr-{secrets.token_hex(6)}"
+    pw_hash, salt = _hash_password(password)
+    now = _now_iso()
+    record = {
+        "id": uid,
+        "email": norm,
+        "name": name.strip() or norm.split("@", 1)[0],
+        "role": role.strip() or "Operations Manager",
+        "password_hash": pw_hash,
+        "salt": salt,
+        "created_at": now,
+    }
+
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO users (id, email, name, role, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                record["id"],
+                record["email"],
+                record["name"],
+                record["role"],
+                record["password_hash"],
+                record["salt"],
+                record["created_at"],
+            ),
+        )
+
+    if _supabase_key():
+        try:
+            _sb_request(
+                "POST",
+                "users",
+                query="on_conflict=email",
+                body=record,
+                prefer="resolution=merge-duplicates,return=minimal",
+            )
+        except Exception:
+            pass
+
+    return _public_user(record)
+
+
+def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any]]:
+    row = get_user_by_email(email)
+    if not row:
+        return None
+    if not verify_password(password, row["salt"], row["password_hash"]):
+        return None
+    return _public_user(row)

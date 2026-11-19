@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, RotateCcw, ChevronDown, MessageSquareText, Shield } from "lucide-react";
+import { Menu, RotateCcw, ChevronDown, MessageSquareText, Shield, LogOut } from "lucide-react";
 import { ManufacturingRole, DeploymentMode } from "@/types";
 import { ROLES } from "@/lib/mock-data";
 import gsap from "gsap";
@@ -16,6 +16,8 @@ interface TopbarProps {
   isApiLive: boolean;
   onOpenMobileMenu: () => void;
   onOpenCopilot: () => void;
+  userName?: string | null;
+  onSignOut?: () => void;
 }
 
 const ROUTE_TITLES: Record<string, string> = {
@@ -35,6 +37,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   isApiLive,
   onOpenMobileMenu,
   onOpenCopilot,
+  userName,
+  onSignOut,
 }) => {
   const pathname = usePathname();
   const refreshIconRef = useRef<SVGSVGElement>(null);
@@ -164,6 +168,19 @@ export const Topbar: React.FC<TopbarProps> = ({
           <MessageSquareText className="w-3.5 h-3.5 text-[#9ca3af]" strokeWidth={1.5} />
           <span className="hidden sm:inline">Copilot</span>
         </button>
+
+        {userName && onSignOut && (
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium text-[#4b5565] hover:text-[#111827] bg-white hover:bg-[#f9fafb] border border-[#e5e7eb] rounded-lg transition-colors cursor-pointer"
+            title={`Signed in as ${userName} — click to sign out`}
+            aria-label="Sign out"
+          >
+            <span className="hidden xl:inline max-w-[96px] truncate">{userName}</span>
+            <LogOut className="w-3.5 h-3.5 text-[#64748b]" strokeWidth={1.5} />
+          </button>
+        )}
       </div>
     </header>
   );

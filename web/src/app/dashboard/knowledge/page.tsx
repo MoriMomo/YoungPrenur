@@ -4,14 +4,15 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDashboard } from "../layout";
 import { KNOWLEDGE_DOCS } from "@/lib/mock-data";
+import { fetchKnowledgeDocs, ingestKnowledgeDoc } from "@/lib/api";
 import { KnowledgeDoc } from "@/types";
-import { ChevronRight, X, Bookmark } from "lucide-react";
+import { ChevronRight, X, Bookmark, Plus } from "lucide-react";
 
-function findMatchingDoc(docCode: string | null): KnowledgeDoc | null {
+function findMatchingDoc(docs: KnowledgeDoc[], docCode: string | null): KnowledgeDoc | null {
   if (!docCode) return null;
   const upper = docCode.toUpperCase();
   return (
-    KNOWLEDGE_DOCS.find(
+    docs.find(
       (d) => d.code.toUpperCase() === upper || upper.includes(d.code.toUpperCase())
     ) || null
   );
@@ -19,9 +20,31 @@ function findMatchingDoc(docCode: string | null): KnowledgeDoc | null {
 
 function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null }) {
   const { showToast } = useDashboard();
+  const [docs, setDocs] = useState<KnowledgeDoc[]>(KNOWLEDGE_DOCS);
   const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(() =>
-    findMatchingDoc(initialDocCode)
+    findMatchingDoc(KNOWLEDGE_DOCS, initialDocCode)
   );
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [docCode, setDocCode] = useState("");
+  const [docTitle, setDocTitle] = useState("");
+  const [docClause, setDocClause] = useState("");
+  const [docKeywords, setDocKeywords] = useState("");
+  const [docExcerpt, setDocExcerpt] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetchKnowledgeDocs().then((loaded) => {
+      if (!active || loaded.length === 0) return;
+      setDocs(loaded);
+      if (initialDocCode) {
+        const matched = findMatchingDoc(loaded, initialDocCode);
+        if (matched) setSelectedDoc(matched);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [initialDocCode]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -38,22 +61,130 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
     showToast(`Loaded indexed clauses for ${doc.code}`);
   };
 
+  const handleAddSop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docCode.trim() || !docTitle.trim() || !docExcerpt.trim()) return;
+    const keywords = docKeywords
+      .split(",")
+      .map((k) => k.trim().toLowerCase())
+      .filter(Boolean);
+    const clause = docClause.trim() || "Clause 1.0: Standard Control";
+    const code = docCode.trim().toUpperCase();
+    await ingestKnowledgeDoc({
+      doc_code: code,
+      title: docTitle.trim(),
+      clause,
+      keywords,
+      excerpt: docExcerpt.trim(),
+    });
+    const refreshed = await fetchKnowledgeDocs();
+    if (refreshed.length > 0) {
+      setDocs(refreshed);
+    } else {
+      const localDoc: KnowledgeDoc = {
+        id: `sop-${code.toLowerCase()}`,
+        title: docTitle.trim(),
+        code,
+        category: "Plant SOP",
+        keywords,
+        summary: docExcerpt.trim(),
+        sections: [{ clause, content: docExcerpt.trim() }],
+      };
+      setDocs((prev) => [localDoc, ...prev.filter((d) => d.code !== code)]);
+    }
+    setDocCode("");
+    setDocTitle("");
+    setDocClause("");
+    setDocKeywords("");
+    setDocExcerpt("");
+    setShowAddForm(false);
+    showToast(`Indexed ${code} into SOP RAG knowledge base.`);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <div className="text-xs font-medium text-[#2563eb] mb-1">
-          RAG Knowledge Store &amp; Clause Traceability
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-medium text-[#2563eb] mb-1">
+            RAG Knowledge Store &amp; Clause Traceability
+          </div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-[#101e30] tracking-tight">
+            Manufacturing Knowledge Base &amp; SOPs
+          </h1>
+          <p className="text-xs sm:text-sm text-[#536780]">
+            Standard operating procedures indexed for verified Copilot citations and human-in-the-loop audit checks.
+          </p>
         </div>
-        <h1 className="text-xl sm:text-2xl font-semibold text-[#101e30] tracking-tight">
-          Manufacturing Knowledge Base &amp; SOPs
-        </h1>
-        <p className="text-xs sm:text-sm text-[#536780]">
-          Standard operating procedures indexed for verified Copilot citations and human-in-the-loop audit checks.
-        </p>
+
+        <button
+          type="button"
+          onClick={() => setShowAddForm((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0c1a2d] hover:bg-[#1a3354] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer self-start sm:self-auto"
+        >
+          {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          <span>{showAddForm ? "Cancel" : "Add SOP Clause"}</span>
+        </button>
       </div>
 
+      {showAddForm && (
+        <form
+          onSubmit={handleAddSop}
+          className="bg-white rounded-xl border border-[#e2eaf3] p-5 space-y-3"
+        >
+          <div className="text-xs font-semibold text-[#101e30]">
+            Index New SOP Document (Live Copilot RAG)
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input
+              type="text"
+              required
+              value={docCode}
+              onChange={(e) => setDocCode(e.target.value)}
+              placeholder="SOP Code (e.g. SOP-QA-15)"
+              className="px-3 py-2 border border-[#cbd5e1] rounded-lg text-xs"
+            />
+            <input
+              type="text"
+              required
+              value={docTitle}
+              onChange={(e) => setDocTitle(e.target.value)}
+              placeholder="Title (e.g. NDT Inspection Protocol)"
+              className="px-3 py-2 border border-[#cbd5e1] rounded-lg text-xs"
+            />
+            <input
+              type="text"
+              value={docClause}
+              onChange={(e) => setDocClause(e.target.value)}
+              placeholder="Clause (e.g. Clause 2.1: Rejection)"
+              className="px-3 py-2 border border-[#cbd5e1] rounded-lg text-xs"
+            />
+          </div>
+          <input
+            type="text"
+            value={docKeywords}
+            onChange={(e) => setDocKeywords(e.target.value)}
+            placeholder="Keywords (comma-separated, e.g. ultrasonic, porosity, casting)"
+            className="w-full px-3 py-2 border border-[#cbd5e1] rounded-lg text-xs"
+          />
+          <textarea
+            required
+            rows={2}
+            value={docExcerpt}
+            onChange={(e) => setDocExcerpt(e.target.value)}
+            placeholder="Procedure text cited by Copilot..."
+            className="w-full px-3 py-2 border border-[#cbd5e1] rounded-lg text-xs"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+          >
+            Save &amp; Index SOP
+          </button>
+        </form>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {KNOWLEDGE_DOCS.map((doc) => (
+        {docs.map((doc) => (
           <div
             key={doc.id}
             className="bg-white rounded-xl border border-[#e2eaf3] p-5 flex flex-col justify-between"

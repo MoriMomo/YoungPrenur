@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
 import hmac
+import json
 import math
 import os
 import re
 import sys
 import time
 from typing import Any, Dict, List, Optional
+import urllib.parse
+import urllib.request
 
 from fastapi import Body, FastAPI, File, Header, HTTPException, Path, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,6 +82,18 @@ class SopDocumentPayload(BaseModel):
     clause: str
     keywords: List[str] = []
     excerpt: str
+
+
+class RegisterPayload(BaseModel):
+    email: str
+    password: str
+    name: str
+    role: str = "Operations Manager"
+
+
+class LoginPayload(BaseModel):
+    email: str
+    password: str
 
 
 # -------------------------------------------------------------
@@ -692,15 +707,96 @@ def _run_grounded_copilot(message: str, role: str) -> Dict[str, Any]:
     else:
         confidence = 0.82
 
-    reply = " ".join(parts)
+    deterministic_reply = " ".join(parts)
+    llm_reply = _synthesize_with_gemini(message, role, deterministic_reply, citations)
+    reply = llm_reply or deterministic_reply
+
     return {
         "success": True,
         "reply": reply,
         "citations": citations,
         "confidence": confidence,
         "is_grounded": True,
+        "llm_enhanced": bool(llm_reply),
         "source_documents_indexed": len(sops),
     }
+
+
+def _synthesize_with_gemini(
+    question: str,
+    role: str,
+    facts_context: str,
+    citations: List[Dict[str, Any]],
+) -> Optional[str]:
+    """Use Gemini 2.5 Flash for natural answers grounded in retrieved telemetry and SOPs."""
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+    sop_lines = "\n".join(
+        f"- {c['doc_code']} ({c['clause']}): {c.get('excerpt', '')}" for c in citations
+    )
+    prompt = (
+        f"You are MDIP Manufacturing Copilot advising the {role}. "
+        "Answer in concise plain language matching the user's language (English or Indonesian), "
+        "using ONLY these verified plant metrics and SOP clauses—never invent numbers or SOP codes:\n\n"
+        f"Live Telemetry & Schedule:\n{facts_context}\n\n"
+        f"Verified SOP Excerpts:\n{sop_lines}\n\n"
+        f"User Question: {question}"
+    )
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        f"?key={urllib.parse.quote(api_key)}"
+    )
+    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return text or None
+    except Exception:
+        return None
+
+
+# -------------------------------------------------------------
+# Authentication & User Sessions (/api/v1/auth/...)
+# -------------------------------------------------------------
+
+@app.post("/api/v1/auth/register")
+def register_user(payload: RegisterPayload):
+    email = payload.email.strip().lower()
+    if "@" not in email or "." not in email.split("@", 1)[1]:
+        raise HTTPException(status_code=422, detail="Please enter a valid work email address.")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=422, detail="Password must be at least 6 characters long.")
+    try:
+        user = database.create_user(email, payload.password, payload.name, payload.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    token = database.create_session_token(user)
+    return {"success": True, "token": token, "user": user}
+
+
+@app.post("/api/v1/auth/login")
+def login_user(payload: LoginPayload):
+    user = database.authenticate_user(payload.email, payload.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    token = database.create_session_token(user)
+    return {"success": True, "token": token, "user": user}
+
+
+@app.get("/api/v1/auth/me")
+def current_user(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token.")
+    token = authorization.split(" ", 1)[1].strip()
+    user = database.verify_session_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+    return {"authenticated": True, "user": user}
 
 
 # -------------------------------------------------------------

@@ -37,6 +37,7 @@ jobs:
       - name: Build static export for GitHub Pages
         env:
           GITHUB_PAGES: "true"
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8000' }}
         run: npm run build
 
       - name: Upload Pages artifact

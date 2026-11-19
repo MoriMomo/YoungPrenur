@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useDashboard } from "./layout";
 import { KpiCards } from "@/features/risks/KpiCards";
@@ -10,7 +10,8 @@ import { PerformanceChart } from "@/features/dashboard/PerformanceChart";
 import { ProductionLineStatus } from "@/features/dashboard/ProductionLineStatus";
 import { DisclaimerBanner } from "@/components/layout/DisclaimerBanner";
 import { ROLE_PRESETS, RISKS_AND_OPPORTUNITIES, PILOT_CHECKS } from "@/lib/mock-data";
-import { downloadOperationalExport } from "@/lib/api";
+import { downloadOperationalExport, fetchLiveOverviewKpis } from "@/lib/api";
+import { KpiItem } from "@/types";
 import { Download, CalendarClock, CheckCircle2, Clock } from "lucide-react";
 import gsap from "gsap";
 
@@ -18,6 +19,7 @@ export default function DashboardOverviewPage() {
   const {
     selectedRole,
     deploymentMode,
+    isApiLive,
     actions,
     auditLog,
     setReviewingAction,
@@ -25,7 +27,19 @@ export default function DashboardOverviewPage() {
   } = useDashboard();
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const [liveKpis, setLiveKpis] = useState<KpiItem[] | null>(null);
   const currentRolePreset = ROLE_PRESETS[selectedRole] || ROLE_PRESETS["Operations Manager"];
+
+  useEffect(() => {
+    if (!isApiLive) return;
+    let active = true;
+    fetchLiveOverviewKpis(selectedRole).then((kpis) => {
+      if (active) setLiveKpis(kpis);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isApiLive, selectedRole, actions]);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -85,7 +99,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* 4 Role KPI Cards */}
-      <KpiCards kpis={currentRolePreset.kpis} />
+      <KpiCards kpis={isApiLive && liveKpis ? liveKpis : currentRolePreset.kpis} />
 
       {/* Primary Analytics Grid: Operational Chart + Role-Sorted Decision Brief */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
