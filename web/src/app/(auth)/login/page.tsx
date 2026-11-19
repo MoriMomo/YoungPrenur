@@ -159,7 +159,11 @@ export default function LoginPage() {
                     <Mail className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
                     <input
                       id="demo-email"
+                      name="email"
                       type="email"
+                      autoComplete="username"
+                      spellCheck={false}
+                      enterKeyHint="next"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -180,7 +184,10 @@ export default function LoginPage() {
                     <Lock className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
                     <input
                       id="demo-password"
+                      name="password"
                       type="password"
+                      autoComplete="current-password"
+                      enterKeyHint="done"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required

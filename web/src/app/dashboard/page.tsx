@@ -38,7 +38,7 @@ export default function DashboardOverviewPage() {
   }, [selectedRole]);
 
   // Prioritize actions matching the active role's department first
-  const sortedActions = [...actions].sort((a, b) => {
+  const sortedActions = actions.toSorted((a, b) => {
     const aMatch = a.department === currentRolePreset.priorityDepartment ? 0 : 1;
     const bMatch = b.department === currentRolePreset.priorityDepartment ? 0 : 1;
     return aMatch - bMatch;

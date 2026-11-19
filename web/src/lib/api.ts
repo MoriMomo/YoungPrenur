@@ -5,9 +5,7 @@ import {
   RISKS_AND_OPPORTUNITIES,
   RISK_DRIVERS,
   KNOWLEDGE_DOCS,
-  ROLES,
   PERFORMANCE_CHART_DATA,
-  PRODUCTION_LINES_DATA,
   IROOM_MATERIALS,
   IROOM_PROJECTS,
   IROOM_DRAWINGS,
@@ -21,7 +19,6 @@ import {
   WbsTask,
   DelayRiskPrediction,
   PerformanceMetricKey,
-  ProductionLineItem,
   MaterialDeliveryItem,
   ProjectProgressItem,
   DrawingApprovalItem,
@@ -111,54 +108,6 @@ export async function checkApiHealth(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/**
- * Fetches dashboard overview metrics for the active role.
- */
-export async function fetchOverview(role: ManufacturingRole) {
-  try {
-    const res = await fetch(`${API_BASE}/dashboard/overview?role=${encodeURIComponent(role)}`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch {
-    // Fallback to calibrated sandbox dataset
-  }
-  const preset = ROLE_PRESETS[role] || ROLE_PRESETS["Operations Manager"];
-  return {
-    success: true,
-    available_roles: ROLES,
-    active_role: role,
-    header: {
-      title: preset.title,
-      sub: preset.sub
-    },
-    kpis: preset.kpis,
-    decision_actions: INITIAL_ACTIONS,
-    risks_and_opportunities: RISKS_AND_OPPORTUNITIES,
-    source: "local_fallback"
-  };
-}
-
-/**
- * Fetches the normalized WBS tasks.
- */
-export async function fetchWbsSchedule(): Promise<WbsTask[]> {
-  try {
-    const res = await fetch(`${API_BASE}/scheduler/wbs`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (res.ok) {
-      const data: BackendWbsTask[] = await res.json();
-      return mapBackendWbs(data);
-    }
-  } catch {
-    // Fallback
-  }
-  return WBS_TASKS;
 }
 
 export class ScheduleUploadError extends Error {}
@@ -502,23 +451,6 @@ export async function fetchPerformanceData(metric: PerformanceMetricKey = "outpu
     // Fallback
   }
   return PERFORMANCE_CHART_DATA[metric] || PERFORMANCE_CHART_DATA.output;
-}
-
-/**
- * Fetches production line status list.
- */
-export async function fetchProductionLines(): Promise<ProductionLineItem[]> {
-  try {
-    const res = await fetch(`${API_BASE}/dashboard/lines`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch {
-    // Fallback
-  }
-  return PRODUCTION_LINES_DATA;
 }
 
 /**

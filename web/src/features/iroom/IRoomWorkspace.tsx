@@ -37,6 +37,34 @@ interface IRoomWorkspaceProps {
   onToast?: (msg: string) => void;
 }
 
+function IRoomTable({
+  headers,
+  children,
+}: {
+  headers: string[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
+            {headers.map((header, idx) => (
+              <th
+                key={header}
+                className={`py-2.5 px-3${idx === headers.length - 1 ? " text-right" : ""}`}
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#f1f5f9]">{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
 export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   initialTab = "material",
   isApiLive = false,
@@ -216,20 +244,17 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
 
         {/* 1. Material Delivery */}
         {activeTab === "material" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">Part Number &amp; Material</th>
-                  <th className="py-2.5 px-3">Supplier</th>
-                  <th className="py-2.5 px-3">ETA &amp; Cover Window</th>
-                  <th className="py-2.5 px-3">Risk Score</th>
-                  <th className="py-2.5 px-3">Purchase Order</th>
-                  <th className="py-2.5 px-3 text-right">Copilot Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {materials
+          <IRoomTable
+            headers={[
+              "Part Number & Material",
+              "Supplier",
+              "ETA & Cover Window",
+              "Risk Score",
+              "Purchase Order",
+              "Copilot Action",
+            ]}
+          >
+            {materials
                   .filter(
                     (m) =>
                       m.partNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -283,27 +308,22 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                       </td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
-          </div>
+          </IRoomTable>
         )}
 
         {/* 2. Project Progress */}
         {activeTab === "progress" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">Project &amp; Customer</th>
-                  <th className="py-2.5 px-3">Current WBS Stage</th>
-                  <th className="py-2.5 px-3">Progress</th>
-                  <th className="py-2.5 px-3">Slippage</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Copilot Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {projects
+          <IRoomTable
+            headers={[
+              "Project & Customer",
+              "Current WBS Stage",
+              "Progress",
+              "Slippage",
+              "Status",
+              "Copilot Action",
+            ]}
+          >
+            {projects
                   .filter(
                     (p) =>
                       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -372,9 +392,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                       </td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
-          </div>
+          </IRoomTable>
         )}
 
         {/* 3. Drawing Approval + Dynamic CAD Inspector */}
@@ -710,20 +728,17 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
-                    <th className="py-2.5 px-3">Drawing Document</th>
-                    <th className="py-2.5 px-3">Revision</th>
-                    <th className="py-2.5 px-3">Tooling Engineer</th>
-                    <th className="py-2.5 px-3">Submitted</th>
-                    <th className="py-2.5 px-3">Approval Gate</th>
-                    <th className="py-2.5 px-3 text-right">CAD Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f1f5f9]">
-                  {drawings
+            <IRoomTable
+              headers={[
+                "Drawing Document",
+                "Revision",
+                "Tooling Engineer",
+                "Submitted",
+                "Approval Gate",
+                "CAD Action",
+              ]}
+            >
+              {drawings
                     .filter(
                       (d) =>
                         d.dwgNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -789,28 +804,23 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                         </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
-            </div>
+            </IRoomTable>
           </div>
         )}
 
         {/* 4. Quotation & PO */}
         {activeTab === "quotation" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">PO Number &amp; QTN Ref</th>
-                  <th className="py-2.5 px-3">Vendor Name</th>
-                  <th className="py-2.5 px-3">Total Value (IDR)</th>
-                  <th className="py-2.5 px-3">Payment Term</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Copilot Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {quotations
+          <IRoomTable
+            headers={[
+              "PO Number & QTN Ref",
+              "Vendor Name",
+              "Total Value (IDR)",
+              "Payment Term",
+              "Status",
+              "Copilot Action",
+            ]}
+          >
+            {quotations
                   .filter(
                     (q) =>
                       q.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -864,27 +874,22 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                       </td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
-          </div>
+          </IRoomTable>
         )}
 
         {/* 5. Operation Tracker */}
         {activeTab === "operations" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#e2eaf3] text-[#64748b] text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">Work Center &amp; Machine</th>
-                  <th className="py-2.5 px-3">Operator &amp; Shift</th>
-                  <th className="py-2.5 px-3">OEE &amp; Spindle Load</th>
-                  <th className="py-2.5 px-3">Vibration Sensor</th>
-                  <th className="py-2.5 px-3">Active Job</th>
-                  <th className="py-2.5 px-3 text-right">Copilot Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {operations
+          <IRoomTable
+            headers={[
+              "Work Center & Machine",
+              "Operator & Shift",
+              "OEE & Spindle Load",
+              "Vibration Sensor",
+              "Active Job",
+              "Copilot Action",
+            ]}
+          >
+            {operations
                   .filter(
                     (op) =>
                       op.workCenter.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -939,9 +944,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
                       </td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
-          </div>
+          </IRoomTable>
         )}
       </div>
     </div>

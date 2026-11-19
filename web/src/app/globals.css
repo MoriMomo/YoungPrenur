@@ -26,10 +26,15 @@
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --scrollbar-thumb: #64748b;
+  --scrollbar-thumb-hover: #475569;
+  --scrollbar-track: transparent;
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 html, body {
@@ -43,19 +48,24 @@ html, body {
 }
 
 /* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+@supports not (scrollbar-color: auto) {
+  * {
+    scrollbar-width: auto;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
 }
 
 /* Monospace Utilities */

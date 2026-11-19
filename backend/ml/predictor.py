@@ -37,6 +37,12 @@ def model_card() -> Dict[str, Any]:
     return _models()[2]
 
 
+def reload_models() -> Dict[str, Any]:
+    """Clear the cached XGBoost boosters and reload updated artifacts from disk."""
+    _models.cache_clear()
+    return _models()[2]
+
+
 def models_available() -> bool:
     try:
         _models()

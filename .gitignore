@@ -16,3 +16,9 @@ out/
 .DS_Store
 Thumbs.db
 .env*
+!.env.example
+!backend/.env.example
+
+# Runtime state & historical uploads
+backend/data/*.db*
+backend/ml/data/historical_wbs_tasks.csv

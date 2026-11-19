@@ -8,7 +8,6 @@ import {
   WbsTask,
   KnowledgeDoc,
   RiskDriver,
-  ProductionLineItem,
   MaterialDeliveryItem,
   ProjectProgressItem,
   DrawingApprovalItem,
@@ -553,45 +552,6 @@ export const PERFORMANCE_CHART_DATA = {
     unit: "Cumulative Downtime (hrs)"
   }
 };
-
-export const PRODUCTION_LINES_DATA: ProductionLineItem[] = [
-  {
-    id: "line-01",
-    name: "Assembly Line 01 (Precision Stamping)",
-    utilization: 92,
-    outputActual: 1240,
-    outputTarget: 1300,
-    status: "On track",
-    statusColor: "green"
-  },
-  {
-    id: "line-02",
-    name: "Assembly Line 02 (CNC 5-Axis Milling)",
-    utilization: 68,
-    outputActual: 890,
-    outputTarget: 1000,
-    status: "Attention",
-    statusColor: "warn"
-  },
-  {
-    id: "line-03",
-    name: "Packaging Line 03 (Sub-Assembly Cleanroom)",
-    utilization: 96,
-    outputActual: 1510,
-    outputTarget: 1500,
-    status: "Above target",
-    statusColor: "cyan"
-  },
-  {
-    id: "line-04",
-    name: "Assembly Line 04 (Wire EDM & Grinding)",
-    utilization: 84,
-    outputActual: 1080,
-    outputTarget: 1200,
-    status: "On track",
-    statusColor: "green"
-  }
-];
 
 export const IROOM_MATERIALS: MaterialDeliveryItem[] = [
   {

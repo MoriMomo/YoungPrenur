@@ -1,4 +1,4 @@
-﻿"""
+"""
 MDIP (Manufacturing Decision Intelligence Platform)
 Automated System Verification & Proof of Testing Suite (TRL 3)
 BINUS RTT & PT Imajinasi Karya Bangsa (IMAJIN)
@@ -11,6 +11,7 @@ import json
 import urllib.request
 import urllib.error
 from datetime import datetime
+from typing import Any, Dict, List
 
 # 127.0.0.1 avoids the ~2s IPv6 "localhost" resolution delay on Windows.
 API_BASE = os.environ.get("MDIP_API_BASE", "http://127.0.0.1:8000")
@@ -25,7 +26,7 @@ def _valid_scored_tasks(tasks):
         and all("float_days" in t and "start_day" in t for t in tasks)
     )
 
-TEST_CASES = [
+TEST_CASES: List[Dict[str, Any]] = [
     {
         "id": "TC-01",
         "name": "Backend Service Health & Engine Handshake",

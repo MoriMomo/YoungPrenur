@@ -5,14 +5,17 @@ import { useDashboard } from "../layout";
 import { ScheduleUploader } from "@/features/scheduler/ScheduleUploader";
 import { GanttTimeline } from "@/features/scheduler/GanttTimeline";
 import { DeviationTable } from "@/features/scheduler/DeviationTable";
-import { fetchDelayRiskPrediction } from "@/lib/api";
+import { fetchDecisionActions, fetchDelayRiskPrediction } from "@/lib/api";
 import { WBS_TASKS, RISK_DRIVERS } from "@/lib/mock-data";
 import { WbsTask, RiskDriver } from "@/types";
 import { Info } from "lucide-react";
 
 export default function SchedulerPage() {
-  const { showToast } = useDashboard();
+  const { showToast, setActions } = useDashboard();
   const [tasks, setTasks] = useState<WbsTask[]>(WBS_TASKS);
+  const [projectName, setProjectName] = useState<string>(
+    "Project Alpha - Precision Stamping & Aerospace Tooling"
+  );
   const [overallRisk, setOverallRisk] = useState<number>(65.2);
   const [slippageDays, setSlippageDays] = useState<number>(3.5);
   const [methodology, setMethodology] = useState<string>(
@@ -21,6 +24,7 @@ export default function SchedulerPage() {
   const [drivers, setDrivers] = useState<RiskDriver[]>(RISK_DRIVERS);
 
   const applyPrediction = (pred: Awaited<ReturnType<typeof fetchDelayRiskPrediction>>) => {
+    if (pred.project_name) setProjectName(pred.project_name);
     if (pred.tasks && pred.tasks.length > 0) setTasks(pred.tasks);
     setOverallRisk(pred.overall_delay_probability);
     setSlippageDays(pred.estimated_project_slippage_days);
@@ -42,8 +46,15 @@ export default function SchedulerPage() {
 
   const handleUploadComplete = async (data: { tasks?: WbsTask[]; source?: string }) => {
     if (data?.source === "backend") {
-      // Backend scored the uploaded schedule; pull the full analysis (drivers, Monte Carlo risk).
-      applyPrediction(await fetchDelayRiskPrediction());
+      // Backend scored the uploaded schedule; pull the updated analysis and computed decisions.
+      const [pred, freshActions] = await Promise.all([
+        fetchDelayRiskPrediction(),
+        fetchDecisionActions(),
+      ]);
+      applyPrediction(pred);
+      if (freshActions && freshActions.length > 0) {
+        setActions(freshActions);
+      }
       return;
     }
     if (data?.tasks && data.tasks.length > 0) {
@@ -85,7 +96,7 @@ export default function SchedulerPage() {
                 Delay-Risk Probability Summary
               </h2>
               <p className="text-xs text-[#64748b]">
-                Project Alpha: Precision Stamping &amp; Aerospace Tooling
+                {projectName}
               </p>
             </div>
             <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] font-mono-numbers">
