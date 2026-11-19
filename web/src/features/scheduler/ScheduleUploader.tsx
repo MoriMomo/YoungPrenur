@@ -137,15 +137,15 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#e2eaf3] p-5">
+    <div className="bg-white rounded-xl border border-[#e5e7eb] p-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-[15px] font-medium text-[#111827] flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-[#2563eb]" />
+            <FileSpreadsheet className="w-4 h-4 text-[#2563eb]" strokeWidth={1.5} />
             <span>Schedule Ingestion &amp; WBS Normalizer</span>
           </h2>
-          <p className="text-xs text-[#536780] mt-0.5">
-            Upload CSV/Excel/PDF work schedules or load the bundled PT IMAJIN WBS sample CSV.
+          <p className="text-xs text-[#4b5565] mt-0.5">
+            Upload CSV/Excel work schedules or load the bundled PT IMAJIN WBS sample CSV
           </p>
         </div>
 
@@ -162,9 +162,9 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
             type="button"
             onClick={handleLoadSampleCsv}
             disabled={isUploading}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#334155] border border-[#cbd5e1] text-xs font-semibold rounded-xl transition-colors cursor-pointer disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#f9fafb] hover:bg-[#f3f4f6] text-[#111827] border border-[#e5e7eb] text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
           >
-            <FileDown className="w-3.5 h-3.5 text-[#64748b]" />
+            <FileDown className="w-3.5 h-3.5 text-[#64748b]" strokeWidth={1.5} />
             <span>Load Sample IMAJIN CSV</span>
           </button>
 
@@ -172,7 +172,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0c1a2d] hover:bg-[#1a3354] text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 bg-[#111827] hover:bg-[#1f2937] text-white text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
           >
             {isUploading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

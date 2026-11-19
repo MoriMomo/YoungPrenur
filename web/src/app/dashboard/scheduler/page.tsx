@@ -5,7 +5,14 @@ import { useDashboard } from "../layout";
 import { ScheduleUploader } from "@/features/scheduler/ScheduleUploader";
 import { GanttTimeline } from "@/features/scheduler/GanttTimeline";
 import { DeviationTable } from "@/features/scheduler/DeviationTable";
-import { fetchDecisionActions, fetchDelayRiskPrediction } from "@/lib/api";
+import { ModelCardStrip } from "@/features/risks/ModelCardStrip";
+import {
+  DEFAULT_MODEL_CARD,
+  fetchDecisionActions,
+  fetchDelayRiskPrediction,
+  fetchMlModelCard,
+  MlModelCard,
+} from "@/lib/api";
 import { WBS_TASKS, RISK_DRIVERS } from "@/lib/mock-data";
 import { WbsTask, RiskDriver } from "@/types";
 import { Info } from "lucide-react";
@@ -16,12 +23,13 @@ export default function SchedulerPage() {
   const [projectName, setProjectName] = useState<string>(
     "Project Alpha - Precision Stamping & Aerospace Tooling"
   );
-  const [overallRisk, setOverallRisk] = useState<number>(65.2);
-  const [slippageDays, setSlippageDays] = useState<number>(3.5);
+  const [overallRisk, setOverallRisk] = useState<number>(59.9);
+  const [slippageDays, setSlippageDays] = useState<number>(5.05);
   const [methodology, setMethodology] = useState<string>(
-    "Offline demo data (backend not connected)"
+    "Offline fallback (backend disconnected)"
   );
   const [drivers, setDrivers] = useState<RiskDriver[]>(RISK_DRIVERS);
+  const [modelCard, setModelCard] = useState<MlModelCard>(DEFAULT_MODEL_CARD);
 
   const applyPrediction = (pred: Awaited<ReturnType<typeof fetchDelayRiskPrediction>>) => {
     if (pred.project_name) setProjectName(pred.project_name);
@@ -38,6 +46,9 @@ export default function SchedulerPage() {
     let active = true;
     fetchDelayRiskPrediction().then((pred) => {
       if (active && pred) applyPrediction(pred);
+    });
+    fetchMlModelCard().then((card) => {
+      if (active) setModelCard(card);
     });
     return () => {
       active = false;
@@ -75,21 +86,21 @@ export default function SchedulerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-medium text-[#2563eb] mb-1">
-          BINUS RTT D1521 &amp; PT IMAJIN Research Core
+        <div className="text-xs font-mono-numbers text-[#2563eb] mb-1">
+          BINUS RTT D1521 · PT IMAJIN
         </div>
-        <h1 className="text-xl sm:text-2xl font-semibold text-[#101e30] tracking-tight">
-          AI Project Scheduler &amp; ML Delay-Risk Engine
+        <h1 className="text-xl sm:text-2xl font-medium text-[#111827] tracking-tight">
+          AI Project Scheduler &amp; Delay-Risk Engine
         </h1>
-        <p className="text-xs sm:text-sm text-[#536780]">
-          Standardizes unstructured CSV/Excel/PDF work schedules into normalized WBS activities and computes critical-path slippage risk.
+        <p className="text-xs sm:text-sm text-[#4b5565] mt-0.5">
+          Normalizes CSV and Excel schedules into WBS work packages and scores critical-path slippage risk.
         </p>
       </div>
 
       <ScheduleUploader onUploadComplete={handleUploadComplete} onToast={showToast} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="bg-white rounded-xl border border-[#e2eaf3] p-5">
+        <div className="bg-white rounded-xl border border-[#e5e7eb] p-5">
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-[15px] font-medium text-[#111827]">
@@ -104,50 +115,52 @@ export default function SchedulerPage() {
             </span>
           </div>
 
-          <div className="text-3xl sm:text-4xl font-semibold text-[#dc2626] font-mono-numbers my-3">
+          <div className="text-3xl sm:text-4xl font-medium text-[#dc2626] font-mono-numbers my-3">
             +{slippageDays.toFixed(1)} Days Slippage
           </div>
           <p className="text-xs text-[#64748b] mb-4">
-            Median (P50) project slippage from a Monte Carlo simulation of XGBoost task-level slip predictions propagated through the CPM network.
+            Median (P50) project slippage across 2,000 Monte Carlo CPM runs from XGBoost task predictions.
           </p>
 
           <div className="pt-3 border-t border-[#f1f5f9]">
-            <div className="text-xs font-semibold text-[#101e30] mb-2">
-              Root-Cause Risk Drivers:
+            <div className="text-xs font-medium text-[#111827] mb-2">
+              Root-Cause Risk Drivers
             </div>
-            <ul className="text-xs text-[#475569] space-y-1.5 list-disc pl-4">
+            <ul className="text-xs text-[#4b5565] space-y-1.5 list-disc pl-4">
               {drivers.map((drv, idx) => (
                 <li key={idx}>
-                  <strong className="text-[#1e293b]">
+                  <span className="font-medium text-[#111827]">
                     {drv.factor} ({drv.weight})
-                  </strong>{" "}
-                  - {drv.impact}
+                  </span>{" "}
+                  — {drv.impact}
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#e2eaf3] p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="bg-white rounded-xl border border-[#e5e7eb] p-5 flex flex-col justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-[15px] font-medium text-[#111827]">
-                Engine Configuration &amp; Feature Maturity
+                Model Provenance &amp; Validation
               </h2>
               <span className="px-2 py-0.5 rounded text-[11px] font-mono-numbers bg-[#f3f4f6] text-[#374151] border border-[#e5e7eb]">
                 {methodology}
               </span>
             </div>
 
-            <p className="text-xs text-[#4b5565] leading-relaxed mb-4">
-              Per MDIP BMC Table II, schedule extraction and normalized WBS parsing operate at TRL 4 prototype stage. Delay risk is scored by a supervised XGBoost model (with SHAP root-cause drivers) currently trained on synthetic project-manufacturing schedules; it will be retrained on partner historical planned-vs-actual logs in the pilot phase.
+            <p className="text-xs text-[#4b5565] leading-relaxed">
+              Trained on {modelCard.n_real_tasks.toLocaleString()} real historical tasks across DSLIB project DAGs and 4TU CNC shop-floor routing orders, blended with {((modelCard.n_tasks - modelCard.n_real_tasks)).toLocaleString()} synthetic WBS tasks.
             </p>
+
+            <ModelCardStrip card={modelCard} />
           </div>
 
           <div className="p-3.5 bg-[#fafafa] border border-[#e5e7eb] rounded-xl text-xs text-[#374151] space-y-1">
             <div className="flex items-center gap-1.5 font-medium text-[#111827]">
               <Info className="w-4 h-4 text-[#2563eb]" strokeWidth={1.5} />
-              <span>Verified BINUS RTT Research Reference:</span>
+              <span>Verified BINUS RTT Research Reference</span>
             </div>
             <p className="text-[#4b5565] text-[11px] leading-snug">
               &quot;Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek&quot; (Dr. Ir. Indrajani, S.Kom., M.M.)

@@ -32,7 +32,7 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ citation }) => {
       </Link>
 
       {showTooltip && (
-        <div className="absolute bottom-full left-0 mb-2 z-50 w-64 p-3 bg-[#0c1a2d] text-[#cad8e8] text-xs rounded-xl shadow-xl border border-[#1e3450] pointer-events-none">
+        <div className="absolute bottom-full left-0 mb-2 z-50 w-64 p-3 bg-[#0d131c] text-[#cad8e8] text-xs rounded-xl shadow-sm border border-white/12 pointer-events-none">
           <div className="font-medium text-white text-[11px] mb-1 flex items-center justify-between">
             <span>{citation.title || citation.doc_code}</span>
             <span className="text-[10px] text-[#60a5fa] font-mono-numbers">Grounded</span>

@@ -289,7 +289,7 @@ export const PerformanceChart: React.FC = () => {
                 transform: "translate(-50%, -100%)",
               }}
             >
-              <div className="bg-[#0d131c] text-white p-3 rounded-xl shadow-lg border border-white/10 text-xs w-52">
+              <div className="bg-[#0d131c] text-white p-3 rounded-xl shadow-sm border border-white/12 text-xs w-52">
                 <div className="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
                   <span className="font-medium text-white text-[11px]">
                     {days[hoverIndex].full}

@@ -5,9 +5,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
-import { AuthError, loginUser, registerUser } from "@/lib/api";
+import { AuthError, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
 import gsap from "gsap";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (cfg: {
+            client_id: string;
+            callback: (resp: { credential?: string }) => void;
+          }) => void;
+          renderButton: (el: HTMLElement, opts: Record<string, string | number>) => void;
+        };
+      };
+    };
+  }
+}
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 const ROLE_EMAILS: Record<ManufacturingRole, string> = {
   "Operations Manager": "ops.lead@imajin.id",
@@ -30,6 +48,68 @@ export default function LoginPage() {
 
   const cardRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const selectedRoleRef = useRef<ManufacturingRole>(selectedDemoRole);
+
+  useEffect(() => {
+    selectedRoleRef.current = selectedDemoRole;
+  }, [selectedDemoRole]);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !googleBtnRef.current) return;
+
+    const initGoogle = () => {
+      const gid = window.google?.accounts?.id;
+      const target = googleBtnRef.current;
+      if (!gid || !target) return;
+      target.replaceChildren();
+      gid.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (resp: { credential?: string }) => {
+          if (!resp.credential) {
+            setErrorMsg("Google sign-in did not return a credential.");
+            return;
+          }
+          setErrorMsg(null);
+          setIsSubmitting(true);
+          try {
+            const session = await loginWithGoogle(resp.credential, selectedRoleRef.current);
+            router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
+          } catch (err) {
+            setErrorMsg(err instanceof AuthError ? err.message : "Google sign-in failed.");
+            setIsSubmitting(false);
+          }
+        },
+      });
+      gid.renderButton(target, {
+        theme: "filled_black",
+        size: "large",
+        shape: "rectangular",
+        text: "continue_with",
+        width: 360,
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+      return;
+    }
+
+    const existing = document.getElementById("google-gsi-script") as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", initGoogle);
+      return () => existing.removeEventListener("load", initGoogle);
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-gsi-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.addEventListener("load", initGoogle);
+    document.head.appendChild(script);
+    return () => script.removeEventListener("load", initGoogle);
+  }, [router]);
 
   useEffect(() => {
     if (cardRef.current) {
@@ -90,10 +170,10 @@ export default function LoginPage() {
           </div>
           <div>
             <div className="font-medium text-[#eef0f5] text-sm group-hover:text-[#60a5fa] transition-colors">
-              MDIP Sandbox Gateway
+              MDIP Operations Gateway
             </div>
             <div className="text-[11px] text-[#8f98ab] font-mono-numbers">
-              TRL 4 Prototype v3.1
+              PT Imajinasi Karya Bangsa · Control Room
             </div>
           </div>
         </Link>
@@ -116,20 +196,20 @@ export default function LoginPage() {
             <div>
               <div className="inline-flex items-center gap-2 text-xs font-mono-numbers text-[#8f98ab] mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
-                <span>Role-Based Access Demo</span>
+                <span>Plant Access Control</span>
               </div>
 
               <h1 className="text-xl sm:text-2xl font-medium text-[#eef0f5] tracking-tight mb-2">
                 Manufacturing Decision Intelligence Platform
               </h1>
               <p className="text-xs sm:text-sm text-[#a3a9b8] leading-relaxed">
-                Select any of the 6 plant personas to launch the corresponding cockpit and Buying Center perspective.
+                Sign in with your Google or plant account to open your role-scoped cockpit and HITL approval queue.
               </p>
             </div>
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#a3a9b8] mb-2 flex items-center justify-between">
-                <span>1-Click Persona Demo Access</span>
+                <span>Quick Shift Personas</span>
                 <span className="text-[11px] font-mono-numbers text-[#8f98ab]">6 roles</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
@@ -162,7 +242,7 @@ export default function LoginPage() {
             </div>
 
             <div className="pt-3 border-t border-white/8 text-[11px] text-[#8f98ab] flex items-center justify-between">
-              <span>Demo RBAC Simulation</span>
+              <span>Session Auth · SQLite &amp; Supabase</span>
               <span className="font-mono-numbers">BINUS RTT &amp; IMAJIN</span>
             </div>
           </div>
@@ -177,7 +257,7 @@ export default function LoginPage() {
                   <p className="text-xs text-[#a3a9b8]">
                     {authMode === "register"
                       ? "Register a plant account stored in the backend database."
-                      : "Use demo credentials (imajin2026) or pick a persona on the left."}
+                      : "Continue with Google or use your plant email and password."}
                   </p>
                 </div>
                 <div className="flex bg-[#0b0d14] p-0.5 rounded-lg border border-white/10 text-xs shrink-0">
@@ -216,47 +296,70 @@ export default function LoginPage() {
                 </div>
               )}
 
+              <div>
+                <label htmlFor="demo-role" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                  Plant Role
+                </label>
+                <select
+                  id="demo-role"
+                  value={selectedDemoRole}
+                  onChange={(e) => setSelectedDemoRole(e.target.value as ManufacturingRole)}
+                  className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg px-3.5 h-10 text-xs sm:text-sm"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                {GOOGLE_CLIENT_ID ? (
+                  <div ref={googleBtnRef} className="min-h-10 flex items-center justify-center" />
+                ) : (
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full h-10 px-4 bg-[#1a1e28] text-[#8f98ab] border border-white/10 text-xs sm:text-sm font-medium rounded-lg flex items-center justify-center gap-2 opacity-75 cursor-not-allowed"
+                    >
+                      <span>Continue with Google</span>
+                    </button>
+                    <p className="text-[11px] font-mono-numbers text-[#8f98ab] text-center">
+                      Set NEXT_PUBLIC_GOOGLE_CLIENT_ID + GOOGLE_CLIENT_ID to activate Google OAuth
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] text-[#8f98ab]">
+                <span className="h-px flex-1 bg-white/8" />
+                <span>or continue with work email</span>
+                <span className="h-px flex-1 bg-white/8" />
+              </div>
+
               <form onSubmit={handleLogin} className="space-y-4">
                 {authMode === "register" && (
-                  <>
-                    <div>
-                      <label htmlFor="demo-name" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
-                        Full Name
-                      </label>
-                      <div className="relative">
-                        <User className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
-                        <input
-                          id="demo-name"
-                          name="name"
-                          type="text"
-                          autoComplete="name"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          required
-                          className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
-                          placeholder="e.g. Ahmad Fauzi"
-                        />
-                      </div>
+                  <div>
+                    <label htmlFor="demo-name" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-[#8f98ab] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
+                      <input
+                        id="demo-name"
+                        name="name"
+                        type="text"
+                        autoComplete="name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                        placeholder="e.g. Ahmad Fauzi"
+                      />
                     </div>
-
-                    <div>
-                      <label htmlFor="demo-role" className="block text-xs font-medium text-[#a3a9b8] mb-1.5">
-                        Plant Role
-                      </label>
-                      <select
-                        id="demo-role"
-                        value={selectedDemoRole}
-                        onChange={(e) => setSelectedDemoRole(e.target.value as ManufacturingRole)}
-                        className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg px-3.5 h-10 text-xs sm:text-sm"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
+                  </div>
                 )}
 
                 <div>
@@ -328,7 +431,7 @@ export default function LoginPage() {
                   Selected role: <span className="text-[#eef0f5] font-medium">{selectedDemoRole}</span>
                 </span>
                 <span className="text-[11px] text-[#4cc38a] font-mono-numbers">
-                  TRL 4 Sandbox
+                  Production Gateway
                 </span>
               </div>
             </div>

@@ -1131,3 +1131,32 @@ def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any]]:
     if not verify_password(password, row["salt"], row["password_hash"]):
         return None
     return _public_user(row)
+
+
+def upsert_google_user(email: str, name: str, role: str) -> Dict[str, Any]:
+    """Find or create a verified Google Sign-In user and apply the selected plant role."""
+    norm = email.strip().lower()
+    clean_role = role.strip() or "Operations Manager"
+    clean_name = name.strip() or norm.split("@", 1)[0]
+    existing = get_user_by_email(norm)
+    if not existing:
+        return create_user(norm, secrets.token_urlsafe(32), clean_name, clean_role)
+
+    updated_name = clean_name or existing.get("name") or norm.split("@", 1)[0]
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE users SET role = ?, name = ? WHERE email = ?",
+            (clean_role, updated_name, norm),
+        )
+    if _supabase_key():
+        try:
+            _sb_request(
+                "PATCH",
+                "users",
+                query=f"email=eq.{urllib.parse.quote(norm)}",
+                body={"role": clean_role, "name": updated_name},
+                prefer="return=minimal",
+            )
+        except Exception:
+            pass
+    return _public_user({**existing, "role": clean_role, "name": updated_name})

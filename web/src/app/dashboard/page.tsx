@@ -4,13 +4,20 @@ import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useDashboard } from "./layout";
 import { KpiCards } from "@/features/risks/KpiCards";
+import { ModelCardStrip } from "@/features/risks/ModelCardStrip";
 import { DecisionBrief } from "@/features/risks/DecisionBrief";
 import { RisksMonitor } from "@/features/risks/RisksMonitor";
 import { PerformanceChart } from "@/features/dashboard/PerformanceChart";
 import { ProductionLineStatus } from "@/features/dashboard/ProductionLineStatus";
 import { DisclaimerBanner } from "@/components/layout/DisclaimerBanner";
 import { ROLE_PRESETS, RISKS_AND_OPPORTUNITIES, PILOT_CHECKS } from "@/lib/mock-data";
-import { downloadOperationalExport, fetchLiveOverviewKpis } from "@/lib/api";
+import {
+  DEFAULT_MODEL_CARD,
+  downloadOperationalExport,
+  fetchLiveOverviewKpis,
+  fetchMlModelCard,
+  MlModelCard,
+} from "@/lib/api";
 import { KpiItem } from "@/types";
 import { Download, CalendarClock, CheckCircle2, Clock } from "lucide-react";
 import gsap from "gsap";
@@ -28,7 +35,18 @@ export default function DashboardOverviewPage() {
 
   const contentRef = useRef<HTMLDivElement>(null);
   const [liveKpis, setLiveKpis] = useState<KpiItem[] | null>(null);
+  const [modelCard, setModelCard] = useState<MlModelCard>(DEFAULT_MODEL_CARD);
   const currentRolePreset = ROLE_PRESETS[selectedRole] || ROLE_PRESETS["Operations Manager"];
+
+  useEffect(() => {
+    let active = true;
+    fetchMlModelCard().then((card) => {
+      if (active) setModelCard(card);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isApiLive) return;
@@ -100,6 +118,9 @@ export default function DashboardOverviewPage() {
 
       {/* 4 Role KPI Cards */}
       <KpiCards kpis={isApiLive && liveKpis ? liveKpis : currentRolePreset.kpis} />
+
+      {/* Real-Data XGBoost Validation Readout */}
+      <ModelCardStrip card={modelCard} compact />
 
       {/* Primary Analytics Grid: Operational Chart + Role-Sorted Decision Brief */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">

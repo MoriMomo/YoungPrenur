@@ -15,7 +15,7 @@ const NAV_LINKS = [
 
 const TELEMETRY_ITEMS = [
   { label: "Plant Output", value: "94.8%", dot: "bg-[#4cc38a]", note: "vs 95.0% target" },
-  { label: "Delay Risk", value: "65.2% (+3.5d)", dot: "bg-[#e5484d]", note: "" },
+  { label: "Delay Risk", value: "59.9% (+5.1d)", dot: "bg-[#e5484d]", note: "" },
   { label: "Press P-07", value: "+18% vibration", dot: "bg-[#f59e0b]", note: "SOP-PRS-04" },
   { label: "Alloy M-204", value: "36h cover", dot: "bg-[#e5484d]", note: "" },
 ];
@@ -212,7 +212,7 @@ export default function LandingPage() {
 
           {/* Right Coded MDIP Cockpit Moment */}
           <div className="lg:col-span-7">
-            <div className="rounded-2xl bg-[#11141c] border border-white/8 shadow-[0_16px_48px_rgba(0,0,0,0.45)] overflow-hidden">
+            <div className="rounded-2xl bg-[#11141c] border border-white/10 ring-1 ring-white/5 overflow-hidden">
               {/* Cockpit Window Bar */}
               <div className="px-5 py-3 bg-[#07080d] border-b border-white/8 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-xs font-mono-numbers text-[#eef0f5]">
@@ -220,7 +220,7 @@ export default function LandingPage() {
                   <span>MDIP / Operations Delivery Cockpit</span>
                 </div>
                 <div className="flex items-center gap-3 text-[11px] font-mono-numbers text-[#8f98ab]">
-                  <span>TRL 4 Sandbox</span>
+                  <span>251 Real Projects</span>
                   <Link href="/dashboard" className="text-[#60a5fa] hover:underline">
                     Open live view →
                   </Link>
@@ -249,10 +249,10 @@ export default function LandingPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-[#e5484d]" />
                     </div>
                     <div className="text-2xl font-medium text-[#eef0f5] font-mono-numbers mt-2">
-                      65.2%
+                      59.9%
                     </div>
                     <div className="text-[11px] text-[#e5484d] font-mono-numbers mt-1">
-                      +3.5d slippage exposed
+                      +5.1d slippage exposed
                     </div>
                   </div>
 
@@ -357,12 +357,12 @@ export default function LandingPage() {
               </div>
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/8 font-mono-numbers text-xs">
                 <div>
-                  <div className="text-[#8f98ab] text-[11px]">Critical Tasks</div>
-                  <div className="text-[#eef0f5] font-medium mt-0.5">4 packages</div>
+                  <div className="text-[#8f98ab] text-[11px]">Real Held-Out AUC</div>
+                  <div className="text-[#4cc38a] font-medium mt-0.5">0.78 ROC-AUC</div>
                 </div>
                 <div>
-                  <div className="text-[#8f98ab] text-[11px]">Peak Variance</div>
-                  <div className="text-[#e5484d] font-medium mt-0.5">+3.5 days</div>
+                  <div className="text-[#8f98ab] text-[11px]">Project P50 Slip</div>
+                  <div className="text-[#e5484d] font-medium mt-0.5">+5.1 days</div>
                 </div>
                 <div>
                   <div className="text-[#8f98ab] text-[11px]">SLA Penalty Rate</div>

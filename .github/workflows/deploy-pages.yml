@@ -38,6 +38,7 @@ jobs:
         env:
           GITHUB_PAGES: "true"
           NEXT_PUBLIC_API_URL: ${{ vars['NEXT_PUBLIC_API_URL'] || 'http://localhost:8000' }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars['NEXT_PUBLIC_GOOGLE_CLIENT_ID'] || '' }}
         run: npm run build
 
       - name: Upload Pages artifact

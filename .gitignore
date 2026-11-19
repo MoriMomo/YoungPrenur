@@ -18,6 +18,7 @@ Thumbs.db
 .env*
 !.env.example
 !backend/.env.example
+!web/.env.example
 
 # Runtime state & historical uploads
 backend/data/*.db*
