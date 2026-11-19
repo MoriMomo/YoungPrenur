@@ -70,23 +70,26 @@ def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     clf, reg, _ = _models()
     dm = xgb.DMatrix(np.array(feature_matrix(tasks), dtype=float), feature_names=FEATURE_NAMES)
     proba = clf.predict(dm)
-    slip = np.maximum(0.0, reg.predict(dm))
+    cond_slip = np.clip(reg.predict(dm), 0.5, 20.0)
     contribs = clf.predict(dm, pred_contribs=True)[:, :-1]  # drop bias column
 
     for i, t in enumerate(tasks):
         if is_completed(t):
             # Outcome already known: no remaining risk, actual duration is final.
+            realized = round(max(0.0, t["actual_days"] - t["planned_days"]), 2)
             t.update(delay_risk=0.0, risk_level="LOW", drivers=[], completed=True,
-                     expected_slip_days=round(max(0.0, t["actual_days"] - t["planned_days"]), 2))
+                     conditional_slip_days=realized, expected_slip_days=realized)
             t["_contribs"] = np.zeros(len(FEATURE_NAMES))
             continue
         p = float(proba[i])
+        cs = float(cond_slip[i])
         positive = sorted(
             ((FEATURE_NAMES[j], float(c)) for j, c in enumerate(contribs[i]) if c > 0.05),
             key=lambda x: x[1], reverse=True)
         t["delay_risk"] = round(p, 3)
         t["risk_level"] = _risk_level(p)
-        t["expected_slip_days"] = round(float(slip[i]), 2)
+        t["conditional_slip_days"] = round(cs, 2)
+        t["expected_slip_days"] = round(p * cs, 2)
         t["completed"] = False
         t["drivers"] = [{"feature": f, "label": feature_label(f), "contribution": round(c, 3)} for f, c in positive[:3]]
         t["_contribs"] = contribs[i]
@@ -104,22 +107,51 @@ def _derive_status(t: Dict[str, Any]) -> str:
     return "On Track" if t["start_day"] == 0 else "Scheduled"
 
 
+def _topo_order(tasks: List[Dict[str, Any]], index: Dict[str, int]) -> List[int]:
+    n = len(tasks)
+    indeg = [0] * n
+    succ: List[List[int]] = [[] for _ in range(n)]
+    for i, t in enumerate(tasks):
+        for c in t.get("predecessors", []):
+            if c in index and index[c] != i:
+                succ[index[c]].append(i)
+                indeg[i] += 1
+    queue = [i for i in range(n) if indeg[i] == 0]
+    order: List[int] = []
+    while queue:
+        u = queue.pop(0)
+        order.append(u)
+        for v in succ[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                queue.append(v)
+    if len(order) != n:
+        return sorted(range(n), key=lambda i: tasks[i].get("start_day", 0))
+    return order
+
+
 def simulate_project(tasks: List[Dict[str, Any]], buffer_days: float = None, seed: int = 7) -> Dict[str, float]:
     """
-    Monte Carlo: sample each task's slip, re-run the CPM forward pass, measure project finish slip.
+    Monte Carlo: sample correlated late events + conditional slips, re-run CPM forward pass.
+    Uses a shared gamma frailty shock across each run to model correlated plant/supplier disruptions.
     delay_probability = P(finish later than the committed due date = baseline + project buffer).
     """
     rng = np.random.default_rng(seed)
-    order = sorted(range(len(tasks)), key=lambda i: tasks[i]["start_day"])
     index = {t["code"]: i for i, t in enumerate(tasks)}
+    order = _topo_order(tasks, index)
     planned = np.array([t["planned_days"] for t in tasks], dtype=float)
-    p = np.array([t["delay_risk"] for t in tasks])
-    exp_slip = np.array([t["expected_slip_days"] for t in tasks])
-    # Slip size given that the task is late: conditional mean ~ E[slip] / P(late).
-    cond_mean = np.clip(exp_slip / np.maximum(p, 0.05), 0.5, 15.0)
+    p = np.array([t["delay_risk"] for t in tasks], dtype=float)
+    cond_mean = np.clip(np.array([
+        float(t["conditional_slip_days"]) if t.get("conditional_slip_days") is not None
+        else max(0.5, float(t.get("expected_slip_days", 0.5)) / max(float(t.get("delay_risk", 0.15)), 0.15))
+        for t in tasks
+    ], dtype=float), 0.5, 20.0)
 
-    late = rng.random((N_SIMULATIONS, len(tasks))) < p
-    size = rng.gamma(2.0, cond_mean / 2.0, size=(N_SIMULATIONS, len(tasks)))
+    shock = rng.gamma(4.0, 0.25, size=(N_SIMULATIONS, 1))
+    p_eff = np.clip(1.0 - np.power(np.clip(1.0 - p[None, :], 1e-6, 1.0), shock), 0.0, 0.99)
+    late = rng.random((N_SIMULATIONS, len(tasks))) < p_eff
+    scale = (cond_mean[None, :] * (0.75 + 0.25 * shock)) / 2.0
+    size = rng.gamma(2.0, scale)
     durations = planned + late * size
     for i, t in enumerate(tasks):
         if t.get("completed"):
@@ -189,6 +221,7 @@ def analyze_schedule(tasks: List[Dict[str, Any]], project_name: str, buffer_days
             "critical": t["critical"],
             "delay_risk": t["delay_risk"],
             "risk_level": t["risk_level"],
+            "conditional_slip_days": t.get("conditional_slip_days", t["expected_slip_days"]),
             "expected_slip_days": t["expected_slip_days"],
             "status": _derive_status(t),
             "variance_days": max(0, int(round(t["variance_days"]))),

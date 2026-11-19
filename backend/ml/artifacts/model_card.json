@@ -1,7 +1,7 @@
 {
-  "model": "XGBoost gradient-boosted trees (classifier + slip regressor)",
+  "model": "XGBoost hurdle model (late classifier + conditional slip regressor on late==1)",
   "target": "Activity finishes later than its CPM total float (+0.5d tolerance)",
-  "trained_at": "2026-11-19T02:56:36+00:00",
+  "trained_at": "2026-11-19T04:46:33+00:00",
   "training_data": "Synthetic project-manufacturing schedules (ml/generate_dataset.py); ingest historical planned-vs-actual schedules via POST /api/v1/ml/retrain",
   "n_tasks": 7855,
   "n_real_tasks": 0,
@@ -47,8 +47,21 @@
     "accuracy": 0.8457,
     "brier": 0.1062,
     "baseline_rule_roc_auc": 0.7135,
-    "slip_mae_days": 0.796
+    "slip_mae_days": 0.914,
+    "conditional_slip_mae_days": 0.921
   },
+  "synthetic_test_metrics": {
+    "roc_auc": 0.9297,
+    "f1": 0.8373,
+    "precision": 0.8126,
+    "recall": 0.8635,
+    "accuracy": 0.8457,
+    "brier": 0.1062,
+    "baseline_rule_roc_auc": 0.7135,
+    "slip_mae_days": 0.914,
+    "conditional_slip_mae_days": 0.921
+  },
+  "real_validation_metrics": null,
   "feature_importance": [
     {
       "feature": "float_days",

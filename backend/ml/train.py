@@ -14,7 +14,7 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -96,59 +96,132 @@ def ingest_historical_schedule(
     return new_df
 
 
+MODEL_PARAMS: Dict[str, Any] = dict(
+    n_estimators=300,
+    max_depth=4,
+    learning_rate=0.05,
+    subsample=0.9,
+    colsample_bytree=0.9,
+    random_state=SEED,
+    n_jobs=2,
+)
+
+
+def _fit_pair(df_train: pd.DataFrame) -> Tuple[XGBClassifier, XGBRegressor]:
+    """Fit late classifier on all training rows and conditional slip regressor on late==1 rows."""
+    X_tr = df_train[FEATURE_NAMES].to_numpy(dtype=float)
+    y_tr = df_train["late"].to_numpy()
+    slip_tr = df_train["realized_slip_days"].to_numpy(dtype=float)
+    w_tr = df_train["sample_weight"].to_numpy(dtype=float)
+
+    clf = XGBClassifier(**MODEL_PARAMS, eval_metric="logloss")
+    clf.fit(X_tr, y_tr, sample_weight=w_tr)
+
+    late_mask = y_tr == 1
+    reg = XGBRegressor(**MODEL_PARAMS, objective="reg:squarederror")
+    if int(late_mask.sum()) >= 5:
+        reg.fit(X_tr[late_mask], slip_tr[late_mask], sample_weight=w_tr[late_mask])
+    else:
+        reg.fit(X_tr, slip_tr, sample_weight=w_tr)
+    return clf, reg
+
+
+def _eval_pair(clf: XGBClassifier, reg: XGBRegressor, df_eval: pd.DataFrame) -> Dict[str, Any]:
+    """Evaluate classifier discrimination, hurdle E[slip], and conditional E[slip | late]."""
+    X_ev = df_eval[FEATURE_NAMES].to_numpy(dtype=float)
+    y_ev = df_eval["late"].to_numpy()
+    slip_ev = df_eval["realized_slip_days"].to_numpy(dtype=float)
+
+    proba = clf.predict_proba(X_ev)[:, 1]
+    pred = (proba >= 0.5).astype(int)
+    cond_pred = np.clip(reg.predict(X_ev), 0.5, 20.0)
+    expected_slip_pred = proba * cond_pred
+    baseline = legacy_rule_score(df_eval)
+
+    has_both_classes = len(np.unique(y_ev)) >= 2
+    late_eval = y_ev == 1
+
+    return {
+        "roc_auc": round(float(roc_auc_score(y_ev, proba)), 4) if has_both_classes else None,
+        "f1": round(float(f1_score(y_ev, pred, zero_division=0)), 4),
+        "precision": round(float(precision_score(y_ev, pred, zero_division=0)), 4),
+        "recall": round(float(recall_score(y_ev, pred, zero_division=0)), 4),
+        "accuracy": round(float(accuracy_score(y_ev, pred)), 4),
+        "brier": round(float(brier_score_loss(y_ev, proba)), 4),
+        "baseline_rule_roc_auc": round(float(roc_auc_score(y_ev, baseline)), 4) if has_both_classes else None,
+        "slip_mae_days": round(float(mean_absolute_error(slip_ev, expected_slip_pred)), 3),
+        "conditional_slip_mae_days": (
+            round(float(mean_absolute_error(slip_ev[late_eval], cond_pred[late_eval])), 3)
+            if int(late_eval.sum()) > 0
+            else None
+        ),
+    }
+
+
 def train_models() -> Dict[str, Any]:
-    """Train classifier + slip regressor (combining synthetic baseline with weighted real history)."""
+    """Train hurdle classifier + conditional slip regressor with separate synthetic and real metrics."""
     df_syn = pd.read_csv(DATA_PATH)
     df_syn["project_id"] = "syn_" + df_syn["project_id"].astype(str)
     df_syn["sample_weight"] = 1.0
     n_syn_tasks = int(len(df_syn))
     n_syn_projects = int(df_syn["project_id"].nunique())
 
-    n_real_tasks = 0
-    n_real_projects = 0
+    syn_split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
+    syn_tr_pos, syn_te_pos = next(syn_split.split(df_syn[FEATURE_NAMES], df_syn["late"], groups=df_syn["project_id"]))
+    df_syn_train = df_syn.iloc[syn_tr_pos]
+    df_syn_test = df_syn.iloc[syn_te_pos]
+
+    df_hist = pd.DataFrame()
     if os.path.exists(HIST_PATH) and os.path.getsize(HIST_PATH) > 0:
-        df_hist = pd.read_csv(HIST_PATH)
-        if len(df_hist) > 0:
-            df_hist["project_id"] = df_hist["project_id"].astype(str)
-            df_hist["sample_weight"] = HISTORICAL_SAMPLE_WEIGHT
-            n_real_tasks = int(len(df_hist))
-            n_real_projects = int(df_hist["project_id"].nunique())
-            df = pd.concat([df_syn, df_hist], ignore_index=True)
-        else:
-            df = df_syn
+        loaded = pd.read_csv(HIST_PATH)
+        if len(loaded) > 0:
+            loaded["project_id"] = "real_" + loaded["project_id"].astype(str)
+            loaded["sample_weight"] = HISTORICAL_SAMPLE_WEIGHT
+            df_hist = loaded
+
+    n_real_tasks = int(len(df_hist))
+    n_real_projects = int(df_hist["project_id"].nunique()) if n_real_tasks > 0 else 0
+    real_validation_metrics: Optional[Dict[str, Any]] = None
+
+    if n_real_projects == 0:
+        clf, reg = _fit_pair(df_syn_train)
+        synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        metrics = synthetic_metrics
+        df_all = df_syn
+        n_train, n_test = int(len(df_syn_train)), int(len(df_syn_test))
+    elif n_real_projects == 1:
+        pre_clf, pre_reg = _fit_pair(df_syn_train)
+        real_validation_metrics = {
+            "evaluation_mode": "out_of_sample_single_project",
+            "n_tasks": n_real_tasks,
+            "n_projects": 1,
+            **_eval_pair(pre_clf, pre_reg, df_hist),
+        }
+        df_train_all = pd.concat([df_syn_train, df_hist], ignore_index=True)
+        clf, reg = _fit_pair(df_train_all)
+        synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        metrics = synthetic_metrics
+        df_all = pd.concat([df_syn, df_hist], ignore_index=True)
+        n_train, n_test = int(len(df_train_all)), int(len(df_syn_test))
     else:
-        df = df_syn
+        real_split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
+        r_tr_pos, r_te_pos = next(real_split.split(df_hist[FEATURE_NAMES], df_hist["late"], groups=df_hist["project_id"]))
+        df_real_train = df_hist.iloc[r_tr_pos]
+        df_real_test = df_hist.iloc[r_te_pos]
 
-    X = df[FEATURE_NAMES].to_numpy(dtype=float)
-    y = df["late"].to_numpy()
-    y_slip = df["realized_slip_days"].to_numpy()
-    weights = df["sample_weight"].to_numpy(dtype=float)
-
-    split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
-    train_idx, test_idx = next(split.split(X, y, groups=df["project_id"]))
-
-    params = dict(n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.9,
-                  colsample_bytree=0.9, random_state=SEED, n_jobs=2)
-    clf = XGBClassifier(**params, eval_metric="logloss")
-    clf.fit(X[train_idx], y[train_idx], sample_weight=weights[train_idx])
-    reg = XGBRegressor(**params, objective="reg:squarederror")
-    reg.fit(X[train_idx], y_slip[train_idx], sample_weight=weights[train_idx])
-
-    proba = clf.predict_proba(X[test_idx])[:, 1]
-    pred = (proba >= 0.5).astype(int)
-    baseline = legacy_rule_score(df.iloc[test_idx])
-    slip_pred = np.maximum(0, reg.predict(X[test_idx]))
-
-    metrics = {
-        "roc_auc": round(float(roc_auc_score(y[test_idx], proba)), 4),
-        "f1": round(float(f1_score(y[test_idx], pred)), 4),
-        "precision": round(float(precision_score(y[test_idx], pred)), 4),
-        "recall": round(float(recall_score(y[test_idx], pred)), 4),
-        "accuracy": round(float(accuracy_score(y[test_idx], pred)), 4),
-        "brier": round(float(brier_score_loss(y[test_idx], proba)), 4),
-        "baseline_rule_roc_auc": round(float(roc_auc_score(y[test_idx], baseline)), 4),
-        "slip_mae_days": round(float(mean_absolute_error(y_slip[test_idx], slip_pred)), 3),
-    }
+        df_train_all = pd.concat([df_syn_train, df_real_train], ignore_index=True)
+        df_test_all = pd.concat([df_syn_test, df_real_test], ignore_index=True)
+        clf, reg = _fit_pair(df_train_all)
+        synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        real_validation_metrics = {
+            "evaluation_mode": "held_out_real_projects",
+            "n_tasks": int(len(df_real_test)),
+            "n_projects": int(df_real_test["project_id"].nunique()),
+            **_eval_pair(clf, reg, df_real_test),
+        }
+        metrics = _eval_pair(clf, reg, df_test_all)
+        df_all = pd.concat([df_syn, df_hist], ignore_index=True)
+        n_train, n_test = int(len(df_train_all)), int(len(df_test_all))
 
     gain = clf.get_booster().get_score(importance_type="gain")
     total = sum(gain.values()) or 1.0
@@ -175,20 +248,22 @@ def train_models() -> Dict[str, Any]:
         )
 
     card = {
-        "model": "XGBoost gradient-boosted trees (classifier + slip regressor)",
+        "model": "XGBoost hurdle model (late classifier + conditional slip regressor on late==1)",
         "target": "Activity finishes later than its CPM total float (+0.5d tolerance)",
         "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "training_data": data_desc,
-        "n_tasks": int(len(df)),
+        "n_tasks": int(len(df_all)),
         "n_real_tasks": n_real_tasks,
         "n_synthetic_tasks": n_syn_tasks,
-        "n_projects": int(df["project_id"].nunique()),
-        "n_train": int(len(train_idx)),
-        "n_test": int(len(test_idx)),
-        "late_rate": round(float(y.mean()), 4),
+        "n_projects": int(df_all["project_id"].nunique()),
+        "n_train": n_train,
+        "n_test": n_test,
+        "late_rate": round(float(df_all["late"].mean()), 4),
         "features": FEATURE_NAMES,
-        "hyperparameters": params,
+        "hyperparameters": MODEL_PARAMS,
         "test_metrics": metrics,
+        "synthetic_test_metrics": synthetic_metrics,
+        "real_validation_metrics": real_validation_metrics,
         "feature_importance": importance,
     }
     with open(os.path.join(ART_DIR, "model_card.json"), "w", encoding="utf-8") as f:
