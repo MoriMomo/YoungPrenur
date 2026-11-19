@@ -233,7 +233,7 @@ export default function LoginPage() {
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
                           required
-                          className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                          className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                           placeholder="e.g. Ahmad Fauzi"
                         />
                       </div>
@@ -247,7 +247,7 @@ export default function LoginPage() {
                         id="demo-role"
                         value={selectedDemoRole}
                         onChange={(e) => setSelectedDemoRole(e.target.value as ManufacturingRole)}
-                        className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg px-3.5 h-10 text-xs sm:text-sm"
+                        className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg px-3.5 h-10 text-xs sm:text-sm"
                       >
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
@@ -275,7 +275,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                      className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                       placeholder="user@imajin.id"
                     />
                   </div>
@@ -302,7 +302,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={authMode === "register" ? 6 : 1}
-                      className="w-full bg-[#0b0d14] border border-white/10 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                      className="w-full bg-[#0b0d14] border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 text-[#eef0f5] rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
                     />
                   </div>
                 </div>

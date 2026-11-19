@@ -164,10 +164,10 @@ def _sync_active_project_progress(analysis: Dict[str, Any]) -> None:
     completed_count = sum(
         1 for t in tasks if any(w in str(t.get("status", "")).lower() for w in ("complet", "done", "finish"))
     )
-    pct = int(round((completed_count / max(1, len(tasks))) * 100)) if tasks else 0
+    pct = round((completed_count / max(1, len(tasks))) * 100) if tasks else 0
     if pct == 0 and tasks:
         on_track = sum(1 for t in tasks if float(t.get("delay_risk", 0)) < 0.35)
-        pct = int(round((on_track / len(tasks)) * 100))
+        pct = round((on_track / len(tasks)) * 100)
     slip = float(analysis.get("estimated_project_slippage_days", 0.0))
     prob = float(analysis.get("overall_delay_probability", 0.0))
     high_tasks = [t for t in tasks if float(t.get("delay_risk", 0)) >= 0.5]
@@ -245,7 +245,7 @@ def compute_live_decisions() -> List[Dict[str, Any]]:
         driver_summary = ", ".join(drivers[:2]) if drivers else "critical-path schedule sensitivity"
         slip = float(t.get("expected_slip_days", 0))
         var_days = int(t.get("variance_days", 0))
-        confidence = int(round(max(0.55, min(0.98, risk if risk >= 0.55 else 0.72)) * 100))
+        confidence = round(max(0.55, min(0.98, risk if risk >= 0.55 else 0.72)) * 100)
 
         if risk >= 0.75 or (t.get("critical") and var_days >= 2):
             urgency, badge = "Urgent", "red"
@@ -297,7 +297,7 @@ def compute_live_decisions() -> List[Dict[str, Any]]:
                 "urgency": "Urgent" if cover <= 36 else "High",
                 "urgency_badge": "red" if cover <= 36 else "warn",
                 "department": "Supply Chain",
-                "confidence": int(round(max(0.75, float(mat.get("riskScore", 0.85))) * 100)),
+                "confidence": round(max(0.75, float(mat.get("riskScore", 0.85))) * 100),
                 "description": (
                     f"{mat.get('description', mat.get('partNumber'))} has {int(cover)}h buffer remaining vs "
                     f"{mat.get('supplierLeadDays', 3)}-day vendor lead time ({mat.get('supplier', 'Supplier')})."
@@ -439,11 +439,11 @@ def _compute_production_lines() -> List[Dict[str, Any]]:
     lines: List[Dict[str, Any]] = []
 
     for idx, op in enumerate(ops):
-        util = int(round(float(op.get("spindleUtilization", 85.0))))
+        util = round(float(op.get("spindleUtilization", 85.0)))
         oee = float(op.get("oeePercent", 85.0))
         vib = str(op.get("vibrationSensor", "NORMAL")).upper()
         target = 1000 + idx * 250
-        actual = int(round(target * (oee / 100.0)))
+        actual = round(target * (oee / 100.0))
         if vib != "NORMAL" or oee < 75.0:
             status_lbl, color = "Attention", "warn"
         elif oee >= 95.0:
@@ -464,9 +464,9 @@ def _compute_production_lines() -> List[Dict[str, Any]]:
     if not lines and tasks:
         for idx, t in enumerate(tasks[:4]):
             risk = float(t.get("delay_risk", 0.2))
-            util = int(round((1.0 - risk * 0.35) * 100))
+            util = round((1.0 - risk * 0.35) * 100)
             target = int(t["planned_days"] * 200)
-            actual = int(round(target * (float(t["planned_days"]) / max(1.0, float(t["actual_days"])))))
+            actual = round(target * (float(t["planned_days"]) / max(1.0, float(t["actual_days"]))))
             lines.append({
                 "id": f"line-{_slug(str(t['code']))}",
                 "name": str(t.get("work_center") or t["task"]),
@@ -515,7 +515,7 @@ def _compute_performance_series(metric: str) -> Dict[str, Any]:
         }
 
     base_out = max(400.0, min(1150.0, 1000.0 * (avg_oee / 85.0) * (avg_util / 90.0)))
-    actual_out = [int(round(max(320, min(1190, base_out * (1.0 + d))))) for d in offsets]
+    actual_out = [round(max(320, min(1190, base_out * (1.0 + d)))) for d in offsets]
     return {
         "actual": actual_out,
         "target": [1000] * 7,
@@ -1057,7 +1057,7 @@ async def retrain_ml_models(
         raise HTTPException(status_code=413, detail="Training schedule file is larger than 5 MB.")
     try:
         df_new = ingest_historical_schedule(content, file.filename, project_id=project_id)
-        ingested_rows = int(len(df_new))
+        ingested_rows = len(df_new)
     except ScheduleParseError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:

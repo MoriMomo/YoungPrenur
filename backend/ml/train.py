@@ -59,7 +59,7 @@ def ingest_historical_schedule(
     """
     tasks = parse_schedule_file(content, filename)
     stem = os.path.splitext(os.path.basename(filename))[0].strip() or "schedule"
-    pid = str(project_id or f"hist_{stem}")
+    pid = project_id or f"hist_{stem}"
 
     finished = [t for t in tasks if not t.get("status_declared") or is_completed(t)]
     if not finished:
@@ -163,7 +163,7 @@ def train_models() -> Dict[str, Any]:
     df_syn = pd.read_csv(DATA_PATH)
     df_syn["project_id"] = "syn_" + df_syn["project_id"].astype(str)
     df_syn["sample_weight"] = 1.0
-    n_syn_tasks = int(len(df_syn))
+    n_syn_tasks = len(df_syn)
     n_syn_projects = int(df_syn["project_id"].nunique())
 
     syn_split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
@@ -179,7 +179,7 @@ def train_models() -> Dict[str, Any]:
             loaded["sample_weight"] = HISTORICAL_SAMPLE_WEIGHT
             df_hist = loaded
 
-    n_real_tasks = int(len(df_hist))
+    n_real_tasks = len(df_hist)
     n_real_projects = int(df_hist["project_id"].nunique()) if n_real_tasks > 0 else 0
     real_validation_metrics: Optional[Dict[str, Any]] = None
 
@@ -188,7 +188,7 @@ def train_models() -> Dict[str, Any]:
         synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
         metrics = synthetic_metrics
         df_all = df_syn
-        n_train, n_test = int(len(df_syn_train)), int(len(df_syn_test))
+        n_train, n_test = len(df_syn_train), len(df_syn_test)
     elif n_real_projects == 1:
         pre_clf, pre_reg = _fit_pair(df_syn_train)
         real_validation_metrics = {
@@ -202,7 +202,7 @@ def train_models() -> Dict[str, Any]:
         synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
         metrics = synthetic_metrics
         df_all = pd.concat([df_syn, df_hist], ignore_index=True)
-        n_train, n_test = int(len(df_train_all)), int(len(df_syn_test))
+        n_train, n_test = len(df_train_all), len(df_syn_test)
     else:
         real_split = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=SEED)
         r_tr_pos, r_te_pos = next(real_split.split(df_hist[FEATURE_NAMES], df_hist["late"], groups=df_hist["project_id"]))
@@ -215,13 +215,13 @@ def train_models() -> Dict[str, Any]:
         synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
         real_validation_metrics = {
             "evaluation_mode": "held_out_real_projects",
-            "n_tasks": int(len(df_real_test)),
+            "n_tasks": len(df_real_test),
             "n_projects": int(df_real_test["project_id"].nunique()),
             **_eval_pair(clf, reg, df_real_test),
         }
         metrics = _eval_pair(clf, reg, df_test_all)
         df_all = pd.concat([df_syn, df_hist], ignore_index=True)
-        n_train, n_test = int(len(df_train_all)), int(len(df_test_all))
+        n_train, n_test = len(df_train_all), len(df_test_all)
 
     gain = clf.get_booster().get_score(importance_type="gain")
     total = sum(gain.values()) or 1.0
@@ -252,7 +252,7 @@ def train_models() -> Dict[str, Any]:
         "target": "Activity finishes later than its CPM total float (+0.5d tolerance)",
         "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "training_data": data_desc,
-        "n_tasks": int(len(df_all)),
+        "n_tasks": len(df_all),
         "n_real_tasks": n_real_tasks,
         "n_synthetic_tasks": n_syn_tasks,
         "n_projects": int(df_all["project_id"].nunique()),
