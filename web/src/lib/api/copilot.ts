@@ -14,7 +14,7 @@ export async function fetchCopilotStatus(): Promise<CopilotStatus> {
       const data = await res.json();
       return {
         llm_configured: Boolean(data?.llm_configured),
-        provider: data?.provider === "gemini" ? "gemini" : "retrieval",
+        provider: data?.provider === "gemini" || data?.provider === "deepseek" ? data.provider : "retrieval",
         model: typeof data?.model === "string" ? data.model : null,
         indexed_sops:
           typeof data?.indexed_sops === "number" ? data.indexed_sops : KNOWLEDGE_DOCS.length,
