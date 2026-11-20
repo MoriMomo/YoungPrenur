@@ -32,7 +32,7 @@ Predicts which WBS tasks will slip before a work cell stalls, explains why (SHAP
 
 - Delay-risk engine: Critical Path Method + XGBoost hurdle model (late classifier + slip regressor), SHAP root-cause drivers, 2,000-run Monte Carlo project forecast.
 - Roles change the dashboard view (role-scoped cockpit).
-- Backend: FastAPI with Supabase Postgres or local SQLite; frontend: Next.js (App Router) + Tailwind v4. The public GitHub Pages build runs without a backend and falls back to bundled sample data.
+- Backend: FastAPI with Supabase Postgres or local SQLite; frontend: Next.js (App Router) + Tailwind v4. Vercel serves the frontend and Render hosts the FastAPI service. The UI can fall back to bundled sample data when the API is unavailable. Saving reviews requires a live API.
 - Dashboard telemetry, IRoom records and KPIs are sample/demonstration data; only the model metrics come from real data.
 
 ## Brand Commitments
@@ -44,7 +44,7 @@ Predicts which WBS tasks will slip before a work cell stalls, explains why (SHAP
 ## Evidence on Hand
 
 - Real-data model evaluation (`backend/ml/artifacts/model_card.json`): trained on 4,149 real planned-vs-actual tasks from 251 public projects (DSLIB v3.4 project database and 4TU CNC production logs) plus 7,855 synthetic tasks. On 51 held-out real projects: ROC-AUC 0.78 vs 0.53 for the previous rule-based scoring. These may be shown publicly.
-- At the default 0.5 threshold the model catches about 16% of late tasks on real data (recall 0.157); do not claim high recall.
+- At the deployed 0.25 threshold, held-out real-project precision is 36% and recall is 45%. Validate alert thresholds and calibration on partner data before a pilot.
 - No customer testimonials, case studies, pricing, deployments or user counts exist. Do not invent them.
 
 ## Product Principles

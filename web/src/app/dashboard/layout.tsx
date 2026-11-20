@@ -16,7 +16,7 @@ import {
   AuditLogEntry,
   KnowledgeDoc,
 } from "@/types";
-import { INITIAL_ACTIONS, INITIAL_AUDIT_LOG, KNOWLEDGE_DOCS, ROLES } from "@/lib/mock-data";
+import { INITIAL_ACTIONS, KNOWLEDGE_DOCS, ROLES } from "@/lib/mock-data";
 import {
   AuthUser,
   checkApiHealth,
@@ -30,7 +30,7 @@ import {
   fetchDecisionActions,
   ingestKnowledgeDoc,
   logoutUser,
-  subscribeFirebaseAuth,
+  subscribeAuth,
 } from "@/lib/api";
 import {
   DashboardContext,
@@ -84,7 +84,7 @@ export default function DashboardLayout({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [actions, setActions] = useState<DecisionAction[]>(INITIAL_ACTIONS);
-  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOG);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>(KNOWLEDGE_DOCS);
   const [reviewingAction, setReviewingAction] = useState<DecisionAction | null>(null);
 
@@ -113,7 +113,7 @@ export default function DashboardLayout({
       setCopilotStatus({ ...DEFAULT_COPILOT_STATUS, indexed_sops: mergedDocs.length });
     }
     if (remoteActions && remoteActions.length > 0) setActions(remoteActions);
-    if (remoteAudit && remoteAudit.length > 0) setAuditLog(remoteAudit);
+    if (remoteAudit) setAuditLog(remoteAudit);
   };
 
   const syncTelemetry = async (announce = false) => {
@@ -159,7 +159,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let active = true;
-    const unsubscribe = subscribeFirebaseAuth(
+    const unsubscribe = subscribeAuth(
       async (authenticatedUser) => {
         if (!active) return;
         setCurrentUser(authenticatedUser);
@@ -230,60 +230,25 @@ export default function DashboardLayout({
     decision: "AUTHORIZED" | "OVERRIDDEN",
     notes: string
   ) => {
-    const target = actions.find((a) => a.id === actionId);
+    const entry = await flagDecisionAction(actionId, decision, notes);
     const nextStatus = decision === "OVERRIDDEN" ? "overridden" : "authorized";
+    const markReviewed = (action: DecisionAction): DecisionAction =>
+      action.id === actionId
+        ? {
+            ...action,
+            flagged: true,
+            status: nextStatus,
+            overrideReason: decision === "OVERRIDDEN" ? entry.notes : undefined,
+          }
+        : action;
 
-    setActions((prev) =>
-      prev.map((a) =>
-        a.id === actionId
-          ? {
-              ...a,
-              flagged: true,
-              status: nextStatus,
-              overrideReason: decision === "OVERRIDDEN" ? notes : a.overrideReason,
-            }
-          : a
-      )
-    );
-
-    if (reviewingAction && reviewingAction.id === actionId) {
-      setReviewingAction({
-        ...reviewingAction,
-        flagged: true,
-        status: nextStatus,
-        overrideReason: decision === "OVERRIDDEN" ? notes : reviewingAction.overrideReason,
-      });
-    }
-
-    const reviewerLabel = currentUser ? `${currentUser.name} (${selectedRole})` : selectedRole;
-    const newEntry: AuditLogEntry = {
-      id: `AUD-${Date.now().toString().slice(-4)}`,
-      actionId,
-      actionTitle: target?.title || actionId,
-      decision,
-      reviewerRole: reviewerLabel,
-      notes: notes.trim() || (decision === "AUTHORIZED" ? "Checklist verified by supervisor." : "Schedule change overridden."),
-      sopRef: target?.sourceDoc || "SOP-MDIP",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
-    };
-
-    setAuditLog((prev) => [newEntry, ...prev]);
-    await flagDecisionAction(
-      actionId,
-      reviewerLabel,
-      decision,
-      notes,
-      target?.title || actionId,
-      target?.sourceDoc || "SOP-MDIP"
-    );
-    const syncedAudit = await fetchAuditLog();
-    if (syncedAudit && syncedAudit.length > 0) {
-      setAuditLog(syncedAudit);
-    }
+    setActions((prev) => prev.map(markReviewed));
+    setReviewingAction((prev) => prev ? markReviewed(prev) : prev);
+    setAuditLog((prev) => [entry, ...prev.filter((item) => item.id !== entry.id)]);
     showToast(
       decision === "OVERRIDDEN"
-        ? "Override reason recorded in ISO 9001 audit log."
-        : "Action authorized and recorded in human audit log."
+        ? "Override recorded in your audit log."
+        : "Authorization recorded in your audit log."
     );
   };
 

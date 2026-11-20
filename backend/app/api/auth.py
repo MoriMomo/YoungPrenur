@@ -7,13 +7,13 @@ import os
 import time
 import urllib.parse
 import urllib.request
-from typing import Dict, Optional
+from typing import Dict
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 import database
 from app.schemas import GoogleAuthPayload, LoginPayload, RegisterPayload
-from app.security import client_ip, login_failures, registrations
+from app.security import client_ip, login_failures, registrations, require_user
 
 router = APIRouter()
 
@@ -66,13 +66,7 @@ def login_user(payload: LoginPayload, request: Request):
 
 
 @router.get("/api/v1/auth/me")
-def current_user(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token.")
-    token = authorization.split(" ", 1)[1].strip()
-    user = database.verify_session_token(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+def current_user(user: dict = Depends(require_user)):
     return {"authenticated": True, "user": user}
 
 

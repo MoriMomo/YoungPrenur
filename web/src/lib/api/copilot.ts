@@ -2,7 +2,6 @@
 
 import { KNOWLEDGE_DOCS } from "@/lib/mock-data";
 import { ManufacturingRole, KnowledgeDoc, CopilotStatus } from "@/types";
-import { fetchFirestoreSops, saveFirestoreSop } from "@/lib/firestore";
 import { API_BASE, apiFetch } from "./client";
 
 export async function fetchCopilotStatus(): Promise<CopilotStatus> {
@@ -214,10 +213,7 @@ export async function fetchKnowledgeDocs(): Promise<KnowledgeDoc[]> {
     // Offline fallback
   }
 
-  const firestoreDocs = await fetchFirestoreSops();
-  if (firestoreDocs.length === 0) return base;
-  const seen = new Set(firestoreDocs.map((d) => d.code.toUpperCase()));
-  return [...firestoreDocs, ...base.filter((d) => !seen.has(d.code.toUpperCase()))];
+  return base;
 }
 
 export async function ingestKnowledgeDoc(payload: {
@@ -227,7 +223,6 @@ export async function ingestKnowledgeDoc(payload: {
   keywords: string[];
   excerpt: string;
 }): Promise<{ success: boolean; total_documents?: number } | null> {
-  const savedToFirestore = await saveFirestoreSop(payload);
   try {
     const res = await apiFetch(`${API_BASE}/knowledge/ingest`, {
       method: "POST",
@@ -241,5 +236,5 @@ export async function ingestKnowledgeDoc(payload: {
   } catch {
     // Offline fallback
   }
-  return savedToFirestore ? { success: true } : null;
+  return null;
 }

@@ -1,135 +1,59 @@
-/** Firebase Authentication: Email/Password, Google Sign-In, sign-out and session observer. */
+import type { User } from "@supabase/supabase-js";
+import type { ManufacturingRole } from "@/types";
+import { ROLES } from "@/lib/mock-data";
+import { getSupabase } from "@/lib/supabase";
+import type { AuthUser } from "./client";
 
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  updateProfile,
-  User,
-} from "firebase/auth";
-import { ManufacturingRole } from "@/types";
-import { auth, googleProvider } from "@/lib/firebase";
-import { ensureUserProfile } from "@/lib/firestore";
-import { AuthSession, AuthUser, clearStoredSession, getStoredSession, saveSession } from "./client";
+class AuthError extends Error {}
 
-export class AuthError extends Error {}
-
-function formatFirebaseAuthError(err: unknown, fallback: string): string {
-  if (err && typeof err === "object" && "code" in err) {
-    const code = String((err as { code?: unknown }).code || "");
-    switch (code) {
-      case "auth/invalid-credential":
-      case "auth/wrong-password":
-      case "auth/user-not-found":
-        return "Invalid email or password.";
-      case "auth/email-already-in-use":
-        return "An account with this email already exists. Try signing in instead.";
-      case "auth/weak-password":
-        return "Password must be at least 6 characters.";
-      case "auth/invalid-email":
-        return "Please enter a valid email address.";
-      case "auth/popup-closed-by-user":
-      case "auth/cancelled-popup-request":
-        return "Google sign-in was cancelled.";
-      case "auth/popup-blocked":
-        return "Pop-up was blocked by your browser. Allow pop-ups for this site and try again.";
-      case "auth/unauthorized-domain":
-        return "This domain is not authorized for Google Sign-In in Firebase Auth.";
-      case "auth/operation-not-allowed":
-        return "This sign-in provider is not enabled in Firebase Authentication yet.";
-      default:
-        break;
-    }
-  }
-  return err instanceof Error && err.message ? err.message : fallback;
-}
-
-async function buildFirebaseSession(
-  fbUser: User,
-  fallbackRole: ManufacturingRole,
-  fallbackName = "",
-  preferFallbackRole = false
-): Promise<AuthSession> {
-  const profile = await ensureUserProfile(
-    fbUser.uid,
-    fbUser.email || "",
-    fbUser.displayName || fallbackName,
-    fallbackRole,
-    preferFallbackRole
-  );
-  const token = await fbUser.getIdToken();
-  const session: AuthSession = {
-    token,
-    user: profile,
-    mode: "firebase",
-    storage: "firebase",
+function profile(user: User): AuthUser {
+  const role = user.user_metadata.role || sessionStorage.getItem("mdip_google_view_role");
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    name: user.user_metadata.full_name || user.email || "Operator",
+    role: ROLES.includes(role) ? role : "Operations Manager",
   };
-  saveSession(session);
-  return session;
 }
 
-export async function loginUser(email: string, password: string): Promise<AuthSession> {
-  try {
-    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-    return await buildFirebaseSession(cred.user, "Operations Manager");
-  } catch (err) {
-    throw new AuthError(formatFirebaseAuthError(err, "Invalid email or password."));
-  }
+export async function loginUser(email: string, password: string) {
+  const { data, error } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password });
+  if (error) throw new AuthError(error.message);
+  return { user: profile(data.user) };
 }
 
-export async function registerUser(
-  email: string,
-  password: string,
-  name: string,
-  role: ManufacturingRole
-): Promise<AuthSession> {
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    const trimmedName = name.trim();
-    if (trimmedName) {
-      await updateProfile(cred.user, { displayName: trimmedName });
-    }
-    return await buildFirebaseSession(cred.user, role, trimmedName, true);
-  } catch (err) {
-    throw new AuthError(formatFirebaseAuthError(err, "Could not create account."));
-  }
-}
-
-export async function loginWithGoogle(
-  role: ManufacturingRole = "Operations Manager"
-): Promise<AuthSession> {
-  try {
-    const cred = await signInWithPopup(auth, googleProvider);
-    return await buildFirebaseSession(cred.user, role);
-  } catch (err) {
-    throw new AuthError(formatFirebaseAuthError(err, "Google sign-in failed."));
-  }
-}
-
-export async function logoutUser(): Promise<void> {
-  clearStoredSession();
-  try {
-    await signOut(auth);
-  } catch {
-    // Ignore sign-out errors when offline
-  }
-}
-
-export function subscribeFirebaseAuth(
-  onUser: (user: AuthUser) => void,
-  onSignedOut: () => void
-): () => void {
-  return onAuthStateChanged(auth, async (fbUser) => {
-    if (!fbUser) {
-      clearStoredSession();
-      onSignedOut();
-      return;
-    }
-    const stored = getStoredSession();
-    const fallbackRole = stored?.user?.role || "Operations Manager";
-    const session = await buildFirebaseSession(fbUser, fallbackRole);
-    onUser(session.user);
+export async function registerUser(email: string, password: string, name: string, role: ManufacturingRole) {
+  const { data, error } = await getSupabase().auth.signUp({
+    email: email.trim(), password,
+    options: { data: { full_name: name.trim(), role }, emailRedirectTo: window.location.origin + "/dashboard" },
   });
+  if (error) throw new AuthError(error.message);
+  return data.session ? { user: profile(data.session.user) } : null;
+}
+
+export async function loginWithGoogle(role: ManufacturingRole) {
+  sessionStorage.setItem("mdip_google_view_role", role);
+  const { error } = await getSupabase().auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin + "/dashboard" },
+  });
+  if (error) throw new AuthError(error.message);
+}
+
+export async function logoutUser() {
+  sessionStorage.removeItem("mdip_google_view_role");
+  const { error } = await getSupabase().auth.signOut({ scope: "local" });
+  if (error) throw new AuthError(error.message);
+}
+
+export function subscribeAuth(onUser: (user: AuthUser) => void, onSignedOut: () => void) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    onSignedOut();
+    return () => {};
+  }
+  const { data } = getSupabase().auth.onAuthStateChange((_event, session) => {
+    if (session) onUser(profile(session.user));
+    else onSignedOut();
+  });
+  return () => data.subscription.unsubscribe();
 }

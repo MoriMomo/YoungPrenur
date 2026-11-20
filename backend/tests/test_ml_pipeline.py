@@ -9,6 +9,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ml.build_real_dataset import _parse_dslib_duration_days, _parse_dslib_preds  # noqa: E402
 from ml.features import FEATURE_NAMES  # noqa: E402
+from ml.predictor import analyze_schedule  # noqa: E402
 from ml.train import _split_real_projects  # noqa: E402
 from schedule_parser import parse_schedule_file  # noqa: E402
 
@@ -56,6 +57,19 @@ class TestMlPipeline(unittest.TestCase):
         self.assertIn("cnc", set(df_tr["_source"]))
         self.assertIn("dslib", set(df_te["_source"]))
         self.assertIn("cnc", set(df_te["_source"]))
+
+    def test_proportional_slip_cap_and_no_double_counting(self):
+        csv_bytes = (
+            "WBS_Code,Activity_Name,Planned_Duration_Days,Actual_Forecast_Days,Predecessors,Resource_Utilization\n"
+            "WBS-1,Raw Material Procurement,6,9,None,0.85\n"
+            "WBS-2,Final Shipping & Dispatch,2,2,WBS-1,0.60\n"
+        ).encode("utf-8")
+        tasks = parse_schedule_file(csv_bytes, "shipping_chain.csv")
+        analysis = analyze_schedule(tasks, "Shipping Chain")
+        shipping = analysis["tasks"][1]
+        self.assertLessEqual(shipping["conditional_slip_days"], 1.5)
+        self.assertGreaterEqual(analysis["p80_slippage_days"], analysis["estimated_project_slippage_days"])
+        self.assertGreaterEqual(analysis["estimated_project_slippage_days"], 3.0)
 
 
 if __name__ == "__main__":

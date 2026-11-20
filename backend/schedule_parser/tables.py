@@ -40,10 +40,10 @@ def normalize_rows(df: pd.DataFrame) -> List[Dict[str, Any]]:
         if pd.isna(get("task")):
             name = ""
         planned = _parse_duration_days(get("planned_days"))
-        if not name or planned is None or planned <= 0:
+        if not name or planned is None or planned < 0:
             continue
         actual = _parse_duration_days(get("actual_days"))
-        if actual is not None and actual <= 0:
+        if actual is not None and actual < 0:
             actual = None
         code_val = get("code")
         code = (

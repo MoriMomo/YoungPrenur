@@ -10,7 +10,7 @@ from ml.features import infer_category
 
 # Accepted header aliases (compared after lower-casing and stripping non-alphanumerics).
 COLUMN_ALIASES = {
-    "code": ["wbscode", "wbs", "code", "taskid", "id", "activityid", "kodewbs"],
+    "code": ["wbscode", "wbs", "code", "taskcode", "taskid", "id", "activityid", "kodewbs"],
     "task": ["activityname", "activity", "taskname", "task", "name", "description", "aktivitas", "namaaktivitas"],
     "planned_days": ["plannedduration", "planneddurationdays", "planneddays", "duration", "durationdays", "durasi", "durasirencana"],
     "actual_days": ["actualforecastdays", "forecastdays", "actualdays", "actualduration", "forecastduration", "durasiaktual"],
@@ -135,8 +135,13 @@ def _build_task_dict(
     drawing_revisions: Optional[float] = None,
     external_dependency: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    planned_days = max(0.25, planned)
-    actual_days = max(0.25, actual) if actual is not None else planned_days
+    planned_days = 0.0 if planned == 0 else max(0.25, planned)
+    if actual is None:
+        actual_days = planned_days
+    elif actual == 0:
+        actual_days = 0.0
+    else:
+        actual_days = max(0.25, actual)
     return {
         "code": code,
         "task": name,

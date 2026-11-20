@@ -1,5 +1,7 @@
 # MDIP Product & Frontend Redesign Handoff
 
+> Historical handoff. For current deployment and review setup, use the repository README and PRODUCT.md.
+
 **Purpose:** Complete architectural, functional, design, and API contract handoff for redesigning the **MDIP (`web/`)** frontend from scratch or doing a deep visual/UX overhaul with another AI coding agent, while keeping the FastAPI backend (`backend/`), XGBoost + CPM ML engine (`backend/ml/`), SQLite + Supabase Postgres database (`backend/database.py`), authentication, and GitHub Pages static deployment intact.
 
 ---

@@ -165,12 +165,18 @@ npm run build && npm run test:e2e   # smoke test Playwright: menyalakan backend 
 - Tanpa backend yang di-deploy, situs hanya menampilkan data contoh.
 
 Langkah menghubungkan situs publik ke backend sungguhan:
-1. Di Render: **New → Blueprint**, pilih repositori ini. `MDIP_AUTH_SECRET` dan `MDIP_ADMIN_KEY` dibuat otomatis; `MDIP_ENV=production` membuat server menolak berjalan tanpa secret yang kuat. Isi `SUPABASE_SERVICE_ROLE_KEY`, dan bila perlu `GEMINI_API_KEY` serta `GOOGLE_CLIENT_ID`.
+1. Di Render: **New → Blueprint**, pilih repositori ini. `MDIP_AUTH_SECRET` dan `MDIP_ADMIN_KEY` dibuat otomatis; `MDIP_ENV=production` membuat server menolak berjalan tanpa secret yang kuat. Isi `SUPABASE_SERVICE_ROLE_KEY`, dan bila perlu `GEMINI_API_KEY` .
 2. Di Supabase: jalankan semua berkas di `supabase/migrations/` (termasuk tabel `user_schedules` untuk jadwal per pengguna).
-3. Di Vercel: **Project → Settings → Environment Variables**, isi `NEXT_PUBLIC_API_URL` dengan URL Render (misalnya `https://mdip-backend.onrender.com`) dan `NEXT_PUBLIC_FIREBASE_*` (lihat `web/.env.example`), lalu *redeploy*.
-4. Di Render, isi `MDIP_CORS_ORIGINS` dengan domain Vercel (misalnya `https://youngprenur.vercel.app`). `FIREBASE_PROJECT_ID` sudah diset ke `mdip-f4347` agar API menerima login Firebase.
-5. Di Firebase Console: **Authentication → Settings → Authorized domains**, tambahkan domain Vercel.
+3. Set `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` di Vercel sebelum build. Di FastAPI, isi `SUPABASE_URL` untuk proyek yang sama dan `MDIP_CORS_ORIGINS` dengan origin frontend.
+4. Di Supabase Authentication, aktifkan Email dengan konfirmasi dan Google. Masukkan OAuth client ID dan secret Google di dashboard Supabase. Tambahkan callback `https://mkurfdbznwhgocecombq.supabase.co/auth/v1/callback` ke authorized redirect URIs pada Google Cloud OAuth client.
+5. Set Site URL ke origin Vercel. Izinkan URL redirect `<origin>/dashboard` untuk production dan localhost. Gunakan signing key asimetris ES256 atau RS256 aktif untuk verifikasi JWKS oleh FastAPI. Konfigurasikan SMTP untuk email konfirmasi pengguna produksi.
+
+### Migrasi akun lama
+
+Akun baru mendapat workspace dan identitas reviewer `supabase:<UUID>`. Untuk akun lama, verifikasi kepemilikan kedua identitas terlebih dahulu. Dengan Supabase Admin API server-side, set `app_metadata.mdip_user_id` ke ID internal MDIP lama dan, khusus pengguna Firebase, `app_metadata.mdip_firebase_uid` ke UID Firebase lama. Pertahankan field metadata lain ketika memperbarui akun. Pengguna perlu memperbarui sesi sesudahnya. Pemetaan eksplisit ini memulihkan akses ke jadwal, audit, dan grant reviewer lama. Jangan isi metadata ini dari input pengguna. Akun email/password Firebase perlu mendaftar atau diundang ke Supabase. Salin SOP dan record iRoom yang hanya tersimpan di Firestore ke backend sebelum cutover.
 
 Paket gratis Render tidur saat tidak dipakai; buka `<URL Render>/health` sekali sebelum demo agar permintaan pertama tidak lambat.
 
 **Akses API:** semua endpoint memerlukan login, kecuali health check, login/registrasi, model card, dan `POST /api/v1/scheduler/inspect` (pratinjau publik CSV/Excel yang tidak menyimpan apa pun). Setiap pengguna punya jadwal aktif sendiri; unggahan satu pengguna tidak mengubah tampilan pengguna lain. Mode **On-premises** di dashboard membuat server tidak memanggil Google Gemini untuk dokumen maupun Copilot.
+
+**Persetujuan produksi:** Tambahkan migrasi `supabase/migrations/20261120010000_workspace_decision_reviews.sql` ke database Supabase dan deploy ulang `firestore.rules` bersama rilis ini. Atur `MDIP_DECISION_REVIEWERS` di Render dengan objek JSON yang memetakan `supabase:<UUID>`, `firebase:<UID>` atau `mdip:<ID akun>` ke peran reviewer, misalnya `{"supabase:UUID_REVIEWER":"Plant Manager"}`. Peran yang dipilih di UI hanya mengatur tampilan dashboard. Review tersimpan di FastAPI setelah status dan audit log berhasil ditulis dalam satu transaksi. Entri lama tanpa pemilik tetap tersimpan di database tetapi tidak muncul di workspace pengguna. Riwayat Firestore lama tetap tersimpan tanpa akses dari klien.

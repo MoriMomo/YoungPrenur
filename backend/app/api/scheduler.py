@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 import database
 from app import state
 from app.config import DEFAULT_PROJECT_NAME, DEFAULT_SCHEDULE_FILENAME
-from app.security import external_ai_allowed, require_user
+from app.security import decision_workspace, external_ai_allowed, require_user
 from ml.predictor import analyze_schedule
 from schedule_parser import ScheduleParseError, parse_schedule_document
 
@@ -62,7 +62,7 @@ async def upload_scheduler_v1(
             **analyze_schedule(tasks, project_name),
         }
 
-    database.clear_decision_statuses(user["id"])
+    database.clear_decision_statuses(decision_workspace(user))
     if analysis is state.BASELINE_ANALYSIS:
         state.reset_analysis(user["id"])
     else:

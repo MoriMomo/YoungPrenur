@@ -1,7 +1,7 @@
 /** Base URL, session storage and the authenticated fetch used by every signed-in call. */
 
 import { ManufacturingRole } from "@/types";
-import { auth } from "@/lib/firebase";
+import { getSupabase } from "@/lib/supabase";
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -14,11 +14,7 @@ export const API_BASE = `${API_ORIGIN}/api/v1`;
  */
 export const SESSION_EXPIRED_EVENT = "mdip:session-expired";
 
-function expireSession(): void {
-  clearStoredSession();
-}
-
-/** On-premises mode asks the server not to send documents or questions to external AI (Gemini). */
+/** On-premises mode keeps documents and questions on the MDIP server. */
 let onPremisesMode = false;
 
 export function setOnPremisesMode(enabled: boolean): void {
@@ -26,23 +22,13 @@ export function setOnPremisesMode(enabled: boolean): void {
 }
 
 export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
-  const session = getStoredSession();
+  const { data: { session } } = await getSupabase().auth.getSession();
   const headers = new Headers(init.headers);
-  if (session?.mode === "firebase" && auth.currentUser) {
-    try {
-      const idToken = await auth.currentUser.getIdToken();
-      headers.set("Authorization", `Bearer ${idToken}`);
-      if (session.user?.role) headers.set("X-MDIP-Role", session.user.role);
-    } catch {
-      // Ignore token refresh errors for optional FastAPI calls
-    }
-  } else if (session?.token && session.mode === "backend") {
-    headers.set("Authorization", `Bearer ${session.token}`);
-  }
+  if (session) headers.set("Authorization", "Bearer " + session.access_token);
   if (onPremisesMode) headers.set("X-MDIP-Deployment", "internal");
   const res = await fetch(input, { ...init, headers });
-  if (res.status === 401 && session?.mode === "backend" && typeof window !== "undefined") {
-    expireSession();
+  if (res.status === 401 && session && typeof window !== "undefined") {
+
     window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
   }
   return res;
@@ -68,41 +54,4 @@ export interface AuthUser {
   email: string;
   name: string;
   role: ManufacturingRole;
-}
-
-export interface AuthSession {
-  token: string;
-  user: AuthUser;
-  mode: "backend" | "firebase" | "sandbox";
-  storage?: string;
-}
-
-const SESSION_STORAGE_KEY = "mdip_auth_session";
-
-export function getStoredSession(): AuthSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as AuthSession) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveSession(session: AuthSession): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-  } catch {
-    // Storage quota/privacy mode ignored
-  }
-}
-
-export function clearStoredSession(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
-  } catch {
-    // Ignored
-  }
 }

@@ -6,6 +6,7 @@ import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
 import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
+import Dither from "@/components/landing/Dither";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
@@ -155,12 +156,28 @@ export default function LandingPage() {
         <Navbar />
 
         {/* Subject and action */}
-        <section className="grid gap-8 border-b border-rule-strong px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
+        <section className="relative isolate grid overflow-hidden gap-8 border-b border-rule-strong bg-[#120f17] px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+            <Dither
+              waveColor="#bcbcbc"
+              backgroundColor="#120f17"
+              ditherMode="bayer"
+              colorNum={4}
+              pixelSize={2}
+              waveSpeed={0.05}
+              waveFrequency={3}
+              waveAmplitude={0.3}
+              mouseEffect="erase"
+              mouseRadius={0.3}
+              dpr={1}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#120f17]/85 to-[#120f17]/35 lg:bg-gradient-to-r lg:from-[#120f17]/90 lg:via-[#120f17]/75 lg:to-[#120f17]/15" />
+          </div>
           <div className="lg:col-span-7">
-            <h1 className="font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[76px]">
+            <h1 className="font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-white sm:text-[56px] lg:text-[60px] xl:text-[76px]">
               Know which tasks will slip before the work cell stalls
             </h1>
-            <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-ink-2">
+            <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-white/90">
               MDIP inspects a project schedule the way your plant inspects a steel bar: every task&apos;s forecast measured
               against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.
             </p>
@@ -332,20 +349,24 @@ export default function LandingPage() {
           </h2>
           <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
             The model was trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules.
-            On 51 real projects it never saw, it ranks late tasks with a ROC-AUC of 0.78, against 0.53 for rule-based scoring.
+            On 51 real projects it never saw, it ranks late tasks with a ROC-AUC of 0.78, against 0.53 for rule-based scoring. At the 0.25 alert threshold, precision was 36% and recall was 45%.
           </p>
-          <div className="relative mt-10">
-          <div aria-hidden="true" className="absolute left-0 right-0 top-[7px] hidden h-px bg-ink md:block" />
-          <ol className="relative grid gap-8 md:grid-cols-4 md:gap-6">
-            {METHOD.map((step) => (
-              <li key={step.title} className="relative">
-                <span aria-hidden="true" className="relative z-10 block h-[15px] w-[15px] border-2 border-ink bg-sheet" />
-                <h3 className="mt-4 font-display text-xl font-bold text-ink">{step.title}</h3>
+          <ol className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
+            {METHOD.map((step, index) => (
+              <li key={step.title} className="relative pl-12 before:absolute before:bottom-[-2rem] before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:right-[-1.5rem] md:before:border-l-0 md:before:border-t">
+                <span aria-hidden="true" className="absolute left-0 top-0 isolate grid size-8 place-items-center overflow-hidden border border-ink bg-ink font-mono text-sm font-bold text-white md:relative">
+                  {index === 0 && (
+                    <span className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden">
+                      <Dither backgroundColor="#14181c" waveColor="#537468" pixelSize={2} dpr={1} />
+                    </span>
+                  )}
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="min-h-8 content-center font-display text-xl font-bold text-ink md:mt-4">{step.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{step.body}</p>
               </li>
             ))}
           </ol>
-          </div>
         </section>
 
         {/* Roles */}

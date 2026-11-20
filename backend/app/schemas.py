@@ -3,7 +3,7 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TaskItem(BaseModel):
@@ -35,9 +35,8 @@ class CopilotQuery(BaseModel):
 
 class FlagActionPayload(BaseModel):
     action_id: str
-    reviewer_role: Optional[str] = "Operations Manager"
     decision: Optional[str] = "AUTHORIZED"
-    notes: Optional[str] = ""
+    notes: Optional[str] = Field("", max_length=1000)
 
 
 class SopDocumentPayload(BaseModel):

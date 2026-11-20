@@ -26,30 +26,6 @@ rules_version = '2';
 //   - createdBy: string (required, immutable, == request.auth.uid)
 //   - updatedAt: timestamp (required)
 //
-// Collection: decisions
-// Document ID: {actionId}
-// Fields:
-//   - actionId: string (required, 1..60 chars)
-//   - status: string (required, 'pending' | 'authorized' | 'overridden')
-//   - flagged: bool (required)
-//   - overrideReason: string (optional, <= 1000 chars)
-//   - updatedBy: string (required, == request.auth.uid)
-//   - updatedAt: timestamp (required)
-//
-// Collection: audit_logs
-// Document ID: {logId}
-// Fields:
-//   - id: string (required, 1..60 chars)
-//   - actionId: string (required, 1..60 chars)
-//   - actionTitle: string (required, 1..200 chars)
-//   - decision: string (required, 'AUTHORIZED' | 'OVERRIDDEN')
-//   - reviewerRole: string (required, 1..160 chars)
-//   - notes: string (required, <= 1000 chars)
-//   - sopRef: string (required, 1..80 chars)
-//   - timestamp: string (required, 1..40 chars)
-//   - actorUid: string (required, immutable, == request.auth.uid)
-//   - createdAt: timestamp (required, immutable)
-//
 // Collection: iroom_records
 // Document ID: {recordId}
 // Fields:
@@ -139,32 +115,6 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
-    function isValidDecision(data) {
-      return hasRequiredFields(["actionId", "status", "flagged", "updatedBy", "updatedAt"]) &&
-        hasOnlyAllowedFields(["actionId", "status", "flagged", "overrideReason", "updatedBy", "updatedAt"]) &&
-        validString(data.actionId, 1, 60) &&
-        data.status in ["pending", "authorized", "overridden"] &&
-        data.flagged is bool &&
-        (!("overrideReason" in data) || validString(data.overrideReason, 0, 1000)) &&
-        data.updatedBy == request.auth.uid &&
-        data.updatedAt is timestamp;
-    }
-
-    function isValidAuditLog(data) {
-      return hasRequiredFields(["id", "actionId", "actionTitle", "decision", "reviewerRole", "notes", "sopRef", "timestamp", "actorUid", "createdAt"]) &&
-        hasOnlyAllowedFields(["id", "actionId", "actionTitle", "decision", "reviewerRole", "notes", "sopRef", "timestamp", "actorUid", "createdAt"]) &&
-        validString(data.id, 1, 60) &&
-        validString(data.actionId, 1, 60) &&
-        validString(data.actionTitle, 1, 200) &&
-        data.decision in ["AUTHORIZED", "OVERRIDDEN"] &&
-        validString(data.reviewerRole, 1, 160) &&
-        validString(data.notes, 0, 1000) &&
-        validString(data.sopRef, 1, 80) &&
-        validString(data.timestamp, 1, 40) &&
-        data.actorUid == request.auth.uid &&
-        data.createdAt is timestamp;
-    }
-
     function isValidIRoomRecord(data) {
       return hasRequiredFields(["id", "stream", "data", "createdBy", "createdAt"]) &&
         hasOnlyAllowedFields(["id", "stream", "data", "createdBy", "createdAt"]) &&
@@ -197,18 +147,6 @@ service cloud.firestore {
         isValidSop(request.resource.data) &&
         areImmutableFieldsUnchanged(["createdBy"]);
       allow delete: if false;
-    }
-
-    match /decisions/{actionId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidDecision(request.resource.data);
-      allow delete: if false;
-    }
-
-    match /audit_logs/{logId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidAuditLog(request.resource.data);
-      allow update, delete: if false;
     }
 
     match /iroom_records/{recordId} {

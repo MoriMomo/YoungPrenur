@@ -80,8 +80,10 @@ TEST_CASES: List[Dict[str, Any]] = [
         "validate": lambda d: (
             d.get("test_metrics", {}).get("roc_auc", 0) >= 0.80
             and d["test_metrics"]["roc_auc"] > d["test_metrics"].get("baseline_rule_roc_auc", 1)
+            and d.get("real_validation_metrics", {}).get("roc_auc", 0)
+            > d.get("real_validation_metrics", {}).get("baseline_rule_roc_auc", 1)
         ),
-        "desc": "Model must reach ROC-AUC >= 0.80 on held-out projects and beat the legacy rule-based baseline."
+        "desc": "The mixed held-out set must reach ROC-AUC >= 0.80. Both mixed and real-only held-out sets must beat the rule baseline."
     },
     {
         "id": "TC-04",
@@ -100,9 +102,9 @@ TEST_CASES: List[Dict[str, Any]] = [
         "name": "Human-in-the-Loop (HITL) Decision Authorization Audit Trail",
         "endpoint": f"{API_BASE}/api/v1/risks/decisions/flag",
         "method": "POST",
-        "body": {"action_id": "act-01", "reviewer_role": "Operations Manager"},
+        "body": None,
         "validate": lambda d: d.get("success") is True and d.get("status") == "FLAGGED_IN_AUDIT_LOG",
-        "desc": "Validates cryptographic human authorization logging for automated decision mitigation."
+        "desc": "Verifies that a signed-in reviewer receives confirmation of a saved audit entry."
     },
     {
         "id": "TC-06",
@@ -204,8 +206,13 @@ def main():
     print()
 
     for tc in TEST_CASES:
+        body = tc["body"]
+        if tc["id"] == "TC-05" and token:
+            _, actions, _, _ = run_http_request(f"{API_BASE}/api/v1/risks/decisions", "GET", token=token)
+            if actions:
+                body = {"action_id": actions[0]["id"]}
         status_code, data, latency_ms, err = run_http_request(
-            tc["endpoint"], tc["method"], tc["body"], token if tc.get("auth", True) else ""
+            tc["endpoint"], tc["method"], body, token if tc.get("auth", True) else ""
         )
 
         is_passed = False

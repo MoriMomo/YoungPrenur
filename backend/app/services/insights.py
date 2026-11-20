@@ -93,6 +93,7 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
             "source_doc": sop_code,
             "flagged": bool(persisted.get("flagged", False)),
             "status": persisted.get("status", "pending"),
+            "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
             "checklist": [
                 f"Verify field telemetry & actual progress on {t['code']} ({t.get('work_center') or dept})",
                 f"Review primary SHAP driver: {driver_summary}",
@@ -123,6 +124,7 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
                 "source_doc": "SOP-SCM-12",
                 "flagged": bool(persisted.get("flagged", False)),
                 "status": persisted.get("status", "pending"),
+                "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
                 "checklist": [
                     f"Verify physical warehouse stock for {mat.get('partNumber')} ({int(cover)}h remaining)",
                     f"Confirm expedited freight clearance against {mat.get('openPo', 'open PO')}",
@@ -153,6 +155,7 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
                 "source_doc": "SOP-PRS-04" if "press" in str(op.get("workCenter", "")).lower() else "SOP-LINE2-OPT",
                 "flagged": bool(persisted.get("flagged", False)),
                 "status": persisted.get("status", "pending"),
+                "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
                 "checklist": [
                     f"Inspect transducer & mechanical clearances on {op.get('machineId', 'machine')}",
                     f"Verify operator load & cycle speed ({oee:.1f}% OEE)",
@@ -181,6 +184,7 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
                 "source_doc": "SOP-ENG-02",
                 "flagged": bool(persisted.get("flagged", False)),
                 "status": persisted.get("status", "pending"),
+                "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
                 "checklist": [
                     f"Validate GD&T tolerances on {dwg.get('dwgNumber')} ({dwg.get('revision', '')})",
                     "Execute 4-working-hour SLA sign-off under SOP-ENG-02 Cl. 2.3",

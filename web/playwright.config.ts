@@ -9,10 +9,13 @@ import { defineConfig, devices } from "@playwright/test";
  *   npm run build && npm run test:e2e
  *
  * MDIP_PYTHON picks the Python that has backend/requirements.txt installed (default "python");
- * PLAYWRIGHT_CHANNEL can point at an installed browser such as "msedge" instead of Playwright's Chromium.
+ * PLAYWRIGHT_CHANNEL can point at an installed browser such as "chrome" instead of Playwright's Chromium.
+ * For alternate ports, set MDIP_E2E_API_PORT and MDIP_E2E_WEB_PORT, and point the build's
+ * NEXT_PUBLIC_API_URL to the alternate API origin.
  */
-const API_PORT = 8000;
-const WEB_PORT = 3100;
+const API_PORT = Number(process.env.MDIP_E2E_API_PORT || 8000);
+const WEB_PORT = Number(process.env.MDIP_E2E_WEB_PORT || 3100);
+const WEB_ORIGIN = `http://localhost:${WEB_PORT}`;
 const python = process.env.MDIP_PYTHON || "python";
 const dbPath = path.join(os.tmpdir(), `mdip-e2e-${process.pid}.db`);
 
@@ -23,7 +26,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: `http://localhost:${WEB_PORT}`,
+    baseURL: WEB_ORIGIN,
     trace: "retain-on-failure",
   },
   projects: [
@@ -34,16 +37,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `${python} -m uvicorn main:app --port ${API_PORT}`,
+      command: `"${python}" -m uvicorn main:app --port ${API_PORT}`,
       cwd: path.join(__dirname, "..", "backend"),
       url: `http://127.0.0.1:${API_PORT}/health`,
-      env: { MDIP_DB_PATH: dbPath },
+      env: { MDIP_DB_PATH: dbPath, MDIP_CORS_ORIGINS: WEB_ORIGIN },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command: `npx next start -p ${WEB_PORT}`,
-      url: `http://localhost:${WEB_PORT}`,
+      command: `"${process.execPath}" node_modules/next/dist/bin/next start -p ${WEB_PORT}`,
+      url: WEB_ORIGIN,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

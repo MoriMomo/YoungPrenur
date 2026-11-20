@@ -12,7 +12,7 @@ interface ReviewModalProps {
     actionId: string,
     decision: "AUTHORIZED" | "OVERRIDDEN",
     notes: string
-  ) => void;
+  ) => Promise<void>;
 }
 
 export const ReviewModal: React.FC<ReviewModalProps> = ({
@@ -22,6 +22,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 }) => {
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,26 +42,23 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     `Verify compliance with ${action.sourceDoc}`,
   ];
 
-  const handleAuthorize = () => {
-    setErrorMsg(null);
-    onSubmitDecision(
-      action.id,
-      "AUTHORIZED",
-      notes || "Verification checklist confirmed."
-    );
-    setNotes("");
-    setCheckedItems({});
-  };
-
-  const handleOverride = () => {
-    if (!notes.trim()) {
-      setErrorMsg("Please enter an override reason (required for ISO 9001 Cl. 7.5 audit log).");
+  const submit = async (decision: "AUTHORIZED" | "OVERRIDDEN") => {
+    if (saving) return;
+    if (decision === "OVERRIDDEN" && !notes.trim()) {
+      setErrorMsg("Enter an override reason.");
       return;
     }
     setErrorMsg(null);
-    onSubmitDecision(action.id, "OVERRIDDEN", notes);
-    setNotes("");
-    setCheckedItems({});
+    setSaving(true);
+    try {
+      await onSubmitDecision(action.id, decision, notes.trim());
+      setNotes("");
+      setCheckedItems({});
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Could not confirm that the review was saved.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -192,13 +190,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <textarea
               id="hitl-notes"
               rows={2}
+              maxLength={1000}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional when authorizing; required when overriding the AI recommendation..."
               className="w-full px-3 py-2 text-xs bg-paper border border-rule-strong rounded-xl focus:outline-none focus:ring-2 focus:ring-stamp/20"
             />
             {errorMsg && (
-              <p className="text-xs text-hold font-semibold mt-1">{errorMsg}</p>
+              <p role="alert" className="text-xs text-hold font-semibold mt-1">{errorMsg}</p>
             )}
           </div>
         </div>
@@ -208,14 +207,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <span className="text-xs text-ink-3">
             {action.flagged
               ? `Recorded as ${(action.status || "authorized").toUpperCase()}`
-              : "Awaiting human supervisor sign-off"}
+              : saving ? "Saving review…" : "Awaiting human supervisor sign-off"}
           </span>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleOverride}
-              disabled={action.flagged}
+              onClick={() => void submit("OVERRIDDEN")}
+              disabled={action.flagged || saving}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-warn bg-warn-wash hover:bg-warn hover:text-sheet border border-warn-line rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <XCircle className="w-3.5 h-3.5" />
@@ -224,8 +223,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
             <button
               type="button"
-              onClick={handleAuthorize}
-              disabled={action.flagged}
+              onClick={() => void submit("AUTHORIZED")}
+              disabled={action.flagged || saving}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
                 action.flagged
                   ? "bg-pass-wash text-pass border border-pass-line cursor-not-allowed"

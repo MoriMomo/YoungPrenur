@@ -61,11 +61,20 @@ class TestFirebaseTokens(SecurityTestBase):
         user = database.get_user_by_email("rina.qa@example.com")
         self.assertEqual(user["role"], "Quality Manager")
 
-    def test_sign_off_records_the_firebase_users_role(self):
+    def test_sign_off_requires_a_server_grant_and_ignores_the_client_role(self):
         headers = {"Authorization": f"Bearer {make_token()}", "X-MDIP-Role": "Plant Manager"}
-        res = self.client.post("/api/v1/risks/decisions/flag", headers=headers, json={"action_id": "ACT-FB-1"})
+        action_id = self.client.get("/api/v1/risks/decisions", headers=headers).json()[0]["id"]
+        payload = {"action_id": action_id, "reviewer_role": "Plant Manager"}
+        endpoint = "/api/v1/risks/decisions/flag"
+        with patch("app.security.PRODUCTION", True):
+            self.assertEqual(self.client.post(endpoint, headers=headers, json=payload).status_code, 403)
+            with patch.dict(os.environ, {"MDIP_DECISION_REVIEWERS": '{"firebase:firebase-uid-1":"Quality Manager"}'}):
+                res = self.client.post(endpoint, headers=headers, json=payload)
         self.assertEqual(res.status_code, 200, res.text)
-        self.assertEqual(res.json()["reviewer"], "Plant Manager")
+        self.assertEqual(res.json()["reviewer"], "Quality Manager")
+        self.assertEqual(res.json()["entry"]["reviewer_id"], "firebase:firebase-uid-1")
+        other = {"Authorization": f"Bearer {make_token(sub='firebase-uid-2')}"}
+        self.assertEqual(self.client.get("/api/v1/risks/audit-log", headers=other).json(), [])
 
     def test_unknown_role_falls_back_to_default(self):
         self.assertEqual(self.get(make_token(sub="uid-2", email="x@example.com"), role="Admin").status_code, 200)

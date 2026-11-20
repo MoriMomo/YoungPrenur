@@ -2,11 +2,6 @@
 
 import { INITIAL_ACTIONS } from "@/lib/mock-data";
 import { DecisionAction, AuditLogEntry } from "@/types";
-import {
-  fetchFirestoreAuditLogs,
-  fetchFirestoreDecisionStatuses,
-  saveFirestoreDecisionFlag,
-} from "@/lib/firestore";
 import { API_BASE, apiFetch } from "./client";
 
 interface BackendDecisionAction {
@@ -23,6 +18,7 @@ interface BackendDecisionAction {
   source_doc: string;
   flagged: boolean;
   status?: "pending" | "authorized" | "overridden";
+  override_reason?: string | null;
   checklist?: string[];
 }
 
@@ -64,108 +60,69 @@ export async function fetchDecisionActions(): Promise<DecisionAction[]> {
         flagged: d.flagged,
         status: d.status || (d.flagged ? "authorized" : "pending"),
         checklist: d.checklist,
+        overrideReason: d.override_reason ?? undefined,
       }));
     }
   } catch {
     // Fallback
   }
-  const firestoreStatuses = await fetchFirestoreDecisionStatuses();
-  return base.map((item) => {
-    const saved = firestoreStatuses[item.id];
-    return saved
-      ? {
-          ...item,
-          status: saved.status,
-          flagged: saved.flagged,
-          overrideReason: saved.overrideReason ?? item.overrideReason,
-        }
-      : item;
-  });
+  return base;
 }
 
-/**
- * Records a human-in-the-loop review decision (Authorized or Overridden).
- */
-export async function flagDecisionAction(
-  actionId: string,
-  reviewerRole: string = "Operations Manager",
-  decision: "AUTHORIZED" | "OVERRIDDEN" = "AUTHORIZED",
-  notes: string = "",
-  actionTitle: string = actionId,
-  sopRef: string = "SOP-MDIP"
-) {
-  await saveFirestoreDecisionFlag({
-    actionId,
-    actionTitle,
-    decision,
-    reviewerRole,
-    notes,
-    sopRef,
-  });
+interface BackendAuditEntry {
+  id: string;
+  action_id: string;
+  action_title: string;
+  decision: "AUTHORIZED" | "OVERRIDDEN";
+  reviewer_id: string;
+  reviewer_role: string;
+  notes: string;
+  sop_ref: string;
+  timestamp: string;
+}
 
-  try {
-    const res = await apiFetch(`${API_BASE}/risks/decisions/flag`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action_id: actionId,
-        reviewer_role: reviewerRole,
-        decision,
-        notes,
-      }),
-      signal: AbortSignal.timeout(2000),
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch {
-    // Fallback
-  }
+function mapAuditEntry(row: BackendAuditEntry): AuditLogEntry {
   return {
-    success: true,
-    action_id: actionId,
-    decision,
-    notes,
-    status: "FLAGGED_IN_FIRESTORE",
-    reviewer: reviewerRole,
-    message: decision === "OVERRIDDEN"
-      ? "Action override recorded in Firestore audit log."
-      : "Action authorized and recorded in Firestore audit log."
+    id: row.id,
+    actionId: row.action_id,
+    actionTitle: row.action_title,
+    decision: row.decision,
+    reviewerRole: row.reviewer_role,
+    notes: row.notes,
+    sopRef: row.sop_ref,
+    timestamp: row.timestamp,
   };
 }
 
+export async function flagDecisionAction(
+  actionId: string,
+  decision: "AUTHORIZED" | "OVERRIDDEN",
+  notes: string
+): Promise<AuditLogEntry> {
+  const res = await apiFetch(`${API_BASE}/risks/decisions/flag`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action_id: actionId, decision, notes }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const result = await res.json().catch(() => null);
+  if (!res.ok || result?.success !== true || !result.entry) {
+    throw new Error(typeof result?.detail === "string" ? result.detail : "Could not confirm that the review was saved.");
+  }
+  return mapAuditEntry(result.entry);
+}
+
 export async function fetchAuditLog(): Promise<AuditLogEntry[] | null> {
-  const firestoreLogs = await fetchFirestoreAuditLogs();
   try {
     const res = await apiFetch(`${API_BASE}/risks/audit-log`, {
       signal: AbortSignal.timeout(2500),
     });
     if (res.ok) {
-      const rows: Array<{
-        id: string;
-        action_id: string;
-        action_title: string;
-        decision: string;
-        reviewer_role: string;
-        notes: string;
-        sop_ref: string;
-        timestamp: string;
-      }> = await res.json();
-      const backendLogs: AuditLogEntry[] = rows.map((r) => ({
-        id: r.id,
-        actionId: r.action_id,
-        actionTitle: r.action_title,
-        decision: r.decision === "OVERRIDDEN" ? "OVERRIDDEN" : "AUTHORIZED",
-        reviewerRole: r.reviewer_role,
-        notes: r.notes,
-        sopRef: r.sop_ref,
-        timestamp: r.timestamp,
-      }));
-      const seen = new Set(firestoreLogs.map((l) => l.id));
-      return [...firestoreLogs, ...backendLogs.filter((l) => !seen.has(l.id))];
+      const rows: BackendAuditEntry[] = await res.json();
+      return rows.map(mapAuditEntry);
     }
   } catch {
-    // Fallback to Firestore / client memory
+    // Keep the last confirmed log on transient failure.
   }
-  return firestoreLogs.length > 0 ? firestoreLogs : null;
+  return null;
 }

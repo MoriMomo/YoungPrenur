@@ -14,10 +14,9 @@ import {
   QuotationPoItem,
   OperationTrackerItem,
 } from "@/types";
-import { fetchFirestoreIRoomRecords, saveFirestoreIRoomRecord } from "@/lib/firestore";
 import { API_BASE, apiFetch } from "./client";
 
-async function fetchStreamWithFirestore<T extends { id: string }>(
+async function fetchStream<T extends { id: string }>(
   stream: "materials" | "progress" | "drawings" | "quotations" | "operations",
   fallback: T[]
 ): Promise<T[]> {
@@ -32,52 +31,48 @@ async function fetchStreamWithFirestore<T extends { id: string }>(
   } catch {
     // Fallback
   }
-  const firestoreRows = await fetchFirestoreIRoomRecords<T>(stream);
-  if (firestoreRows.length === 0) return base;
-  const seen = new Set(firestoreRows.map((r) => r.id));
-  return [...firestoreRows, ...base.filter((r) => !seen.has(r.id))];
+  return base;
 }
 
 /**
  * Fetches IRoom Material Delivery Management streams.
  */
 export function fetchIRoomMaterials(): Promise<MaterialDeliveryItem[]> {
-  return fetchStreamWithFirestore("materials", IROOM_MATERIALS);
+  return fetchStream("materials", IROOM_MATERIALS);
 }
 
 /**
  * Fetches IRoom Project Progress Tracking streams.
  */
 export function fetchIRoomProjects(): Promise<ProjectProgressItem[]> {
-  return fetchStreamWithFirestore("progress", IROOM_PROJECTS);
+  return fetchStream("progress", IROOM_PROJECTS);
 }
 
 /**
  * Fetches IRoom Drawing Approval streams.
  */
 export function fetchIRoomDrawings(): Promise<DrawingApprovalItem[]> {
-  return fetchStreamWithFirestore("drawings", IROOM_DRAWINGS);
+  return fetchStream("drawings", IROOM_DRAWINGS);
 }
 
 /**
  * Fetches IRoom Quotation & PO management streams.
  */
 export function fetchIRoomQuotations(): Promise<QuotationPoItem[]> {
-  return fetchStreamWithFirestore("quotations", IROOM_QUOTATIONS);
+  return fetchStream("quotations", IROOM_QUOTATIONS);
 }
 
 /**
  * Fetches IRoom Shop-Floor Operation Tracker streams.
  */
 export function fetchIRoomOperations(): Promise<OperationTrackerItem[]> {
-  return fetchStreamWithFirestore("operations", IROOM_OPERATIONS);
+  return fetchStream("operations", IROOM_OPERATIONS);
 }
 
 export async function ingestIRoomRecord(
   stream: "materials" | "progress" | "drawings" | "quotations" | "operations",
   record: Record<string, unknown>
 ): Promise<{ success: boolean; total_records?: number } | null> {
-  const savedToFirestore = await saveFirestoreIRoomRecord(stream, record);
   try {
     const res = await apiFetch(`${API_BASE}/iroom/${stream}`, {
       method: "POST",
@@ -91,7 +86,7 @@ export async function ingestIRoomRecord(
   } catch {
     // Offline fallback handled below
   }
-  return savedToFirestore ? { success: true } : null;
+  return null;
 }
 
 // -------------------------------------------------------------

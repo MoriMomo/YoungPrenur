@@ -9,12 +9,11 @@ export {
   type AuthUser,
 } from "./client";
 export {
-  AuthError,
   loginUser,
   registerUser,
   loginWithGoogle,
   logoutUser,
-  subscribeFirebaseAuth,
+  subscribeAuth,
 } from "./auth";
 export {
   ScheduleUploadError,

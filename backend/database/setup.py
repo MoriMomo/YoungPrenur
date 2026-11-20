@@ -290,6 +290,12 @@ def init_db() -> None:
             """
         )
 
+        audit_columns = {row["name"] for row in conn.execute("PRAGMA table_info(audit_log)")}
+        for column in ("workspace", "reviewer_id"):
+            if column not in audit_columns:
+                conn.execute(f"ALTER TABLE audit_log ADD COLUMN {column} TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_workspace ON audit_log (workspace)")
+
         count_iroom = conn.execute("SELECT COUNT(*) FROM iroom_records").fetchone()[0]
         if count_iroom == 0:
             now = _now_iso()

@@ -2,7 +2,6 @@ import {
   ManufacturingRole,
   RolePreset,
   DecisionAction,
-  AuditLogEntry,
   PilotCheckItem,
   RiskItem,
   KnowledgeDoc,
@@ -177,19 +176,6 @@ export const INITIAL_ACTIONS: DecisionAction[] = [
       "Confirm 4-working-hour critical path SLA sign-off (Cl. 2.3)",
       "Release verified CAM toolpath to CNC Milling Cell A"
     ]
-  }
-];
-
-export const INITIAL_AUDIT_LOG: AuditLogEntry[] = [
-  {
-    id: "AUD-2026-01",
-    actionId: "WBS-1.1-PRECHECK",
-    actionTitle: "Release Ingot Lot #882 Incoming QC Clearance",
-    decision: "AUTHORIZED",
-    reviewerRole: "Quality Manager",
-    notes: "Material certificate EN24/AL7075 verified against incoming inspection log.",
-    sopRef: "SOP-SCM-12",
-    timestamp: "08:15 WIB"
   }
 ];
 

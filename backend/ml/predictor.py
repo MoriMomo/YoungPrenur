@@ -83,9 +83,29 @@ def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if not tasks:
         return tasks
     clf, reg, _ = _models()
-    dm = xgb.DMatrix(np.array(feature_matrix(tasks), dtype=float), feature_names=FEATURE_NAMES)
+    X_own = np.array(feature_matrix(tasks), dtype=float)
+    upstream_idx = FEATURE_NAMES.index("upstream_slip_days")
+    util_idx = FEATURE_NAMES.index("resource_utilization")
+    for i, t in enumerate(tasks):
+        if is_completed(t):
+            continue
+        variance = float(t["actual_days"]) - float(t["planned_days"])
+        # Upstream delay already shifts downstream Early Start in Monte Carlo CPM; smoothly dampen
+        # upstream_slip_days on zero-variance downstream tasks to avoid double-counting or cliffs.
+        if variance <= 0.0:
+            util = float(X_own[i, util_idx])
+            scale = max(0.0, min(1.0, (util - 0.65) / 0.25))
+            X_own[i, upstream_idx] *= scale
+
+    dm = xgb.DMatrix(X_own, feature_names=FEATURE_NAMES)
     proba = clf.predict(dm)
-    cond_slip = np.clip(reg.predict(dm), 0.5, 20.0)
+    planned_arr = np.array([max(0.0, float(t["planned_days"])) for t in tasks], dtype=float)
+    max_prop_slip = np.where(planned_arr > 0.0, np.maximum(0.25, planned_arr * 0.75), 0.0)
+    cond_slip = np.where(
+        planned_arr > 0.0,
+        np.clip(reg.predict(dm), 0.25, max_prop_slip),
+        0.0,
+    )
     contribs = clf.predict(dm, pred_contribs=True)[:, :-1]  # drop bias column
 
     for i, t in enumerate(tasks):
@@ -94,6 +114,11 @@ def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             realized = round(max(0.0, t["actual_days"] - t["planned_days"]), 2)
             t.update(delay_risk=0.0, risk_level="LOW", drivers=[], completed=True,
                      conditional_slip_days=realized, expected_slip_days=realized)
+            t["_contribs"] = np.zeros(len(FEATURE_NAMES))
+            continue
+        if float(t["planned_days"]) <= 0.0:
+            t.update(delay_risk=0.0, risk_level="LOW", drivers=[], completed=False,
+                     conditional_slip_days=0.0, expected_slip_days=0.0)
             t["_contribs"] = np.zeros(len(FEATURE_NAMES))
             continue
         p = float(proba[i])
@@ -154,23 +179,30 @@ def simulate_project(tasks: List[Dict[str, Any]], buffer_days: float = None, see
     rng = np.random.default_rng(seed)
     index = {t["code"]: i for i, t in enumerate(tasks)}
     order = _topo_order(tasks, index)
-    planned = np.array([t["planned_days"] for t in tasks], dtype=float)
+    planned = np.array([max(0.0, float(t["planned_days"])) for t in tasks], dtype=float)
+    actual = np.array([max(0.0, float(t["actual_days"])) for t in tasks], dtype=float)
     p = np.array([t["delay_risk"] for t in tasks], dtype=float)
-    cond_mean = np.clip(np.array([
-        float(t["conditional_slip_days"]) if t.get("conditional_slip_days") is not None
-        else max(0.5, float(t.get("expected_slip_days", 0.5)) / max(float(t.get("delay_risk", 0.15)), 0.15))
-        for t in tasks
-    ], dtype=float), 0.5, 20.0)
+    max_prop_slip = np.where(planned > 0.0, np.maximum(0.25, planned * 0.75), 0.0)
+    cond_mean = np.where(
+        planned > 0.0,
+        np.clip(np.array([
+            float(t["conditional_slip_days"]) if t.get("conditional_slip_days") is not None
+            else max(0.25, float(t.get("expected_slip_days", 0.5)) / max(float(t.get("delay_risk", 0.15)), 0.15))
+            for t in tasks
+        ], dtype=float), 0.25, max_prop_slip),
+        0.0,
+    )
 
     shock = rng.gamma(4.0, 0.25, size=(N_SIMULATIONS, 1))
     p_eff = np.clip(1.0 - np.power(np.clip(1.0 - p[None, :], 1e-6, 1.0), shock), 0.0, 0.99)
     late = rng.random((N_SIMULATIONS, len(tasks))) < p_eff
     scale = (cond_mean[None, :] * (0.75 + 0.25 * shock)) / 2.0
-    size = rng.gamma(2.0, scale)
-    durations = planned + late * size
+    size = rng.gamma(2.0, np.maximum(scale, 1e-6)) * (cond_mean[None, :] > 0.0)
+    base_dur = np.minimum(planned[None, :], actual[None, :])
+    durations = np.maximum(actual[None, :], base_dur + late * size)
     for i, t in enumerate(tasks):
-        if t.get("completed"):
-            durations[:, i] = t["actual_days"]
+        if t.get("completed") or planned[i] <= 0.0:
+            durations[:, i] = actual[i]
 
     def finish(dur: np.ndarray) -> np.ndarray:
         ef = np.zeros_like(dur)

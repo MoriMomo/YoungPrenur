@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from app import state
 from app.config import DEFAULT_PROJECT_NAME, DEFAULT_SCHEDULE_FILENAME
 from app.services.insights import _compute_overview_kpis, _compute_performance_series, _compute_production_lines, compute_live_decisions
-from app.security import require_user
+from app.security import decision_workspace, require_user
 from app.state import risk_headline
 
 router = APIRouter()
@@ -31,8 +31,8 @@ def get_production_lines(user: Dict[str, Any] = Depends(require_user)):
 @router.get("/api/v1/dashboard/overview")
 def get_overview(role: str = "Operations Manager", user: Dict[str, Any] = Depends(require_user)):
     analysis = state.get_analysis(user["id"])
-    computed = _compute_overview_kpis(analysis, user["id"])
-    live_decisions = compute_live_decisions(analysis, user["id"])
+    computed = _compute_overview_kpis(analysis, decision_workspace(user))
+    live_decisions = compute_live_decisions(analysis, decision_workspace(user))
     return {
         "success": True,
         "active_role": role,
@@ -57,7 +57,7 @@ def get_overview(role: str = "Operations Manager", user: Dict[str, Any] = Depend
 @router.get("/api/v1/dashboard/export")
 def export_summary(role: str = "Operations Manager", user: Dict[str, Any] = Depends(require_user)):
     analysis = state.get_analysis(user["id"])
-    computed = _compute_overview_kpis(analysis, user["id"])
+    computed = _compute_overview_kpis(analysis, decision_workspace(user))
     return {
         "role": role,
         "project": analysis.get("project_name", DEFAULT_PROJECT_NAME),

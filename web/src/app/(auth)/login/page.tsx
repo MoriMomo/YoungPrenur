@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ManufacturingRole } from "@/types";
 import { ROLES } from "@/lib/mock-data";
-import { AuthError, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
+import { loginUser, loginWithGoogle, registerUser } from "@/lib/api";
 import { MdipLogo } from "@/components/ui/MdipLogo";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
@@ -48,8 +48,8 @@ export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("ops.lead@mdip.id");
-  const [password, setPassword] = useState("imajin2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [selectedDemoRole, setSelectedDemoRole] = useState<ManufacturingRole>("Operations Manager");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,10 +58,9 @@ export default function LoginPage() {
     setErrorMsg(null);
     setIsSubmitting(true);
     try {
-      const session = await loginWithGoogle(selectedDemoRole);
-      router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
+      await loginWithGoogle(selectedDemoRole);
     } catch (err) {
-      setErrorMsg(err instanceof AuthError ? err.message : "Google sign-in failed.");
+      setErrorMsg(err instanceof Error ? err.message : "Google sign-in failed.");
       setIsSubmitting(false);
     }
   };
@@ -75,9 +74,14 @@ export default function LoginPage() {
         authMode === "register"
           ? await registerUser(email, password, fullName, selectedDemoRole)
           : await loginUser(email, password);
+      if (!session) {
+        setErrorMsg("Check your email to confirm your account before signing in.");
+        setIsSubmitting(false);
+        return;
+      }
       router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
     } catch (err) {
-      setErrorMsg(err instanceof AuthError ? err.message : "Authentication failed.");
+      setErrorMsg(err instanceof Error ? err.message : "Authentication failed.");
       setIsSubmitting(false);
     }
   };
@@ -151,7 +155,7 @@ export default function LoginPage() {
                   </h2>
                   <p className="text-xs text-ink-2">
                     {authMode === "register"
-                      ? "Register a plant account stored in Firebase Authentication & Firestore"
+                      ? "Create your plant account with email and password"
                       : "Continue with Google or use your email and password"}
                   </p>
                 </div>
@@ -298,7 +302,7 @@ export default function LoginPage() {
                       Password
                     </label>
                     <span className="text-xs text-ink-2">
-                      {authMode === "register" ? "Min 6 chars" : "Demo password pre-filled"}
+                      {authMode === "register" ? "Min 6 chars" : "Enter your password"}
                     </span>
                   </div>
                   <div className="relative">

@@ -114,19 +114,47 @@ class TestProtectedRoutes(SecurityTestBase):
 
 
 class TestDecisionSignOff(SecurityTestBase):
+    def test_failed_audit_insert_rolls_back_status(self):
+        from database._core import _connect
+
+        headers = self.login()
+        actions_url = "/api/v1/risks/decisions"
+        action_id = self.client.get(actions_url, headers=headers).json()[0]["id"]
+        with _connect() as conn:
+            conn.execute(
+                "CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log "
+                "BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END"
+            )
+        try:
+            res = self.client.post(f"{actions_url}/flag", headers=headers, json={"action_id": action_id})
+            self.assertEqual(res.status_code, 503, res.text)
+            actions = self.client.get(actions_url, headers=headers).json()
+            self.assertFalse(next(action for action in actions if action["id"] == action_id)["flagged"])
+        finally:
+            with _connect() as conn:
+                conn.execute("DROP TRIGGER fail_audit")
+
     def test_reviewer_role_comes_from_the_token(self):
         headers = self.login()
+        action_id = self.client.get("/api/v1/risks/decisions", headers=headers).json()[0]["id"]
         res = self.client.post(
             "/api/v1/risks/decisions/flag",
             headers=headers,
-            json={"action_id": "ACT-SEC-1", "reviewer_role": "Plant Manager", "decision": "authorized"},
+            json={"action_id": action_id, "reviewer_role": "Plant Manager", "decision": "authorized"},
         )
         self.assertEqual(res.status_code, 200, res.text)
         self.assertEqual(res.json()["reviewer"], DEMO_ROLE)
         self.assertEqual(res.json()["decision"], "AUTHORIZED")
         log = self.client.get("/api/v1/risks/audit-log", headers=headers).json()
-        entry = next(e for e in log if e["action_id"] == "ACT-SEC-1")
+        entry = next(e for e in log if e["action_id"] == action_id)
         self.assertEqual(entry["reviewer_role"], DEMO_ROLE)
+
+    def test_unknown_action_is_rejected(self):
+        headers = self.login()
+        res = self.client.post(
+            "/api/v1/risks/decisions/flag", headers=headers, json={"action_id": "missing"},
+        )
+        self.assertEqual(res.status_code, 404, res.text)
 
     def test_unknown_decision_is_rejected(self):
         res = self.client.post(
@@ -185,6 +213,21 @@ class TestPublicInspection(SecurityTestBase):
         self.assertEqual(body["tasks_extracted"], 3)
         self.assertEqual(state.BASELINE_ANALYSIS, before)
 
+    def test_invalid_dependencies_are_rejected(self):
+        header = b"Code,Activity Name,Planned Duration,Predecessors\n"
+        schedules = [
+            (b"A,Cut,2,B\nB,Drill,1,A\n", "Circular task dependencies"),
+            (b"A,Cut,2,A\n", "Circular task dependencies"),
+            (b"A,Cut,2,missing\n", "unknown predecessor missing"),
+            (b"A,Cut,2,\nA,Drill,1,\n", "Duplicate task IDs"),
+        ]
+        for rows, expected in schedules:
+            with self.subTest(expected=expected):
+                files = {"file": ("bad.csv", io.BytesIO(header + rows), "text/csv")}
+                response = self.client.post("/api/v1/scheduler/inspect", files=files)
+                self.assertEqual(response.status_code, 422, response.text)
+                self.assertIn(expected, response.json()["detail"])
+
     def test_inspection_refuses_documents(self):
         for name in ("plan.pdf", "plan.docx"):
             with self.subTest(name=name):
@@ -241,6 +284,9 @@ class TestPerUserSchedules(SecurityTestBase):
         bob_view = {d["id"]: d["flagged"] for d in self.client.get("/api/v1/risks/decisions", headers=bob).json()}
         self.assertTrue(alice_view[action_id])
         self.assertFalse(bob_view[action_id])
+        self.assertEqual(self.client.get("/api/v1/risks/audit-log", headers=bob).json(), [])
+        audit = self.client.get("/api/v1/risks/audit-log", headers=alice).json()
+        self.assertEqual([entry["action_id"] for entry in audit], [action_id])
 
 
 class TestOnPremisesHeader(SecurityTestBase):

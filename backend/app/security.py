@@ -8,6 +8,8 @@ Rules
   the request body.
 """
 
+import hashlib
+import json
 import os
 import threading
 import time
@@ -17,6 +19,7 @@ from typing import Any, Deque, Dict, List, Optional
 from fastapi import Header, HTTPException, Request
 
 import database
+from app.supabase_auth import supabase_user
 from app import firebase_auth
 
 PRODUCTION = bool(os.environ.get("RENDER")) or os.environ.get("MDIP_ENV", "").lower() == "production"
@@ -52,17 +55,41 @@ def require_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     token = authorization.split(" ", 1)[1].strip()
-    user = database.verify_session_token(token)
+    user = database.verify_session_token(token) or supabase_user(token)
     if not user:
         claims = firebase_auth.verify_id_token(token)
         if claims:
-            return firebase_auth.user_from_claims(claims, x_mdip_role)
+            return {**firebase_auth.user_from_claims(claims, x_mdip_role), "firebase_uid": claims["sub"]}
         raise HTTPException(
             status_code=401,
             detail="Your session has expired. Please sign in again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+def decision_workspace(user: Dict[str, Any]) -> str:
+    firebase_uid = user.get("firebase_uid")
+    if firebase_uid:
+        return "firebase-" + hashlib.sha256(firebase_uid.encode()).hexdigest()
+    return user["id"]
+
+
+def decision_reviewer(user: Dict[str, Any]) -> tuple[str, str]:
+    firebase_uid = user.get("firebase_uid")
+    identity = f"firebase:{firebase_uid}" if firebase_uid else f"mdip:{user['id']}"
+    if user.get("supabase_uid") and not firebase_uid and user["id"] == f"supabase:{user['supabase_uid']}":
+        identity = user["id"]
+    try:
+        grants = json.loads(os.environ.get("MDIP_DECISION_REVIEWERS", "{}"))
+    except ValueError:
+        grants = {}
+    role = grants.get(identity) if isinstance(grants, dict) else None
+    if isinstance(role, str) and role in firebase_auth.PLANT_ROLES:
+        return identity, role
+    if not PRODUCTION and not os.environ.get("MDIP_DECISION_REVIEWERS"):
+        return identity, user["role"]
+    raise HTTPException(status_code=403, detail="Your account is not assigned a decision reviewer role.")
 
 
 def external_ai_allowed(x_mdip_deployment: Optional[str] = Header(None)) -> bool:

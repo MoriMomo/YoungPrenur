@@ -240,6 +240,12 @@ def extract_dslib_rows(excel_dir: str = DSLIB_EXCEL_DIR) -> Tuple[List[Dict[str,
         if len(tasks) < 4:
             continue
 
+        # Training uses completed leaf tasks only. Keep links inside that subset.
+        retained_codes = {task["code"] for task in tasks}
+        for task in tasks:
+            task["predecessors"] = [
+                code for code in task["predecessors"] if code in retained_codes and code != task["code"]
+            ]
         all_rows.extend(_tasks_to_rows(f"dslib_{proj_code}", tasks))
         n_projects += 1
 
