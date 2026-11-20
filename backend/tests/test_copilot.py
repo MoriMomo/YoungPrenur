@@ -1,4 +1,4 @@
-"""Unit tests for grounded Copilot Gemini synthesis, status discovery, and fallbacks."""
+"""Unit tests for grounded Copilot synthesis, status discovery, and fallbacks."""
 
 import io
 import json
@@ -36,24 +36,53 @@ class _MockGeminiResp:
 
 class TestCopilotService(unittest.TestCase):
     def setUp(self):
+        provider_env = patch.dict(os.environ)
+        provider_env.start()
+        self.addCleanup(provider_env.stop)
+        for name in ("DEEPSEEK_API_KEY", "DEEPSEEK_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL"):
+            os.environ.pop(name, None)
         self._orig_db = database.DB_PATH
         self._tmp = tempfile.TemporaryDirectory()
         database.DB_PATH = os.path.join(self._tmp.name, "copilot.db")
         database.init_db()
-        self._orig_key = os.environ.get("GEMINI_API_KEY")
-        self._orig_model = os.environ.get("GEMINI_MODEL")
 
     def tearDown(self):
         database.DB_PATH = self._orig_db
-        if self._orig_key is None:
-            os.environ.pop("GEMINI_API_KEY", None)
-        else:
-            os.environ["GEMINI_API_KEY"] = self._orig_key
-        if self._orig_model is None:
-            os.environ.pop("GEMINI_MODEL", None)
-        else:
-            os.environ["GEMINI_MODEL"] = self._orig_model
         self._tmp.cleanup()
+
+    def test_deepseek_takes_precedence_and_uses_grounded_chat_payload(self):
+        os.environ.update(DEEPSEEK_API_KEY="test-deepseek-key", GEMINI_API_KEY="test-gemini-key")
+        self.assertEqual(copilot_service.get_copilot_status()["provider"], "deepseek")
+
+        with patch("app.services.copilot.urllib.request.urlopen") as urlopen:
+            response = urlopen.return_value.__enter__.return_value
+            response.read.return_value = b'{"choices":[{"message":{"content":"Review the schedule risk."}}]}'
+            result = copilot_service._run_grounded_copilot(
+                "What should I address first?",
+                "Operations Manager",
+                history=[{"role": "model", "text": "Here are the schedule risks."}],
+            )
+
+        request = urlopen.call_args.args[0]
+        body = json.loads(request.data)
+        self.assertEqual(request.full_url, "https://api.deepseek.com/chat/completions")
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-deepseek-key")
+        self.assertEqual(body["model"], "deepseek-flash")
+        self.assertEqual([item["role"] for item in body["messages"]], ["system", "assistant", "user"])
+        self.assertIn("Verified SOP Excerpts:", body["messages"][-1]["content"])
+        self.assertEqual(result["reply"], "Review the schedule risk.")
+        self.assertEqual(result["model"], "deepseek-flash")
+        self.assertTrue(result["citations"])
+
+    def test_deepseek_billing_error_falls_back_to_retrieval(self):
+        os.environ["DEEPSEEK_API_KEY"] = "test-deepseek-key"
+        error = urllib.error.HTTPError("https://api.deepseek.com", 402, "Payment required", None, None)
+        with patch("app.services.copilot.urllib.request.urlopen", side_effect=error):
+            result = copilot_service._run_grounded_copilot("What is at risk?", "Operations Manager")
+
+        self.assertFalse(result["llm_enhanced"])
+        self.assertEqual(result["llm_error"], "DeepSeek API balance is insufficient")
+        self.assertTrue(result["reply"])
 
     def test_copilot_status_reflects_api_key(self):
         os.environ.pop("GEMINI_API_KEY", None)
@@ -101,8 +130,8 @@ class TestCopilotService(unittest.TestCase):
         self.assertEqual(contents[2]["role"], "user")
         self.assertIn("systemInstruction", captured["body"])
 
-    def test_on_premises_mode_answers_without_gemini(self):
-        os.environ["GEMINI_API_KEY"] = "test-gemini-key"
+    def test_on_premises_mode_answers_without_cloud_ai(self):
+        os.environ.update(DEEPSEEK_API_KEY="test-deepseek-key", GEMINI_API_KEY="test-gemini-key")
         with patch("app.services.copilot.urllib.request.urlopen") as urlopen:
             res = copilot_service._run_grounded_copilot(
                 "What should I address first?", "Operations Manager", allow_external_ai=False
