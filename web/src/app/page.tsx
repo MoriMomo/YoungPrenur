@@ -256,7 +256,7 @@ export default function LandingPage() {
                           <RiskCell row={r} tone={v.tone} />
                         </td>
                         <td className="px-3 py-2.5 text-xs text-ink-2">
-                          {r.driver ?? <span className="text-ink-3">{r.done ? "Finished" : "None reported"}</span>}
+                          {r.driver ?? <span className="text-ink-3">{r.done ? "—" : "None reported"}</span>}
                         </td>
                         <td className="px-3 py-2.5">
                           <Verdict tone={v.tone}>{v.label}</Verdict>
@@ -381,7 +381,7 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12">
+          <div role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12 md:items-center">
             <div className="md:col-span-5">
               <h3 className="font-display text-2xl font-bold text-ink">{role.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{role.sub}</p>

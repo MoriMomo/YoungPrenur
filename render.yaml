@@ -15,7 +15,7 @@ services:
         value: production
       # Browser origins allowed to call the API (comma-separated): set it to the Vercel URL(s).
       - key: MDIP_CORS_ORIGINS
-        sync: false
+        value: "https://mdip-ecru.vercel.app"
       # Accept Firebase Auth ID tokens from this project.
       - key: FIREBASE_PROJECT_ID
         value: mdip-f4347

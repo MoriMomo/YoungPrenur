@@ -56,7 +56,7 @@ export const Navbar: React.FC = () => {
         </dl>
 
         <div className="flex shrink-0 items-center gap-2">
-          <LinkButton href="/login" variant="secondary" size="md" className="hidden sm:inline-flex">
+          <LinkButton href="/login" variant="ghost" size="md" className="hidden sm:inline-flex">
             Sign in
           </LinkButton>
           <LinkButton href="/login?mode=register" variant="primary" size="md" className="hidden sm:inline-flex">

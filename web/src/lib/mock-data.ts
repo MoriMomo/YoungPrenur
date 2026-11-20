@@ -24,75 +24,75 @@ export const ROLES: ManufacturingRole[] = [
 
 export const ROLE_PRESETS: Record<ManufacturingRole, RolePreset> = {
   "Operations Manager": {
-    title: "Operations Delivery Cockpit",
-    sub: "Project delivery cockpit: WBS progress, critical path delay risks, and cross-department decisions.",
+    title: "Operations delivery cockpit",
+    sub: "Track WBS progress, the delay risk on the critical path and the decisions that cross departments.",
     buyingCenterRole: "Operational Buyer",
     priorityDepartment: "Production Planning",
     kpis: [
-      { title: "Project Schedule Attainment", value: "91.5%", trend: "↓ 2.5%", subtle: "vs. planned baseline", icon: "▥", status: "warn" },
-      { title: "Overall Delay Risk", value: "65.2%", trend: "+3.5d Slippage", subtle: "critical path exposed", icon: "⚑", status: "alert" },
-      { title: "First-Time Quality Yield", value: "97.1%", trend: "↓ 0.6%", subtle: "CMM inspection pass", icon: "✓", status: "warn" },
-      { title: "Active Milestone Actions", value: "4", trend: "2 urgent today", subtle: "human review queue", icon: "◉", status: "alert" }
+      { title: "Project schedule attainment", value: "91.5%", trend: "↓ 2.5%", subtle: "vs. planned baseline", icon: "▥", status: "warn" },
+      { title: "Overall delay risk", value: "65.2%", trend: "+3.5d Slippage", subtle: "critical path exposed", icon: "⚑", status: "alert" },
+      { title: "First-time quality yield", value: "97.1%", trend: "↓ 0.6%", subtle: "CMM inspection pass", icon: "✓", status: "warn" },
+      { title: "Active milestone actions", value: "4", trend: "2 urgent today", subtle: "human review queue", icon: "◉", status: "alert" }
     ]
   },
   "Plant Manager": {
-    title: "Plant Executive Cockpit",
+    title: "Plant executive cockpit",
     sub: "Monitor plant-wide project delivery performance, contract slippage, and penalty exposure.",
     buyingCenterRole: "Economic Buyer",
     priorityDepartment: "Engineering & R&D",
     kpis: [
-      { title: "Overall Milestone Compliance", value: "94.8%", trend: "↑ 1.8%", subtle: "target: 95.0%", icon: "▥", status: "normal" },
-      { title: "Critical Path Slippage", value: "3.5 Days", trend: "Cell 02 & M-204", subtle: "forecasted variance", icon: "⏱", status: "alert" },
-      { title: "Contract Penalty Exposure", value: "Rp 480M", trend: "PO-089 & PO-092", subtle: "late delivery clauses", icon: "⚑", status: "alert" },
-      { title: "On-Time In-Full (OTIF)", value: "96.2%", trend: "↑ 0.4%", subtle: "30-day rolling index", icon: "✓", status: "normal" }
+      { title: "Overall milestone compliance", value: "94.8%", trend: "↑ 1.8%", subtle: "target: 95.0%", icon: "▥", status: "normal" },
+      { title: "Critical path slippage", value: "3.5 Days", trend: "Cell 02 & M-204", subtle: "forecasted variance", icon: "⏱", status: "alert" },
+      { title: "Contract penalty exposure", value: "Rp 480M", trend: "PO-089 & PO-092", subtle: "late delivery clauses", icon: "⚑", status: "alert" },
+      { title: "On-time in-full (OTIF)", value: "96.2%", trend: "↑ 0.4%", subtle: "30-day rolling index", icon: "✓", status: "normal" }
     ]
   },
   "Production Supervisor": {
-    title: "Shop-Floor Cell Supervision",
+    title: "Shop-floor cell supervision",
     sub: "Manage cell throughput, technician shift assignments, and WBS fabrication schedules.",
     buyingCenterRole: "Operational Buyer",
     priorityDepartment: "Production Planning",
     kpis: [
-      { title: "Cell 02 Shift Throughput", value: "890 / 1,000", trend: "↓ 11% below pace", subtle: "Assembly Cell 02", icon: "⚙", status: "alert" },
-      { title: "Cells 01 & 04 Attainment", value: "95.4%", trend: "↑ On schedule", subtle: "Normal progression", icon: "▥", status: "normal" },
-      { title: "Shift Technician Allocation", value: "92%", trend: "1 technician shortage", subtle: "Cell 02 evening shift", icon: "♙", status: "warn" },
-      { title: "Setup & Tooling Delay", value: "1.4 hrs", trend: "↓ 0.3h vs yesterday", subtle: "Die changeover", icon: "⌁", status: "normal" }
+      { title: "Cell 02 shift throughput", value: "890 / 1,000", trend: "↓ 11% below pace", subtle: "Assembly Cell 02", icon: "⚙", status: "alert" },
+      { title: "Cells 01 and 04 attainment", value: "95.4%", trend: "↑ On schedule", subtle: "Normal progression", icon: "▥", status: "normal" },
+      { title: "Shift technician allocation", value: "92%", trend: "1 technician shortage", subtle: "Cell 02 evening shift", icon: "♙", status: "warn" },
+      { title: "Setup and tooling delay", value: "1.4 hrs", trend: "↓ 0.3h vs yesterday", subtle: "Die changeover", icon: "⌁", status: "normal" }
     ]
   },
   "Maintenance Lead": {
-    title: "Condition & Maintenance Control",
+    title: "Condition and maintenance control",
     sub: "Prioritize machine health signals, vibration drift on Press P-07, and tooling maintenance.",
     buyingCenterRole: "Technical Evaluator",
     priorityDepartment: "Maintenance",
     kpis: [
-      { title: "Press P-07 Vibration Index", value: "+18%", trend: "Above normal baseline", subtle: "Hydraulic stamping station", icon: "⌁", status: "alert" },
-      { title: "Machine Fleet MTBF", value: "142 hrs", trend: "↑ 8.5% improvement", subtle: "Plant rolling metric", icon: "◉", status: "normal" },
-      { title: "Open PM Work Orders", value: "8 / 10", trend: "2 scheduled today", subtle: "Tooling preventive checks", icon: "▥", status: "normal" },
-      { title: "Estimated Downtime Risk", value: "2.1 hrs", trend: "P-07 risk window", subtle: "Mitigate before batch", icon: "⚑", status: "warn" }
+      { title: "Press P-07 vibration index", value: "+18%", trend: "Above normal baseline", subtle: "Hydraulic stamping station", icon: "⌁", status: "alert" },
+      { title: "Machine fleet MTBF", value: "142 hrs", trend: "↑ 8.5% improvement", subtle: "Plant rolling metric", icon: "◉", status: "normal" },
+      { title: "Open PM work orders", value: "8 / 10", trend: "2 scheduled today", subtle: "Tooling preventive checks", icon: "▥", status: "normal" },
+      { title: "Estimated downtime risk", value: "2.1 hrs", trend: "P-07 risk window", subtle: "Mitigate before batch", icon: "⚑", status: "warn" }
     ]
   },
   "Quality Manager": {
-    title: "Metrology & Quality Assurance",
+    title: "Metrology and quality assurance",
     sub: "Track CMM metrology inspection pass rate, drawing tolerance NCRs, and tooling wear.",
     buyingCenterRole: "Technical Evaluator",
     priorityDepartment: "Engineering & R&D",
     kpis: [
-      { title: "First-Pass Quality Yield", value: "97.1%", trend: "↓ 0.6% vs baseline", subtle: "Target: 98.0%", icon: "✓", status: "warn" },
-      { title: "Dimension Variance Scrap", value: "2.9%", trend: "Code DF-04 stamping", subtle: "Cell 02 tooling wear", icon: "◈", status: "warn" },
-      { title: "Incoming Material QC", value: "98.4%", trend: "↑ 0.2% Alloy EN24", subtle: "Batch #882 certified", icon: "▥", status: "normal" },
-      { title: "Open Non-Conformance Reports", value: "3", trend: "1 awaiting vendor RCA", subtle: "M-204 coating spec", icon: "⚑", status: "alert" }
+      { title: "First-pass quality yield", value: "97.1%", trend: "↓ 0.6% vs baseline", subtle: "Target: 98.0%", icon: "✓", status: "warn" },
+      { title: "Dimension variance scrap", value: "2.9%", trend: "Code DF-04 stamping", subtle: "Cell 02 tooling wear", icon: "◈", status: "warn" },
+      { title: "Incoming material QC", value: "98.4%", trend: "↑ 0.2% Alloy EN24", subtle: "Batch #882 certified", icon: "▥", status: "normal" },
+      { title: "Open non-conformance reports", value: "3", trend: "1 awaiting vendor RCA", subtle: "M-204 coating spec", icon: "⚑", status: "alert" }
     ]
   },
   "Supply Chain Lead": {
-    title: "Material & Supplier Control",
+    title: "Material and supplier control",
     sub: "Monitor vendor lead times, raw material stock cover, and project delivery commitments.",
     buyingCenterRole: "Operational Buyer",
     priorityDepartment: "Supply Chain",
     kpis: [
-      { title: "Alloy M-204 Stock Cover", value: "36 hrs", trend: "Critical shortage risk", subtle: "Vendor lead time: 3 days", icon: "⇄", status: "alert" },
-      { title: "Supplier On-Time Delivery", value: "88.6%", trend: "↓ 3.4% Vendor A", subtle: "Last 14 shipments", icon: "▥", status: "warn" },
-      { title: "Expedited Air Freight Cost", value: "Rp 15M", trend: "Air cargo 500 units", subtle: "Protects 2 PO deliveries", icon: "◉", status: "warn" },
-      { title: "At-Risk Customer Orders", value: "2 Orders", trend: "PO-089 & PO-092", subtle: "Delay penalty window", icon: "⚑", status: "alert" }
+      { title: "Alloy M-204 stock cover", value: "36 hrs", trend: "Critical shortage risk", subtle: "Vendor lead time: 3 days", icon: "⇄", status: "alert" },
+      { title: "Supplier on-time delivery", value: "88.6%", trend: "↓ 3.4% Vendor A", subtle: "Last 14 shipments", icon: "▥", status: "warn" },
+      { title: "Expedited air freight cost", value: "Rp 15M", trend: "Air cargo 500 units", subtle: "Protects 2 PO deliveries", icon: "◉", status: "warn" },
+      { title: "At-risk customer orders", value: "2 Orders", trend: "PO-089 & PO-092", subtle: "Delay penalty window", icon: "⚑", status: "alert" }
     ]
   }
 };
