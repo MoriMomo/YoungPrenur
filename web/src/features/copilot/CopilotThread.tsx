@@ -126,9 +126,10 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
     await onSendQuery(query);
   };
 
-  const isGeminiActive = isApiLive && copilotStatus.llm_configured;
-  const statusText = isGeminiActive
-    ? `${copilotStatus.model || "Gemini 2.5 Flash"} · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
+  const isCloudAiActive = isApiLive && copilotStatus.llm_configured;
+  const providerName = copilotStatus.provider === "deepseek" ? "DeepSeek" : "Gemini";
+  const statusText = isCloudAiActive
+    ? `${copilotStatus.model || providerName} · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
     : isApiLive
       ? `SOP retrieval · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
       : `Offline SOP index · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`;
@@ -150,7 +151,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
           )}
           <div className="flex items-center gap-2 text-xs text-ink-2">
             <span
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${isGeminiActive ? "bg-pass" : "bg-warn"}`}
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${isCloudAiActive ? "bg-pass" : "bg-warn"}`}
               aria-hidden="true"
             />
             <span className="truncate">{statusText}</span>
@@ -242,7 +243,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
                     <span className="font-medium text-ink-2">
-                      MDIP Copilot · {msg.llmEnhanced ? msg.model || "Gemini 2.5 Flash" : "SOP retrieval"}
+                      MDIP Copilot · {msg.llmEnhanced ? msg.model || "Cloud AI" : "SOP retrieval"}
                     </span>
                     <span className="font-mono-numbers">{msg.timestamp}</span>
                   </div>
@@ -250,7 +251,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                   {msg.llmError && (
                     <div className="flex items-center gap-2 rounded-md border border-warn-line bg-warn-wash px-3 py-2 text-xs text-warn">
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.6} />
-                      <span>Gemini fallback used: {msg.llmError}</span>
+                      <span>Answered using SOP retrieval. {msg.llmError}</span>
                     </div>
                   )}
 
@@ -285,8 +286,8 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
               <div className="inline-flex items-center gap-2 rounded-md border border-rule-strong bg-paper px-3 py-2 text-xs text-ink-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-stamp" strokeWidth={1.6} />
                 <span>
-                  {isGeminiActive
-                    ? "Synthesizing grounded answer with Gemini…"
+                  {isCloudAiActive
+                    ? `Synthesizing grounded answer with ${providerName}…`
                     : "Searching indexed SOP clauses…"}
                 </span>
               </div>

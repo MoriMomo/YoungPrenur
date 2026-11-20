@@ -221,7 +221,7 @@ export default function DashboardLayout({
     showToast(
       mode === "internal"
         ? "On-premises mode: documents and Copilot questions stay on the MDIP server"
-        : "Cloud mode: PDF, Word and Copilot answers may use Google Gemini"
+        : "Cloud mode allows AI document parsing and Copilot answers"
     );
   };
 
