@@ -133,7 +133,7 @@ export interface ChatMessage {
 
 export interface CopilotStatus {
   llm_configured: boolean;
-  provider: "gemini" | "retrieval";
+  provider: "deepseek" | "gemini" | "retrieval";
   model: string | null;
   indexed_sops: number;
 }
