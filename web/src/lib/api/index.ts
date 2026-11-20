@@ -18,7 +18,6 @@ export {
 } from "./auth";
 export {
   ScheduleUploadError,
-  type ScheduleUploadResponse,
   inspectScheduleFile,
   uploadScheduleFile,
   fetchDelayRiskPrediction,
@@ -48,7 +47,6 @@ export {
   ingestIRoomRecord,
 } from "./iroom";
 export {
-  type MlModelMetrics,
   type MlModelCard,
   DEFAULT_MODEL_CARD,
   fetchMlModelCard,

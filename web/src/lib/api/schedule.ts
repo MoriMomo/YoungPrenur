@@ -62,26 +62,18 @@ export interface ScheduleUploadResponse {
   source: "backend";
 }
 
-/**
- * Public, anonymous inspection used by the landing page: scores a CSV/Excel schedule with the
- * real model without storing it or changing anyone's active schedule.
- * Returns null when the backend is unreachable; throws ScheduleUploadError when it rejects the file.
- */
-export async function inspectScheduleFile(file: Blob, filename: string): Promise<ScheduleUploadResponse | null> {
+async function submitScheduleRequest(
+  request: Promise<Response>,
+  actionLabel: string
+): Promise<ScheduleUploadResponse | null> {
   let res: Response;
   try {
-    const form = new FormData();
-    form.append("file", file, filename);
-    res = await fetch(`${API_BASE}/scheduler/inspect`, {
-      method: "POST",
-      body: form,
-      signal: AbortSignal.timeout(30000),
-    });
+    res = await request;
   } catch {
     return null;
   }
   if (!res.ok) {
-    let detail = `Inspection failed (${res.status})`;
+    let detail = `${actionLabel} failed (${res.status})`;
     try {
       const err = await res.json();
       if (typeof err.detail === "string") detail = err.detail;
@@ -99,40 +91,40 @@ export async function inspectScheduleFile(file: Blob, filename: string): Promise
 }
 
 /**
+ * Public, anonymous inspection used by the landing page: scores a CSV/Excel schedule with the
+ * real model without storing it or changing anyone's active schedule.
+ * Returns null when the backend is unreachable; throws ScheduleUploadError when it rejects the file.
+ */
+export function inspectScheduleFile(file: Blob, filename: string): Promise<ScheduleUploadResponse | null> {
+  const form = new FormData();
+  form.append("file", file, filename);
+  return submitScheduleRequest(
+    fetch(`${API_BASE}/scheduler/inspect`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(30000),
+    }),
+    "Inspection"
+  );
+}
+
+/**
  * Sends a schedule file (CSV/XLSX/Word/PDF) to the backend, which parses it (using Gemini AI when
  * needed for PDF/Word documents), runs CPM and scores delay risk with the XGBoost model.
  * Returns null when the backend is unreachable so callers can parse CSVs locally.
  * Throws ScheduleUploadError when the backend rejects the file (e.g. missing columns).
  */
-export async function uploadScheduleFile(file?: File | Blob, filename?: string): Promise<ScheduleUploadResponse | null> {
-  let res: Response;
-  try {
-    const form = new FormData();
-    if (file) form.append("file", file, filename || (file instanceof File ? file.name : "schedule.csv"));
-    res = await apiFetch(`${API_BASE}/scheduler/upload`, {
+export function uploadScheduleFile(file?: File | Blob, filename?: string): Promise<ScheduleUploadResponse | null> {
+  const form = new FormData();
+  if (file) form.append("file", file, filename || (file instanceof File ? file.name : "schedule.csv"));
+  return submitScheduleRequest(
+    apiFetch(`${API_BASE}/scheduler/upload`, {
       method: "POST",
       body: form,
       signal: AbortSignal.timeout(45000),
-    });
-  } catch {
-    return null;
-  }
-  if (!res.ok) {
-    let detail = `Upload failed (${res.status})`;
-    try {
-      const err = await res.json();
-      if (typeof err.detail === "string") detail = err.detail;
-    } catch {
-      // keep default message
-    }
-    throw new ScheduleUploadError(detail);
-  }
-  const json = await res.json();
-  return {
-    ...json,
-    tasks: Array.isArray(json.tasks) ? mapBackendWbs(json.tasks) : [],
-    source: "backend",
-  };
+    }),
+    "Upload"
+  );
 }
 
 /**

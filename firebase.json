@@ -1,0 +1,20 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "MDIP",
+        "supportEmail": "kentaronareswara@gmail.com",
+        "authorizedRedirectUris": [
+          "https://mdip-f4347.firebaseapp.com/__/auth/handler",
+          "https://morimomo.github.io/__/auth/handler",
+          "http://localhost"
+        ]
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
