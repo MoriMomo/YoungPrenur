@@ -2,7 +2,7 @@
 
 import React, { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useDashboard } from "../layout";
+import { useDashboard } from "@/features/workspace/dashboard-context";
 import { IRoomWorkspace, IRoomTab } from "@/features/iroom/IRoomWorkspace";
 
 const VALID_TABS: IRoomTab[] = ["material", "progress", "drawing", "quotation", "operations"];

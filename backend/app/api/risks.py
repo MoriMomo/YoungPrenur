@@ -3,30 +3,36 @@
 
 import time
 
-from fastapi import APIRouter
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException
 
 import database
 from app import state
 from app.schemas import FlagActionPayload
+from app.security import require_user
 from app.services.insights import compute_live_decisions
 
 router = APIRouter()
 
 
 @router.get("/api/v1/risks/prediction")
-def get_delay_prediction():
-    return dict(state.ACTIVE_ANALYSIS)
+def get_delay_prediction(user: Dict[str, Any] = Depends(require_user)):
+    return dict(state.get_analysis(user["id"]))
 
 
 @router.get("/api/v1/risks/decisions")
-def get_decisions():
-    return compute_live_decisions()
+def get_decisions(user: Dict[str, Any] = Depends(require_user)):
+    return compute_live_decisions(state.get_analysis(user["id"]), user["id"])
 
 
 @router.post("/api/v1/risks/decisions/flag")
-def flag_decision(payload: FlagActionPayload):
+def flag_decision(payload: FlagActionPayload, user: Dict[str, Any] = Depends(require_user)):
+    """Authorize or override a recommended action. The reviewer is the signed-in user, never the request body."""
     decision_val = (payload.decision or "AUTHORIZED").upper()
-    live_decisions = compute_live_decisions()
+    if decision_val not in {"AUTHORIZED", "OVERRIDDEN"}:
+        raise HTTPException(status_code=422, detail="Decision must be AUTHORIZED or OVERRIDDEN.")
+    live_decisions = compute_live_decisions(state.get_analysis(user["id"]), user["id"])
     matched = next((d for d in live_decisions if d["id"] == payload.action_id), None)
     action_title = matched["title"] if matched else payload.action_id
     sop_ref = matched["source_doc"] if matched else "SOP-MDIP"
@@ -36,10 +42,11 @@ def flag_decision(payload: FlagActionPayload):
         action_id=payload.action_id,
         action_title=action_title,
         decision=decision_val,
-        reviewer_role=payload.reviewer_role or "Operations Manager",
+        reviewer_role=user["role"],
         notes=payload.notes or "Verified via HITL modal",
         sop_ref=sop_ref,
         timestamp=ts,
+        workspace=user["id"],
     )
     return {
         "success": True,

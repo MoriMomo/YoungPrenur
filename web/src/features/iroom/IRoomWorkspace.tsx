@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MaterialDeliveryItem,
   ProjectProgressItem,
@@ -33,7 +33,6 @@ import { QuotationTab } from "./tabs/QuotationTab";
 import { OperationsTab } from "./tabs/OperationsTab";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { usePageMotion } from "@/lib/usePageMotion";
 
 export type IRoomTab = "material" | "progress" | "drawing" | "quotation" | "operations";
 
@@ -83,16 +82,6 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   const [draftCode, setDraftCode] = useState("");
   const [draftParty, setDraftParty] = useState("");
   const [draftMetric, setDraftMetric] = useState("");
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  const tabPanelRef = useRef<HTMLDivElement>(null);
-
-  usePageMotion(workspaceRef);
-  usePageMotion(tabPanelRef, {
-    triggerKey: activeTab,
-    selector: '[data-gsap="tab-panel"]',
-    y: 6,
-    skipInitial: true,
-  });
 
   useEffect(() => {
     let active = true;
@@ -258,7 +247,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   };
 
   return (
-    <div ref={workspaceRef} className="space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="IRoom streams"
         description={`Material delivery, project progress, drawing approval, quotations and operations in one place, each feeding the decisions that need sign-off. ${
@@ -267,7 +256,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       />
 
       <section
-        data-gsap="reveal"
+
         aria-labelledby="iroom-how-it-works-heading"
         className="rounded-xl border border-rule bg-sheet"
       >
@@ -288,7 +277,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
         </ol>
       </section>
 
-      <div data-gsap="reveal" role="tablist" aria-label="IRoom streams" className="flex flex-wrap border-b border-rule-strong">
+      <div role="tablist" aria-label="IRoom streams" className="flex flex-wrap border-b border-rule-strong">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -312,7 +301,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       </div>
 
       {/* Main Content Card */}
-      <div data-gsap="reveal" className="bg-white border border-rule rounded-xl p-5 sm:p-6">
+      <div className="bg-white border border-rule rounded-xl p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -395,8 +384,8 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
           </form>
         )}
 
-        <div ref={tabPanelRef}>
-          <div data-gsap="tab-panel">
+        <div>
+          <div>
             {/* 1. Material Delivery */}
             {activeTab === "material" && (
               <MaterialTab

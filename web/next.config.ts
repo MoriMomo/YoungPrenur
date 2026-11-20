@@ -1,23 +1,9 @@
 import type { NextConfig } from "next";
 
-const isGithubPages = process.env.GITHUB_PAGES === "true";
-const basePath = isGithubPages ? "/YoungPrenur" : "";
-
 const nextConfig: NextConfig = {
-  ...(isGithubPages
-    ? {
-        output: "export",
-        basePath,
-        trailingSlash: true,
-        images: { unoptimized: true },
-      }
-    : {
-        cacheComponents: true,
-        partialPrefetching: true,
-      }),
-  env: {
-    NEXT_PUBLIC_BASE_PATH: basePath,
-  },
+  // Hosted on Vercel (server build); no static export or base path.
+  cacheComponents: true,
+  partialPrefetching: true,
   experimental: {
     agentUpgrade: "security",
   },

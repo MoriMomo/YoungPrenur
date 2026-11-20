@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useDashboard } from "./layout";
+import { useDashboard } from "@/features/workspace/dashboard-context";
 import { KpiCards } from "@/features/risks/KpiCards";
 import { ModelCardStrip } from "@/features/risks/ModelCardStrip";
 import { DecisionBrief } from "@/features/risks/DecisionBrief";
@@ -22,7 +22,6 @@ import {
 } from "@/lib/api";
 import { KpiItem } from "@/types";
 import { Download, CalendarClock, CheckCircle2, Clock } from "lucide-react";
-import { usePageMotion } from "@/lib/usePageMotion";
 
 export default function DashboardOverviewPage() {
   const {
@@ -34,7 +33,6 @@ export default function DashboardOverviewPage() {
     showToast,
   } = useDashboard();
 
-  const contentRef = useRef<HTMLDivElement>(null);
   const [liveKpis, setLiveKpis] = useState<KpiItem[] | null>(null);
   const [modelCard, setModelCard] = useState<MlModelCard>(DEFAULT_MODEL_CARD);
   const currentRolePreset = ROLE_PRESETS[selectedRole] || ROLE_PRESETS["Operations Manager"];
@@ -60,8 +58,6 @@ export default function DashboardOverviewPage() {
     };
   }, [isApiLive, selectedRole, actions]);
 
-  usePageMotion(contentRef, { triggerKey: selectedRole });
-
   // Prioritize actions matching the active role's department first
   const sortedActions = actions.toSorted((a, b) => {
     const aMatch = a.department === currentRolePreset.priorityDepartment ? 0 : 1;
@@ -75,7 +71,7 @@ export default function DashboardOverviewPage() {
   };
 
   return (
-    <div ref={contentRef} className="space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title={currentRolePreset.title}
         description={currentRolePreset.sub}
@@ -94,17 +90,17 @@ export default function DashboardOverviewPage() {
       />
 
       {/* 4 Role KPI Cards */}
-      <div data-gsap="reveal">
+      <div>
         <KpiCards kpis={isApiLive && liveKpis ? liveKpis : currentRolePreset.kpis} />
       </div>
 
       {/* Real-Data XGBoost Validation Readout */}
-      <div data-gsap="reveal">
+      <div>
         <ModelCardStrip card={modelCard} compact />
       </div>
 
       {/* Primary Analytics Grid: Operational Chart + Role-Sorted Decision Brief */}
-      <div data-gsap="reveal" className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-7">
           <PerformanceChart />
         </div>
@@ -118,7 +114,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* Shop-Floor Work Centers & Risk Monitor */}
-      <div data-gsap="reveal" className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-7">
           <ProductionLineStatus
             onSelectLine={(line) => {
@@ -135,7 +131,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* HITL Audit Trail & Pilot Validation Checks (ISO 9001 Cl. 7.5 + BMC Table VI) */}
-      <div data-gsap="reveal" className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Audit Log */}
         <div className="lg:col-span-6 bg-white rounded-xl border border-rule p-5 space-y-3">
           <div className="flex items-center justify-between">

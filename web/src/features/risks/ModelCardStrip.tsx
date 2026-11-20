@@ -12,6 +12,10 @@ function fmtAuc(v: number | null | undefined): string {
   return typeof v === "number" ? v.toFixed(2) : "n/a";
 }
 
+function fmtPct(v: number | null | undefined): string {
+  return typeof v === "number" ? `${Math.round(v * 100)}%` : "n/a";
+}
+
 /**
  * The model's validation, led by the one claim the product makes publicly
  * (ROC-AUC on held-out real projects vs rule-based scoring), with the breakdown beneath.
@@ -28,11 +32,15 @@ export const ModelCardStrip: React.FC<ModelCardStripProps> = ({ card }) => {
     { label: "Project schedules (DSLIB)", value: fmtAuc(dslib?.roc_auc), meta: `${dslib?.n_projects ?? 15} projects` },
     { label: "CNC production orders (4TU)", value: fmtAuc(cnc?.roc_auc), meta: `${cnc?.n_projects ?? 36} orders` },
     {
+      label: "Late tasks caught",
+      value: fmtPct(real?.recall),
+      meta: `${fmtPct(real?.precision)} of flags right · cut-off ${(real?.threshold ?? card.decision_threshold ?? 0.5).toFixed(2)}`,
+    },
+    {
       label: "Average slip error",
       value: `${(real?.slip_mae_days ?? card.synthetic_test_metrics.slip_mae_days).toFixed(2)} d`,
       meta: "on late tasks",
     },
-    { label: "Real training tasks", value: card.n_real_tasks.toLocaleString(), meta: "plus synthetic schedules" },
   ];
 
   return (

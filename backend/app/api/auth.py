@@ -9,21 +9,29 @@ import urllib.parse
 import urllib.request
 from typing import Dict, Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 
 import database
 from app.schemas import GoogleAuthPayload, LoginPayload, RegisterPayload
+from app.security import client_ip, login_failures, registrations
 
 router = APIRouter()
 
+PLANT_ROLES = {u["role"] for u in database.INITIAL_USERS}
+
 
 @router.post("/api/v1/auth/register")
-def register_user(payload: RegisterPayload):
+def register_user(payload: RegisterPayload, request: Request):
+    ip = client_ip(request)
+    registrations.check(ip)
     email = payload.email.strip().lower()
     if "@" not in email or "." not in email.split("@", 1)[1]:
         raise HTTPException(status_code=422, detail="Please enter a valid work email address.")
     if len(payload.password) < 6:
         raise HTTPException(status_code=422, detail="Password must be at least 6 characters long.")
+    if payload.role not in PLANT_ROLES:
+        raise HTTPException(status_code=422, detail="Choose one of the listed plant roles.")
+    registrations.hit(ip)
     try:
         user = database.create_user(email, payload.password, payload.name, payload.role)
     except ValueError as exc:
@@ -40,10 +48,14 @@ def register_user(payload: RegisterPayload):
 
 
 @router.post("/api/v1/auth/login")
-def login_user(payload: LoginPayload):
+def login_user(payload: LoginPayload, request: Request):
+    key = f"{client_ip(request)}|{payload.email.strip().lower()}"
+    login_failures.check(key)
     user = database.authenticate_user(payload.email, payload.password)
     if not user:
+        login_failures.hit(key)
         raise HTTPException(status_code=401, detail="Invalid email or password.")
+    login_failures.reset(key)
     token = database.create_session_token(user)
     return {
         "success": True,
@@ -115,6 +127,8 @@ def google_auth_config():
 
 @router.post("/api/v1/auth/google")
 def google_login(payload: GoogleAuthPayload):
+    if payload.role not in PLANT_ROLES:
+        raise HTTPException(status_code=422, detail="Choose one of the listed plant roles.")
     info = _verify_google_id_token(payload.id_token)
     try:
         user = database.upsert_google_user(info["email"], info["name"], payload.role)

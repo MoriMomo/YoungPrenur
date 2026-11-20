@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, CopilotStatus, ManufacturingRole } from "@/types";
 import { CitationBadge } from "./CitationBadge";
-import { usePageMotion } from "@/lib/usePageMotion";
 import { Send, Loader2, RotateCcw, X, ArrowRight, AlertTriangle } from "lucide-react";
 
 const STARTER_PROMPTS = [
@@ -113,14 +112,6 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  usePageMotion(messagesRef, {
-    triggerKey: messages.length,
-    selector: '[data-gsap="latest-msg"]',
-    y: 8,
-    skipInitial: true,
-  });
 
   useEffect(() => {
     const list = messagesRef.current;
@@ -226,12 +217,10 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
           <div className="space-y-5">
             {messages.map((msg, idx) => {
               const isCopilot = msg.sender === "copilot";
-              const isLatest = idx === messages.length - 1;
               if (!isCopilot) {
                 return (
                   <div
                     key={msg.id}
-                    data-gsap={isLatest ? "latest-msg" : undefined}
                     className="flex justify-end"
                   >
                     <div className="max-w-[85%] space-y-1 rounded-lg border border-rule-strong bg-paper px-4 py-2.5">
@@ -249,7 +238,6 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
               return (
                 <article
                   key={msg.id}
-                  data-gsap={isLatest ? "latest-msg" : undefined}
                   className="space-y-3 border-b border-rule-soft pb-5 last:border-b-0 last:pb-1"
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
@@ -311,7 +299,6 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
       <form onSubmit={handleSubmit} className="border-t border-rule-strong bg-sheet p-3 sm:p-4">
         <div className="flex items-center gap-2 rounded-lg border border-rule-strong bg-paper px-3 py-1.5 focus-within:border-stamp focus-within:ring-2 focus-within:ring-stamp/20">
           <input
-            ref={inputRef}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

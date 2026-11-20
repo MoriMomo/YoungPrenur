@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { DecisionAction } from "@/types";
 import { X, CheckCircle2, ShieldAlert, UserCheck, Calendar, BookOpen, XCircle } from "lucide-react";
-import gsap from "gsap";
 
 interface ReviewModalProps {
   action: DecisionAction | null;
@@ -21,7 +20,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onClose,
   onSubmitDecision,
 }) => {
-  const modalBoxRef = useRef<HTMLDivElement>(null);
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
   const [notes, setNotes] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,16 +33,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [action, onClose]);
-
-  useEffect(() => {
-    if (action && modalBoxRef.current) {
-      gsap.fromTo(
-        modalBoxRef.current,
-        { opacity: 0, scale: 0.96, y: 8 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.2, ease: "power2.out" }
-      );
-    }
-  }, [action]);
 
   if (!action) return null;
 
@@ -86,7 +74,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       aria-labelledby="review-modal-title"
     >
       <div
-        ref={modalBoxRef}
         className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-rule overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}

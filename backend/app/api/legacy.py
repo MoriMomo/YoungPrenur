@@ -3,10 +3,12 @@
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile
 
+from app import state
 from app.api.scheduler import upload_scheduler_v1
 from app.schemas import CopilotQuery, TaskItem
+from app.security import external_ai_allowed, require_user
 from app.services.copilot import _run_grounded_copilot
 from ml.predictor import score_tasks
 
@@ -14,8 +16,12 @@ router = APIRouter()
 
 
 @router.post("/api/scheduler/upload")
-async def parse_schedule(file: Optional[UploadFile] = File(None)):
-    result = await upload_scheduler_v1(file)
+async def parse_schedule(
+    file: Optional[UploadFile] = File(None),
+    user: Dict[str, Any] = Depends(require_user),
+    allow_ai: bool = Depends(external_ai_allowed),
+):
+    result = await upload_scheduler_v1(file, user, allow_ai)
     return {
         "filename": result["filename"],
         "status": "standardized",
@@ -59,10 +65,14 @@ def evaluate_delay_risk(tasks: List[TaskItem]):
 
 
 @router.post("/api/copilot/ask")
-def ask_copilot(payload: CopilotQuery):
+def ask_copilot(
+    payload: CopilotQuery,
+    user: Dict[str, Any] = Depends(require_user),
+    allow_ai: bool = Depends(external_ai_allowed),
+):
     msg = (payload.message or payload.question or "").strip() or "Summarize current project risks and bottlenecks."
     role = payload.active_role or payload.role or "Operations Manager"
-    res = _run_grounded_copilot(msg, role)
+    res = _run_grounded_copilot(msg, role, analysis=state.get_analysis(user["id"]), allow_external_ai=allow_ai)
     return {
         "answer": res["reply"],
         "reply": res["reply"],

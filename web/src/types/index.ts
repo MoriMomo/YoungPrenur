@@ -88,6 +88,8 @@ export interface WbsTask {
   floatDays: number;
   critical: boolean;
   delayRisk: number;
+  /** Server band: HIGH (hold), MEDIUM (watch, at or above the tuned cut-off), LOW. */
+  riskLevel?: "HIGH" | "MEDIUM" | "LOW";
   status: string;
   varianceDays?: number;
   workCenter?: string;

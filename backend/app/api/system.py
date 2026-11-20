@@ -28,7 +28,7 @@ def api_health_check():
         "status": "ok",
         "engine": "MDIP PoC v1.2 (Supabase/SQLite + CPM + XGBoost Delay-Risk + Grounded SOP RAG)",
         "live": True,
-        "active_filename": state.ACTIVE_ANALYSIS.get("filename"),
+        "baseline_filename": state.BASELINE_ANALYSIS.get("filename"),
         "database": status["active_engine"],
         "supabase_project_ref": status["supabase_project_ref"],
     }

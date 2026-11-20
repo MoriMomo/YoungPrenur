@@ -1,7 +1,7 @@
 {
   "model": "XGBoost hurdle model (late classifier + conditional slip regressor on late==1)",
   "target": "Activity finishes later than its CPM total float (+0.5d tolerance)",
-  "trained_at": "2026-11-19T06:46:53+00:00",
+  "trained_at": "2026-11-20T03:44:23+00:00",
   "training_data": "4149 historical planned-vs-actual tasks (251 real projects, 5x weight) + 7855 synthetic tasks (900 projects)",
   "n_tasks": 12004,
   "n_real_tasks": 4149,
@@ -39,67 +39,111 @@
     "random_state": 42,
     "n_jobs": 2
   },
+  "decision_threshold": 0.25,
+  "threshold_selection": {
+    "threshold": 0.25,
+    "method": "max F1 on validation projects held out from training",
+    "validation_data": "real projects",
+    "n_validation_projects": 50,
+    "n_validation_tasks": 665,
+    "validation_f1": 0.4932
+  },
   "test_metrics": {
     "roc_auc": 0.9151,
-    "f1": 0.784,
-    "precision": 0.7873,
-    "recall": 0.7807,
-    "accuracy": 0.8555,
+    "threshold": 0.25,
+    "f1": 0.7428,
+    "precision": 0.6366,
+    "recall": 0.8915,
+    "accuracy": 0.7926,
     "brier": 0.1074,
     "baseline_rule_roc_auc": 0.6735,
     "slip_mae_days": 0.844,
-    "conditional_slip_mae_days": 1.24
+    "conditional_slip_mae_days": 1.24,
+    "at_default_threshold": {
+      "threshold": 0.5,
+      "f1": 0.784,
+      "precision": 0.7873,
+      "recall": 0.7807
+    }
   },
   "synthetic_test_metrics": {
     "roc_auc": 0.9257,
-    "f1": 0.8374,
-    "precision": 0.794,
-    "recall": 0.8858,
-    "accuracy": 0.8419,
+    "threshold": 0.25,
+    "f1": 0.7972,
+    "precision": 0.6784,
+    "recall": 0.9666,
+    "accuracy": 0.774,
     "brier": 0.111,
     "baseline_rule_roc_auc": 0.7135,
     "slip_mae_days": 0.936,
-    "conditional_slip_mae_days": 0.946
+    "conditional_slip_mae_days": 0.946,
+    "at_default_threshold": {
+      "threshold": 0.5,
+      "f1": 0.8374,
+      "precision": 0.794,
+      "recall": 0.8858
+    }
   },
   "real_validation_metrics": {
     "evaluation_mode": "held_out_real_projects",
     "n_tasks": 936,
     "n_projects": 51,
     "roc_auc": 0.7833,
-    "f1": 0.25,
-    "precision": 0.6129,
-    "recall": 0.157,
-    "accuracy": 0.8782,
+    "threshold": 0.25,
+    "f1": 0.3956,
+    "precision": 0.3553,
+    "recall": 0.4463,
+    "accuracy": 0.8237,
     "brier": 0.1013,
     "baseline_rule_roc_auc": 0.5277,
     "slip_mae_days": 0.69,
     "conditional_slip_mae_days": 2.989,
+    "at_default_threshold": {
+      "threshold": 0.5,
+      "f1": 0.25,
+      "precision": 0.6129,
+      "recall": 0.157
+    },
     "by_source": {
       "cnc": {
         "n_tasks": 399,
         "n_projects": 36,
         "roc_auc": 0.7547,
-        "f1": 0.3093,
-        "precision": 0.6522,
-        "recall": 0.2027,
-        "accuracy": 0.8321,
+        "threshold": 0.25,
+        "f1": 0.4805,
+        "precision": 0.4625,
+        "recall": 0.5,
+        "accuracy": 0.7995,
         "brier": 0.1294,
         "baseline_rule_roc_auc": 0.5062,
         "slip_mae_days": 0.428,
-        "conditional_slip_mae_days": 1.155
+        "conditional_slip_mae_days": 1.155,
+        "at_default_threshold": {
+          "threshold": 0.5,
+          "f1": 0.3093,
+          "precision": 0.6522,
+          "recall": 0.2027
+        }
       },
       "dslib": {
         "n_tasks": 537,
         "n_projects": 15,
         "roc_auc": 0.8122,
-        "f1": 0.1455,
-        "precision": 0.5,
-        "recall": 0.0851,
-        "accuracy": 0.9125,
+        "threshold": 0.25,
+        "f1": 0.2857,
+        "precision": 0.2361,
+        "recall": 0.3617,
+        "accuracy": 0.8417,
         "brier": 0.0804,
         "baseline_rule_roc_auc": 0.6509,
         "slip_mae_days": 0.885,
-        "conditional_slip_mae_days": 5.876
+        "conditional_slip_mae_days": 5.876,
+        "at_default_threshold": {
+          "threshold": 0.5,
+          "f1": 0.1455,
+          "precision": 0.5,
+          "recall": 0.0851
+        }
       }
     }
   },

@@ -1,0 +1,220 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {userId} (matches Firebase Auth request.auth.uid)
+// Fields:
+//   - uid: string (required, immutable, == userId)
+//   - email: string (required, valid email, <= 254 chars)
+//   - name: string (required, 1..120 chars)
+//   - role: string (required, one of the 6 MDIP ManufacturingRole values)
+//   - createdAt: timestamp (required, immutable)
+//   - updatedAt: timestamp (required)
+//
+// Collection: sops
+// Document ID: {docCode}
+// Fields:
+//   - doc_code: string (required, 2..40 chars)
+//   - title: string (required, 2..160 chars)
+//   - clause: string (required, 2..160 chars)
+//   - keywords: list (required, <= 30 items)
+//   - excerpt: string (required, 2..4000 chars)
+//   - category: string (optional, <= 80 chars)
+//   - createdBy: string (required, immutable, == request.auth.uid)
+//   - updatedAt: timestamp (required)
+//
+// Collection: decisions
+// Document ID: {actionId}
+// Fields:
+//   - actionId: string (required, 1..60 chars)
+//   - status: string (required, 'pending' | 'authorized' | 'overridden')
+//   - flagged: bool (required)
+//   - overrideReason: string (optional, <= 1000 chars)
+//   - updatedBy: string (required, == request.auth.uid)
+//   - updatedAt: timestamp (required)
+//
+// Collection: audit_logs
+// Document ID: {logId}
+// Fields:
+//   - id: string (required, 1..60 chars)
+//   - actionId: string (required, 1..60 chars)
+//   - actionTitle: string (required, 1..200 chars)
+//   - decision: string (required, 'AUTHORIZED' | 'OVERRIDDEN')
+//   - reviewerRole: string (required, 1..160 chars)
+//   - notes: string (required, <= 1000 chars)
+//   - sopRef: string (required, 1..80 chars)
+//   - timestamp: string (required, 1..40 chars)
+//   - actorUid: string (required, immutable, == request.auth.uid)
+//   - createdAt: timestamp (required, immutable)
+//
+// Collection: iroom_records
+// Document ID: {recordId}
+// Fields:
+//   - id: string (required, 1..80 chars)
+//   - stream: string (required, 'materials' | 'progress' | 'drawings' | 'quotations' | 'operations')
+//   - data: map (required)
+//   - createdBy: string (required, immutable, == request.auth.uid)
+//   - createdAt: timestamp (required, immutable)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function validString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 254 &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isValidRole(role) {
+      return role in [
+        "Operations Manager",
+        "Plant Manager",
+        "Production Supervisor",
+        "Maintenance Lead",
+        "Quality Manager",
+        "Supply Chain Lead"
+      ];
+    }
+
+    // ===============================================================
+    // Domain Validators (Used in both create and update)
+    // ===============================================================
+    function isValidUser(data, userId) {
+      return hasRequiredFields(["uid", "email", "name", "role", "createdAt", "updatedAt"]) &&
+        hasOnlyAllowedFields(["uid", "email", "name", "role", "createdAt", "updatedAt"]) &&
+        data.uid == userId &&
+        isValidEmail(data.email) &&
+        validString(data.name, 1, 120) &&
+        isValidRole(data.role) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSop(data) {
+      return hasRequiredFields(["doc_code", "title", "clause", "keywords", "excerpt", "createdBy", "updatedAt"]) &&
+        hasOnlyAllowedFields(["doc_code", "title", "clause", "keywords", "excerpt", "category", "createdBy", "updatedAt"]) &&
+        validString(data.doc_code, 2, 40) &&
+        validString(data.title, 2, 160) &&
+        validString(data.clause, 2, 160) &&
+        data.keywords is list && data.keywords.size() <= 30 &&
+        validString(data.excerpt, 2, 4000) &&
+        (!("category" in data) || validString(data.category, 1, 80)) &&
+        data.createdBy is string &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidDecision(data) {
+      return hasRequiredFields(["actionId", "status", "flagged", "updatedBy", "updatedAt"]) &&
+        hasOnlyAllowedFields(["actionId", "status", "flagged", "overrideReason", "updatedBy", "updatedAt"]) &&
+        validString(data.actionId, 1, 60) &&
+        data.status in ["pending", "authorized", "overridden"] &&
+        data.flagged is bool &&
+        (!("overrideReason" in data) || validString(data.overrideReason, 0, 1000)) &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return hasRequiredFields(["id", "actionId", "actionTitle", "decision", "reviewerRole", "notes", "sopRef", "timestamp", "actorUid", "createdAt"]) &&
+        hasOnlyAllowedFields(["id", "actionId", "actionTitle", "decision", "reviewerRole", "notes", "sopRef", "timestamp", "actorUid", "createdAt"]) &&
+        validString(data.id, 1, 60) &&
+        validString(data.actionId, 1, 60) &&
+        validString(data.actionTitle, 1, 200) &&
+        data.decision in ["AUTHORIZED", "OVERRIDDEN"] &&
+        validString(data.reviewerRole, 1, 160) &&
+        validString(data.notes, 0, 1000) &&
+        validString(data.sopRef, 1, 80) &&
+        validString(data.timestamp, 1, 40) &&
+        data.actorUid == request.auth.uid &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidIRoomRecord(data) {
+      return hasRequiredFields(["id", "stream", "data", "createdBy", "createdAt"]) &&
+        hasOnlyAllowedFields(["id", "stream", "data", "createdBy", "createdAt"]) &&
+        validString(data.id, 1, 80) &&
+        data.stream in ["materials", "progress", "drawings", "quotations", "operations"] &&
+        data.data is map &&
+        data.data.keys().size() <= 20 &&
+        data.createdBy == request.auth.uid &&
+        data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow update: if isOwner(userId) &&
+        isValidUser(request.resource.data, userId) &&
+        areImmutableFieldsUnchanged(["uid", "createdAt"]);
+      allow delete: if false;
+    }
+
+    match /sops/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        isValidSop(request.resource.data);
+      allow update: if isAuthenticated() &&
+        isValidSop(request.resource.data) &&
+        areImmutableFieldsUnchanged(["createdBy"]);
+      allow delete: if false;
+    }
+
+    match /decisions/{actionId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidDecision(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidAuditLog(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /iroom_records/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidIRoomRecord(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+}

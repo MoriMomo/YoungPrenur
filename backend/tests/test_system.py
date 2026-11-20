@@ -15,6 +15,9 @@ from typing import Any, Dict, List
 
 # 127.0.0.1 avoids the ~2s IPv6 "localhost" resolution delay on Windows.
 API_BASE = os.environ.get("MDIP_API_BASE", "http://127.0.0.1:8000")
+# Protected routes need a signed-in user; the suite signs in once with a seeded demo account.
+TEST_EMAIL = os.environ.get("MDIP_TEST_EMAIL", "ops.lead@mdip.id")
+TEST_PASSWORD = os.environ.get("MDIP_DEMO_PASSWORD", "imajin2026")
 # Proof-of-testing log lives with the other evidence in docs/evidence/.
 OUTPUT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -145,11 +148,32 @@ TEST_CASES: List[Dict[str, Any]] = [
         "body": None,
         "validate": lambda d: isinstance(d, list) and any(o.get("vibrationSensor") == "ELEVATED" for o in d),
         "desc": "Validates shop-floor sensor ingestion (+18% vibration sensor trigger on Press P-07)."
+    },
+    {
+        "id": "TC-11",
+        "name": "Anonymous Decision Sign-off Refused",
+        "endpoint": f"{API_BASE}/api/v1/risks/decisions/flag",
+        "method": "POST",
+        "body": {"action_id": "act-01", "reviewer_role": "Plant Manager"},
+        "auth": False,
+        "expect_status": 401,
+        "validate": lambda d: True,
+        "desc": "Confirms that a request without a session token cannot write to the audit log."
     }
 ]
 
-def run_http_request(url, method="GET", body=None):
+def sign_in() -> str:
+    """Returns a session token for the demo account, or "" if sign-in fails."""
+    status, data, _, _ = run_http_request(
+        f"{API_BASE}/api/v1/auth/login", "POST", {"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    return data.get("token", "") if status == 200 and data else ""
+
+
+def run_http_request(url, method="GET", body=None, token=""):
     headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     data = json.dumps(body).encode("utf-8") if body else None
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     start_time = time.time()
@@ -175,17 +199,26 @@ def main():
 
     results = []
     passed_count = 0
+    token = sign_in()
+    print(f"  Signed in as {TEST_EMAIL}: {'yes' if token else 'NO (protected routes will fail)'}")
+    print()
 
     for tc in TEST_CASES:
-        status_code, data, latency_ms, err = run_http_request(tc["endpoint"], tc["method"], tc["body"])
-        
+        status_code, data, latency_ms, err = run_http_request(
+            tc["endpoint"], tc["method"], tc["body"], token if tc.get("auth", True) else ""
+        )
+
         is_passed = False
         notes = ""
-        if status_code == 200 and data is not None:
+        expected = tc.get("expect_status", 200)
+        if expected != 200:
+            is_passed = status_code == expected
+            notes = f"HTTP {status_code} · expected {expected}"
+        elif status_code == 200 and data is not None:
             try:
                 if tc["validate"](data):
                     is_passed = True
-                    notes = f"200 OK · Schema & domain logic verified"
+                    notes = "200 OK · Schema & domain logic verified"
                 else:
                     notes = "200 OK · Validation predicate returned false"
             except Exception as ex:

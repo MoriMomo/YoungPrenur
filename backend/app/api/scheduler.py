@@ -3,14 +3,14 @@
 
 import os
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 import database
 from app import state
 from app.config import DEFAULT_PROJECT_NAME, DEFAULT_SCHEDULE_FILENAME
-from app.state import _analyze_default_schedule_file, _sync_active_project_progress
+from app.security import external_ai_allowed, require_user
 from ml.predictor import analyze_schedule
 from schedule_parser import ScheduleParseError, parse_schedule_document
 
@@ -18,24 +18,31 @@ router = APIRouter()
 
 
 @router.get("/api/v1/scheduler/wbs")
-def get_wbs_schedule():
-    return state.ACTIVE_ANALYSIS["tasks"]
+def get_wbs_schedule(user: Dict[str, Any] = Depends(require_user)):
+    return state.get_analysis(user["id"])["tasks"]
 
 
 @router.post("/api/v1/scheduler/upload")
-async def upload_scheduler_v1(file: Optional[UploadFile] = File(None)):
-    """Parse uploaded CSV/XLSX/Word/PDF schedule (or reload baseline CSV), persist to SQLite, run CPM + XGBoost."""
+async def upload_scheduler_v1(
+    file: Optional[UploadFile] = File(None),
+    user: Dict[str, Any] = Depends(require_user),
+    allow_ai: bool = Depends(external_ai_allowed),
+):
+    """Parse the user's CSV/XLSX/Word/PDF schedule (no file = back to the plant baseline) and score it.
+
+    The result becomes this user's own schedule; other users keep theirs.
+    """
     start = time.perf_counter()
     if file is None or not file.filename:
-        analysis = _analyze_default_schedule_file()
-        filename = DEFAULT_SCHEDULE_FILENAME
+        analysis = state.BASELINE_ANALYSIS
+        filename = analysis.get("filename", DEFAULT_SCHEDULE_FILENAME)
     else:
         filename = file.filename
         content = await file.read()
         if len(content) > 10 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="Schedule file is larger than 10 MB.")
         try:
-            parsed = parse_schedule_document(content, filename)
+            parsed = parse_schedule_document(content, filename, allow_external_ai=allow_ai)
         except ScheduleParseError as e:
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
@@ -54,11 +61,12 @@ async def upload_scheduler_v1(file: Optional[UploadFile] = File(None)):
             "document_excerpt": parsed.get("document_excerpt"),
             **analyze_schedule(tasks, project_name),
         }
-        database.clear_decision_statuses()
 
-    state.ACTIVE_ANALYSIS = analysis
-    database.save_active_analysis(analysis)
-    _sync_active_project_progress(analysis)
+    database.clear_decision_statuses(user["id"])
+    if analysis is state.BASELINE_ANALYSIS:
+        state.reset_analysis(user["id"])
+    else:
+        state.set_analysis(user["id"], analysis)
 
     elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
     n = len(analysis["tasks"])

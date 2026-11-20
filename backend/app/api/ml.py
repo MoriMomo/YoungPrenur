@@ -8,7 +8,6 @@ from typing import Optional
 from fastapi import APIRouter, File, Header, HTTPException, Query, UploadFile
 
 from app import state
-from app.state import _re_score_active_analysis
 from ml.predictor import model_card, reload_models
 from ml.train import ingest_historical_schedule, train_models
 from schedule_parser import ScheduleParseError
@@ -61,14 +60,14 @@ async def retrain_ml_models(
 
     card = train_models()
     reload_models()
-    _re_score_active_analysis()
+    state.re_score_all()
     return {
         "success": True,
         "ingested_tasks": ingested_rows,
         "model_card": card,
         "updated_prediction_summary": {
-            "project_name": state.ACTIVE_ANALYSIS.get("project_name"),
-            "overall_delay_probability": state.ACTIVE_ANALYSIS.get("overall_delay_probability"),
-            "estimated_project_slippage_days": state.ACTIVE_ANALYSIS.get("estimated_project_slippage_days"),
+            "project_name": state.BASELINE_ANALYSIS.get("project_name"),
+            "overall_delay_probability": state.BASELINE_ANALYSIS.get("overall_delay_probability"),
+            "estimated_project_slippage_days": state.BASELINE_ANALYSIS.get("estimated_project_slippage_days"),
         },
     }

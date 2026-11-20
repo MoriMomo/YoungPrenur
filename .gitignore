@@ -9,11 +9,14 @@ venv/
 node_modules/
 .next/
 out/
+test-results/
+playwright-report/
 *.tsbuildinfo
 
 # Local tooling / OS artifacts
 .commandcode/
-.impeccable/
+# Impeccable: share the design contract (design.json, decision/, surfaces/); keep review screenshots local
+.impeccable/review/
 .DS_Store
 Thumbs.db
 .env*

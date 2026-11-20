@@ -101,6 +101,18 @@ class TestCopilotService(unittest.TestCase):
         self.assertEqual(contents[2]["role"], "user")
         self.assertIn("systemInstruction", captured["body"])
 
+    def test_on_premises_mode_answers_without_gemini(self):
+        os.environ["GEMINI_API_KEY"] = "test-gemini-key"
+        with patch("app.services.copilot.urllib.request.urlopen") as urlopen:
+            res = copilot_service._run_grounded_copilot(
+                "What should I address first?", "Operations Manager", allow_external_ai=False
+            )
+            urlopen.assert_not_called()
+        self.assertFalse(res["llm_enhanced"])
+        self.assertFalse(res["external_ai_allowed"])
+        self.assertTrue(res["is_grounded"])
+        self.assertGreater(len(res["citations"]), 0)
+
     def test_gemini_http_error_surfaces_clean_message_with_fallback(self):
         os.environ["GEMINI_API_KEY"] = "bad-key"
         err = urllib.error.HTTPError(
@@ -143,7 +155,8 @@ class TestCopilotService(unittest.TestCase):
         self.assertEqual(after, before + 1)
 
         res = knowledge_api.copilot_chat(
-            CopilotQuery(message="What does SOP QA 15 say about ultrasonic porosity?")
+            CopilotQuery(message="What does SOP QA 15 say about ultrasonic porosity?"),
+            user={"id": "usr-test", "role": "Quality Manager"},
         )
         self.assertGreater(len(res["citations"]), 0)
         self.assertEqual(res["citations"][0]["doc_code"], "SOP-QA-15")

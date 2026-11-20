@@ -4,7 +4,9 @@ Train the MDIP delay-risk models on the synthetic WBS dataset.
 - XGBClassifier: probability that an activity finishes late beyond its float.
 - XGBRegressor:  expected slip in days at completion.
 
-Train/test split is grouped by project so no project leaks across sets.
+Train/test split is grouped by project so no project leaks across sets. The late/not-late
+cut-off is chosen on validation projects carved out of the training set (never the test set),
+by maximising F1 on real projects when there are enough of them.
 Writes model files and a model card with held-out metrics to ml/artifacts/.
 
 Usage:  python -m ml.train  (from backend/)
@@ -34,6 +36,8 @@ HIST_PATH = os.path.join(HERE, "data", "historical_wbs_tasks.csv")
 ART_DIR = os.path.join(HERE, "artifacts")
 SEED = 42
 HISTORICAL_SAMPLE_WEIGHT = 5.0
+DEFAULT_THRESHOLD = 0.5
+THRESHOLD_GRID = np.round(np.arange(0.05, 0.951, 0.01), 2)
 
 
 def legacy_rule_score(df: pd.DataFrame) -> np.ndarray:
@@ -126,14 +130,17 @@ def _fit_pair(df_train: pd.DataFrame) -> Tuple[XGBClassifier, XGBRegressor]:
     return clf, reg
 
 
-def _eval_pair(clf: XGBClassifier, reg: XGBRegressor, df_eval: pd.DataFrame) -> Dict[str, Any]:
-    """Evaluate classifier discrimination, hurdle E[slip], and conditional E[slip | late]."""
+def _eval_pair(
+    clf: XGBClassifier, reg: XGBRegressor, df_eval: pd.DataFrame, threshold: float = DEFAULT_THRESHOLD
+) -> Dict[str, Any]:
+    """Evaluate discrimination, classification at `threshold` (and at 0.5 for comparison), and slip error."""
     X_ev = df_eval[FEATURE_NAMES].to_numpy(dtype=float)
     y_ev = df_eval["late"].to_numpy()
     slip_ev = df_eval["realized_slip_days"].to_numpy(dtype=float)
 
     proba = clf.predict_proba(X_ev)[:, 1]
-    pred = (proba >= 0.5).astype(int)
+    pred = (proba >= threshold).astype(int)
+    pred_default = (proba >= DEFAULT_THRESHOLD).astype(int)
     cond_pred = np.clip(reg.predict(X_ev), 0.5, 20.0)
     expected_slip_pred = proba * cond_pred
     baseline = legacy_rule_score(df_eval)
@@ -143,6 +150,7 @@ def _eval_pair(clf: XGBClassifier, reg: XGBRegressor, df_eval: pd.DataFrame) -> 
 
     return {
         "roc_auc": round(float(roc_auc_score(y_ev, proba)), 4) if has_both_classes else None,
+        "threshold": round(float(threshold), 2),
         "f1": round(float(f1_score(y_ev, pred, zero_division=0)), 4),
         "precision": round(float(precision_score(y_ev, pred, zero_division=0)), 4),
         "recall": round(float(recall_score(y_ev, pred, zero_division=0)), 4),
@@ -155,6 +163,41 @@ def _eval_pair(clf: XGBClassifier, reg: XGBRegressor, df_eval: pd.DataFrame) -> 
             if int(late_eval.sum()) > 0
             else None
         ),
+        "at_default_threshold": {
+            "threshold": DEFAULT_THRESHOLD,
+            "f1": round(float(f1_score(y_ev, pred_default, zero_division=0)), 4),
+            "precision": round(float(precision_score(y_ev, pred_default, zero_division=0)), 4),
+            "recall": round(float(recall_score(y_ev, pred_default, zero_division=0)), 4),
+        },
+    }
+
+
+def _choose_threshold(df_train: pd.DataFrame, df_real_train: Optional[pd.DataFrame]) -> Dict[str, Any]:
+    """Pick the cut-off that maximises F1 on validation projects held out from the training set.
+
+    Uses real training projects for validation when there are at least 4 of them (real data is what
+    the product is judged on); otherwise synthetic training projects. The test set is never touched.
+    """
+    use_real = df_real_train is not None and df_real_train["project_id"].nunique() >= 4
+    pool = df_real_train if use_real else df_train
+    splitter = GroupShuffleSplit(n_splits=1, test_size=0.25, random_state=SEED)
+    _, val_pos = next(splitter.split(pool[FEATURE_NAMES], pool["late"], groups=pool["project_id"]))
+    val_ids = set(pool.iloc[val_pos]["project_id"])
+    df_fit = df_train[~df_train["project_id"].isin(val_ids)]
+    df_val = df_train[df_train["project_id"].isin(val_ids)]
+
+    clf, _ = _fit_pair(df_fit)
+    proba = clf.predict_proba(df_val[FEATURE_NAMES].to_numpy(dtype=float))[:, 1]
+    y_val = df_val["late"].to_numpy()
+    scores = [f1_score(y_val, (proba >= t).astype(int), zero_division=0) for t in THRESHOLD_GRID]
+    best = float(THRESHOLD_GRID[int(np.argmax(scores))])
+    return {
+        "threshold": best,
+        "method": "max F1 on validation projects held out from training",
+        "validation_data": "real projects" if use_real else "synthetic projects",
+        "n_validation_projects": len(val_ids),
+        "n_validation_tasks": len(df_val),
+        "validation_f1": round(float(max(scores)), 4),
     }
 
 
@@ -211,22 +254,26 @@ def train_models() -> Dict[str, Any]:
     real_validation_metrics: Optional[Dict[str, Any]] = None
 
     if n_real_projects == 0:
+        selection = _choose_threshold(df_syn_train, None)
+        threshold = selection["threshold"]
         clf, reg = _fit_pair(df_syn_train)
-        synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        synthetic_metrics = _eval_pair(clf, reg, df_syn_test, threshold)
         metrics = synthetic_metrics
         df_all = df_syn
         n_train, n_test = len(df_syn_train), len(df_syn_test)
     elif n_real_projects == 1:
+        selection = _choose_threshold(df_syn_train, None)
+        threshold = selection["threshold"]
         pre_clf, pre_reg = _fit_pair(df_syn_train)
         real_validation_metrics = {
             "evaluation_mode": "out_of_sample_single_project",
             "n_tasks": n_real_tasks,
             "n_projects": 1,
-            **_eval_pair(pre_clf, pre_reg, df_hist),
+            **_eval_pair(pre_clf, pre_reg, df_hist, threshold),
         }
         df_train_all = pd.concat([df_syn_train, df_hist], ignore_index=True)
         clf, reg = _fit_pair(df_train_all)
-        synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        synthetic_metrics = _eval_pair(clf, reg, df_syn_test, threshold)
         metrics = synthetic_metrics
         df_all = pd.concat([df_syn, df_hist], ignore_index=True)
         n_train, n_test = len(df_train_all), len(df_syn_test)
@@ -235,23 +282,25 @@ def train_models() -> Dict[str, Any]:
 
         df_train_all = pd.concat([df_syn_train, df_real_train.drop(columns=["_source"], errors="ignore")], ignore_index=True)
         df_test_all = pd.concat([df_syn_test, df_real_test.drop(columns=["_source"], errors="ignore")], ignore_index=True)
+        selection = _choose_threshold(df_train_all, df_real_train)
+        threshold = selection["threshold"]
         clf, reg = _fit_pair(df_train_all)
-        synthetic_metrics = _eval_pair(clf, reg, df_syn_test)
+        synthetic_metrics = _eval_pair(clf, reg, df_syn_test, threshold)
         by_source: Dict[str, Any] = {}
         for src, sub in df_real_test.groupby("_source", sort=True):
             by_source[str(src)] = {
                 "n_tasks": len(sub),
                 "n_projects": int(sub["project_id"].nunique()),
-                **_eval_pair(clf, reg, sub),
+                **_eval_pair(clf, reg, sub, threshold),
             }
         real_validation_metrics = {
             "evaluation_mode": "held_out_real_projects",
             "n_tasks": len(df_real_test),
             "n_projects": int(df_real_test["project_id"].nunique()),
-            **_eval_pair(clf, reg, df_real_test),
+            **_eval_pair(clf, reg, df_real_test, threshold),
             "by_source": by_source,
         }
-        metrics = _eval_pair(clf, reg, df_test_all)
+        metrics = _eval_pair(clf, reg, df_test_all, threshold)
         df_all = pd.concat([df_syn, df_hist], ignore_index=True)
         n_train, n_test = len(df_train_all), len(df_test_all)
 
@@ -293,6 +342,8 @@ def train_models() -> Dict[str, Any]:
         "late_rate": round(float(df_all["late"].mean()), 4),
         "features": FEATURE_NAMES,
         "hyperparameters": MODEL_PARAMS,
+        "decision_threshold": threshold,
+        "threshold_selection": selection,
         "test_metrics": metrics,
         "synthetic_test_metrics": synthetic_metrics,
         "real_validation_metrics": real_validation_metrics,

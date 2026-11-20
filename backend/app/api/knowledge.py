@@ -1,10 +1,14 @@
 """SOP knowledge base and copilot chat endpoints.
 """
 
-from fastapi import APIRouter
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends
 
 import database
+from app import state
 from app.schemas import CopilotQuery, SopDocumentPayload
+from app.security import external_ai_allowed, require_user
 from app.services.copilot import _run_grounded_copilot, get_copilot_status
 
 router = APIRouter()
@@ -32,8 +36,14 @@ def ingest_knowledge_doc(payload: SopDocumentPayload):
 
 
 @router.post("/api/v1/copilot/chat")
-def copilot_chat(payload: CopilotQuery):
+def copilot_chat(
+    payload: CopilotQuery,
+    user: Dict[str, Any] = Depends(require_user),
+    allow_ai: bool = Depends(external_ai_allowed),
+):
     msg = (payload.message or payload.question or "").strip()
     role = payload.active_role or payload.role or "Operations Manager"
     history = [item.model_dump() for item in payload.history]
-    return _run_grounded_copilot(msg, role, history=history)
+    return _run_grounded_copilot(
+        msg, role, history=history, analysis=state.get_analysis(user["id"]), allow_external_ai=allow_ai
+    )

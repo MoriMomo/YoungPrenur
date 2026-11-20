@@ -4,12 +4,11 @@ import React, { useRef, useState } from "react";
 import { FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
-import { uploadScheduleFile, ScheduleUploadError } from "@/lib/api";
+import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
-import { usePageMotion } from "@/lib/usePageMotion";
 
 type InspectionRow = {
   code: string;
@@ -18,6 +17,8 @@ type InspectionRow = {
   forecast: number;
   float: number | null;
   risk: number | null;
+  /** Band from the server (HIGH / MEDIUM / LOW), set with the model's tuned cut-off. */
+  level?: string;
   driver?: string;
   done?: boolean;
 };
@@ -72,6 +73,9 @@ function RiskCell({ row, tone }: { row: InspectionRow; tone: VerdictTone }) {
 function verdictFor(row: InspectionRow): { tone: VerdictTone; label: string } {
   if (row.done) return { tone: "neutral", label: "Complete" };
   if (row.risk === null) return { tone: "neutral", label: "Not scored" };
+  if (row.level === "HIGH") return { tone: "hold", label: "Hold" };
+  if (row.level === "MEDIUM") return { tone: "warn", label: "Watch" };
+  if (row.level === "LOW") return { tone: "pass", label: "Pass" };
   if (row.risk >= 0.6) return { tone: "hold", label: "Hold" };
   if (row.risk >= 0.35) return { tone: "warn", label: "Watch" };
   return { tone: "pass", label: "Pass" };
@@ -87,23 +91,13 @@ export default function LandingPage() {
   const [stampKey, setStampKey] = useState(0);
   const [activeRole, setActiveRole] = useState<ManufacturingRole>("Operations Manager");
   const fileRef = useRef<HTMLInputElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const rolePanelRef = useRef<HTMLDivElement>(null);
   const role = ROLE_PRESETS[activeRole];
-
-  usePageMotion(pageRef, { scroll: true });
-  usePageMotion(rolePanelRef, {
-    triggerKey: activeRole,
-    selector: '[data-gsap="role-panel"]',
-    y: 6,
-    skipInitial: true,
-  });
 
   const inspect = async (blob: Blob, name: string) => {
     setBusy(true);
     setNotice(null);
     try {
-      const result = await uploadScheduleFile(blob, name);
+      const result = await inspectScheduleFile(blob, name);
       if (!result) {
         setNotice("The inspection service is not reachable from this site, so the sample certificate stays in place.");
         return;
@@ -116,6 +110,7 @@ export default function LandingPage() {
           forecast: t.actualDays,
           float: typeof t.floatDays === "number" ? t.floatDays : null,
           risk: /complete|done|selesai/i.test(t.status) ? null : t.delayRisk,
+          level: t.riskLevel,
           driver: t.drivers?.[0],
           done: /complete|done|selesai/i.test(t.status),
         }))
@@ -155,13 +150,13 @@ export default function LandingPage() {
   const hold = rows.filter((r) => verdictFor(r).tone === "hold").length;
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-paper px-3 py-4 sm:px-6 sm:py-8">
+    <div className="min-h-screen bg-paper px-3 py-4 sm:px-6 sm:py-8">
       <div className="cert-frame mx-auto max-w-[1240px] bg-sheet">
         <Navbar />
 
         {/* Subject and action */}
         <section className="grid gap-8 border-b border-rule-strong px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
-          <div data-gsap="reveal" className="lg:col-span-7">
+          <div className="lg:col-span-7">
             <h1 className="font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[76px]">
               Know which tasks will slip before the work cell stalls
             </h1>
@@ -171,7 +166,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div data-gsap="reveal" className="lg:col-span-5 lg:self-end">
+          <div className="lg:col-span-5 lg:self-end">
             <div className="border border-rule-strong bg-paper p-5">
               <label htmlFor="schedule-file" className="font-display text-xl font-bold text-ink">
                 Submit a schedule for inspection
@@ -206,7 +201,7 @@ export default function LandingPage() {
 
         {/* Inspection table */}
         <section aria-labelledby="inspection-title" className="px-5 pb-8 pt-7 sm:px-8">
-          <div data-gsap="reveal">
+          <div>
             <h2 id="inspection-title" className="w-fit font-display text-2xl font-bold text-ink">
               Inspection results
             </h2>
@@ -227,7 +222,7 @@ export default function LandingPage() {
             />
 
             {/* Desktop and tablet: the ruled inspection table */}
-            <div data-gsap="reveal" className="relative hidden overflow-x-auto border border-rule-strong md:block">
+            <div className="relative hidden overflow-x-auto border border-rule-strong md:block">
               <table className="w-full min-w-[820px] border-collapse text-sm">
                 <thead>
                   <tr className="bg-paper text-left text-xs text-ink-2">
@@ -274,7 +269,7 @@ export default function LandingPage() {
             </div>
 
             {/* Phones: one stacked record per task, verdict always visible */}
-            <ol data-gsap="reveal" className="divide-y divide-rule border border-rule-strong md:hidden">
+            <ol className="divide-y divide-rule border border-rule-strong md:hidden">
               {rows.map((r) => {
                 const v = verdictFor(r);
                 const over = r.forecast > r.planned;
@@ -307,7 +302,7 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-5 grid gap-5 border-t border-rule pt-5 md:grid-cols-12">
-            <div data-gsap="reveal" className="md:col-span-8">
+            <div className="md:col-span-8">
               <h3 className="text-sm font-semibold text-ink">Remarks</h3>
               <p className="mt-1 max-w-[36rem] text-sm leading-relaxed text-ink-2">
                 {summary ? `${summary}. ` : `${hold} of ${rows.length} tasks are on hold. `}
@@ -331,7 +326,7 @@ export default function LandingPage() {
         </section>
 
         {/* Method: one axis, four stations */}
-        <section id="method" data-gsap="scroll" aria-labelledby="method-title" className="border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
+        <section id="method" aria-labelledby="method-title" className="border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
             How a verdict is reached
           </h2>
@@ -343,7 +338,7 @@ export default function LandingPage() {
           <div aria-hidden="true" className="absolute left-0 right-0 top-[7px] hidden h-px bg-ink md:block" />
           <ol className="relative grid gap-8 md:grid-cols-4 md:gap-6">
             {METHOD.map((step) => (
-              <li key={step.title} data-gsap="scroll-item" className="relative">
+              <li key={step.title} className="relative">
                 <span aria-hidden="true" className="relative z-10 block h-[15px] w-[15px] border-2 border-ink bg-sheet" />
                 <h3 className="mt-4 font-display text-xl font-bold text-ink">{step.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{step.body}</p>
@@ -354,7 +349,7 @@ export default function LandingPage() {
         </section>
 
         {/* Roles */}
-        <section id="roles" data-gsap="scroll" aria-labelledby="roles-title" className="border-t border-rule-strong px-5 py-12 sm:px-8">
+        <section id="roles" aria-labelledby="roles-title" className="border-t border-rule-strong px-5 py-12 sm:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 id="roles-title" className="font-display text-[34px] font-bold leading-tight text-ink">
@@ -386,12 +381,12 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div ref={rolePanelRef} role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12">
-            <div data-gsap="role-panel" className="md:col-span-5">
+          <div role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12">
+            <div className="md:col-span-5">
               <h3 className="font-display text-2xl font-bold text-ink">{role.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{role.sub}</p>
             </div>
-            <div data-gsap="role-panel" className="md:col-span-7">
+            <div className="md:col-span-7">
               <p className="text-sm font-medium text-ink">Measurements on this role&apos;s certificate</p>
               <ul className="mt-2 divide-y divide-rule border-y border-rule">
                 {role.kpis.map((k) => (

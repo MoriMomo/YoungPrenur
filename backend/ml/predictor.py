@@ -59,8 +59,23 @@ def is_completed(t: Dict[str, Any]) -> bool:
     return any(w in status for w in COMPLETED_WORDS)
 
 
+HIGH_RISK = 0.6
+FALLBACK_WATCH = 0.35
+
+
+def watch_threshold() -> float:
+    """Lower edge of the watch band: the model card's tuned late/not-late cut-off (capped at HIGH_RISK).
+
+    Tasks at or above it are the ones the model predicts will run late.
+    """
+    try:
+        return min(float(model_card().get("decision_threshold", FALLBACK_WATCH)), HIGH_RISK)
+    except Exception:
+        return FALLBACK_WATCH
+
+
 def _risk_level(p: float) -> str:
-    return "HIGH" if p >= 0.6 else ("MEDIUM" if p >= 0.35 else "LOW")
+    return "HIGH" if p >= HIGH_RISK else ("MEDIUM" if p >= watch_threshold() else "LOW")
 
 
 def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -102,7 +117,7 @@ def _derive_status(t: Dict[str, Any]) -> str:
         return declared
     if t["variance_days"] > 0:
         return f"Delayed (+{int(t['variance_days'])}d)"
-    if t["delay_risk"] >= 0.6:
+    if t["delay_risk"] >= HIGH_RISK:
         return "At Risk"
     return "On Track" if t["start_day"] == 0 else "Scheduled"
 
@@ -245,7 +260,9 @@ def analyze_schedule(tasks: List[Dict[str, Any]], project_name: str, buffer_days
         "project_name": project_name,
         "overall_delay_probability": round(sim["delay_probability"] * 100, 1),
         "critical_path_tasks_count": sum(1 for t in tasks if t["critical"]),
-        "high_risk_tasks_count": sum(1 for t in tasks if t["delay_risk"] >= 0.6),
+        "high_risk_tasks_count": sum(1 for t in tasks if t["delay_risk"] >= HIGH_RISK),
+        "watch_threshold": watch_threshold(),
+        "high_risk_threshold": HIGH_RISK,
         "estimated_project_slippage_days": sim["p50_slip_days"],
         "p80_slippage_days": sim["p80_slip_days"],
         "baseline_duration_days": sim["baseline_duration_days"],

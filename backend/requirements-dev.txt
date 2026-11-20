@@ -1,0 +1,4 @@
+-r requirements.txt
+# Tests (FastAPI TestClient) and lint
+httpx==0.28.1
+pyflakes==4.1.0

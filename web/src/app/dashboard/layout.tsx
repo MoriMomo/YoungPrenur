@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef, Suspense } from "react";
+import React, { useCallback, useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -20,98 +20,26 @@ import { INITIAL_ACTIONS, INITIAL_AUDIT_LOG, KNOWLEDGE_DOCS, ROLES } from "@/lib
 import {
   AuthUser,
   checkApiHealth,
-  clearStoredSession,
+  SESSION_EXPIRED_EVENT,
+  setOnPremisesMode,
   fetchAuditLog,
   fetchCopilotStatus,
   fetchKnowledgeDocs,
   flagDecisionAction,
   askManufacturingCopilot,
   fetchDecisionActions,
-  getStoredSession,
   ingestKnowledgeDoc,
-  verifySession,
+  logoutUser,
+  subscribeFirebaseAuth,
 } from "@/lib/api";
-
-interface SopPayload {
-  doc_code: string;
-  title: string;
-  clause: string;
-  keywords: string[];
-  excerpt: string;
-}
-
-interface DashboardContextType {
-  selectedRole: ManufacturingRole;
-  setSelectedRole: (role: ManufacturingRole) => void;
-  deploymentMode: DeploymentMode;
-  setDeploymentMode: (mode: DeploymentMode) => void;
-  isApiLive: boolean;
-  copilotStatus: CopilotStatus;
-  showToast: (msg: string) => void;
-  openCopilot: () => void;
-  askCopilotWithPrompt: (query: string) => Promise<void>;
-  actions: DecisionAction[];
-  setActions: React.Dispatch<React.SetStateAction<DecisionAction[]>>;
-  auditLog: AuditLogEntry[];
-  reviewingAction: DecisionAction | null;
-  setReviewingAction: (act: DecisionAction | null) => void;
-  handleDecisionReview: (
-    actionId: string,
-    decision: "AUTHORIZED" | "OVERRIDDEN",
-    notes: string
-  ) => Promise<void>;
-  knowledgeDocs: KnowledgeDoc[];
-  addKnowledgeDoc: (payload: SopPayload) => Promise<{ syncedToBackend: boolean }>;
-  chatMessages: ChatMessage[];
-  isChatLoading: boolean;
-  sendChatQuery: (query: string) => Promise<void>;
-  clearChat: () => void;
-}
-
-const CUSTOM_SOPS_STORAGE_KEY = "mdip_custom_sops_v1";
-
-function readStoredCustomSops(): KnowledgeDoc[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(CUSTOM_SOPS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as KnowledgeDoc[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeStoredCustomSops(docs: KnowledgeDoc[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(CUSTOM_SOPS_STORAGE_KEY, JSON.stringify(docs));
-  } catch {
-    // Storage quota/privacy mode ignored
-  }
-}
-
-function mergeKnowledgeDocs(primary: KnowledgeDoc[], secondary: KnowledgeDoc[]): KnowledgeDoc[] {
-  const seen = new Set<string>();
-  const out: KnowledgeDoc[] = [];
-  for (const doc of [...primary, ...secondary]) {
-    const key = doc.code.toUpperCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(doc);
-  }
-  return out;
-}
-
-const DashboardContext = createContext<DashboardContextType | null>(null);
-
-export function useDashboard() {
-  const context = useContext(DashboardContext);
-  if (!context) {
-    throw new Error("useDashboard must be used within a DashboardProvider");
-  }
-  return context;
-}
+import {
+  DashboardContext,
+  DEFAULT_COPILOT_STATUS,
+  mergeKnowledgeDocs,
+  readStoredCustomSops,
+  SopPayload,
+  writeStoredCustomSops,
+} from "@/features/workspace/dashboard-context";
 
 function SearchParamsSync({
   onRoleInit,
@@ -139,13 +67,6 @@ function SearchParamsSync({
 
   return null;
 }
-
-const DEFAULT_COPILOT_STATUS: CopilotStatus = {
-  llm_configured: false,
-  provider: "retrieval",
-  model: null,
-  indexed_sops: 4,
-};
 
 export default function DashboardLayout({
   children,
@@ -179,10 +100,9 @@ export default function DashboardLayout({
     remoteAudit?: AuditLogEntry[] | null
   ) => {
     const stored = readStoredCustomSops();
-    const mergedDocs =
-      live && loadedDocs
-        ? mergeKnowledgeDocs(loadedDocs, stored)
-        : mergeKnowledgeDocs(stored, KNOWLEDGE_DOCS);
+    const mergedDocs = loadedDocs
+      ? mergeKnowledgeDocs(loadedDocs, stored)
+      : mergeKnowledgeDocs(stored, KNOWLEDGE_DOCS);
     setKnowledgeDocs(mergedDocs);
     if (live && status) {
       setCopilotStatus({
@@ -219,59 +139,64 @@ export default function DashboardLayout({
     }
   };
 
+  // Several checks can notice a missing or rejected session at once; the first redirect wins.
+  const leavingRef = useRef(false);
+  const leaveTo = useCallback(
+    (url: string) => {
+      if (leavingRef.current) return;
+      leavingRef.current = true;
+      router.replace(url);
+    },
+    [router]
+  );
+
+  // Any protected API call that comes back 401 ends the session here.
+  useEffect(() => {
+    const onExpired = () => leaveTo("/login?expired=1");
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [leaveTo]);
+
   useEffect(() => {
     let active = true;
-    const session = getStoredSession();
-    if (!session || session.mode !== "backend" || !session.token) {
-      router.replace("/login?mode=register");
-      return;
-    }
-
-    checkApiHealth().then(async (live) => {
-      if (!active) return;
-      let authenticatedUser: AuthUser | null = session.user;
-      if (live) {
-        const verified = await verifySession(session.token);
+    const unsubscribe = subscribeFirebaseAuth(
+      async (authenticatedUser) => {
         if (!active) return;
-        if (!verified) {
-          clearStoredSession();
-          router.replace("/login");
-          return;
+        setCurrentUser(authenticatedUser);
+        if (
+          typeof window !== "undefined" &&
+          !window.location.search.includes("role=") &&
+          ROLES.includes(authenticatedUser.role)
+        ) {
+          setSelectedRole(authenticatedUser.role);
         }
-        authenticatedUser = verified;
-      }
+        setIsAuthReady(true);
 
-      setCurrentUser(authenticatedUser);
-      if (
-        authenticatedUser &&
-        typeof window !== "undefined" &&
-        !window.location.search.includes("role=") &&
-        ROLES.includes(authenticatedUser.role)
-      ) {
-        setSelectedRole(authenticatedUser.role);
-      }
-      setIsApiLive(live);
-      setIsAuthReady(true);
-      if (live) {
+        const live = await checkApiHealth();
+        if (!active) return;
+        setIsApiLive(live);
         const [remoteActions, remoteAudit, status, loadedDocs] = await Promise.all([
           fetchDecisionActions(),
           fetchAuditLog(),
-          fetchCopilotStatus(),
+          live ? fetchCopilotStatus() : Promise.resolve(undefined),
           fetchKnowledgeDocs(),
         ]);
         if (!active) return;
-        applyWorkspaceSnapshot(true, loadedDocs, status, remoteActions, remoteAudit);
-      } else {
-        applyWorkspaceSnapshot(false);
+        applyWorkspaceSnapshot(live, loadedDocs, status, remoteActions, remoteAudit);
+      },
+      () => {
+        if (!active) return;
+        leaveTo("/login");
       }
-    });
+    );
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [router]);
+  }, [leaveTo]);
 
-  const handleSignOut = () => {
-    clearStoredSession();
+  const handleSignOut = async () => {
+    await logoutUser();
     setCurrentUser(null);
     router.push("/login");
   };
@@ -292,10 +217,11 @@ export default function DashboardLayout({
 
   const handleDeploymentModeChange = (mode: DeploymentMode) => {
     setDeploymentMode(mode);
+    setOnPremisesMode(mode === "internal");
     showToast(
       mode === "internal"
-        ? "Switched to On-Premise VPC mode (CAD IP isolated)"
-        : "Switched to Managed B2B SaaS mode"
+        ? "On-premises mode: documents and Copilot questions stay on the MDIP server"
+        : "Cloud mode: PDF, Word and Copilot answers may use Google Gemini"
     );
   };
 
@@ -342,7 +268,14 @@ export default function DashboardLayout({
     };
 
     setAuditLog((prev) => [newEntry, ...prev]);
-    await flagDecisionAction(actionId, reviewerLabel, decision, notes);
+    await flagDecisionAction(
+      actionId,
+      reviewerLabel,
+      decision,
+      notes,
+      target?.title || actionId,
+      target?.sourceDoc || "SOP-MDIP"
+    );
     const syncedAudit = await fetchAuditLog();
     if (syncedAudit && syncedAudit.length > 0) {
       setAuditLog(syncedAudit);

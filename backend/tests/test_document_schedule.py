@@ -17,7 +17,6 @@ os.environ.setdefault("MDIP_DB_PATH", os.path.join(_TMP_DIR.name, "test_doc_sche
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import database  # noqa: E402
 import schedule_parser  # noqa: E402
-from app import state  # noqa: E402
 from app.services import copilot as copilot_service  # noqa: E402
 from ml.predictor import analyze_schedule  # noqa: E402
 
@@ -105,10 +104,8 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
         database.DB_PATH = os.path.join(self._tmp.name, "doc_schedule.db")
         database.init_db()
         self._orig_key = os.environ.get("GEMINI_API_KEY")
-        self._orig_analysis = state.ACTIVE_ANALYSIS
 
     def tearDown(self):
-        state.ACTIVE_ANALYSIS = self._orig_analysis
         database.DB_PATH = self._orig_db
         if self._orig_key is None:
             os.environ.pop("GEMINI_API_KEY", None)
@@ -174,7 +171,7 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
             captured["timeout"] = timeout
             return _MockGeminiHttpResponse(gemini_payload)
 
-        with patch("schedule_parser.urllib.request.urlopen", side_effect=_fake_urlopen):
+        with patch("schedule_parser.ai_reader.urllib.request.urlopen", side_effect=_fake_urlopen):
             res = schedule_parser.parse_schedule_document(docx_bytes, "housing_brief.docx")
 
         self.assertEqual(res["extraction_method"], "gemini_document")
@@ -206,7 +203,7 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
             captured["body"] = json.loads(req.data.decode("utf-8"))
             return _MockGeminiHttpResponse(gemini_payload)
 
-        with patch("schedule_parser.urllib.request.urlopen", side_effect=_fake_urlopen):
+        with patch("schedule_parser.ai_reader.urllib.request.urlopen", side_effect=_fake_urlopen):
             res = schedule_parser.parse_schedule_document(pdf_bytes, "bracket_schedule.pdf")
 
         self.assertEqual(res["extraction_method"], "gemini_pdf")
@@ -236,6 +233,26 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
         self.assertEqual(res["tasks"][1]["start_day"], 2)
         self.assertIn("Raw Billet Inspection", res["document_excerpt"] or "")
 
+    def test_on_premises_mode_never_calls_gemini(self):
+        os.environ["GEMINI_API_KEY"] = "test-gemini-key"
+        pdf_bytes = _build_minimal_pdf(
+            [
+                "Plant Turnaround Schedule",
+                "WBS-1.1 Raw Billet Inspection - 2 days",
+            ]
+        )
+        with patch("schedule_parser.ai_reader.urllib.request.urlopen") as urlopen:
+            res = schedule_parser.parse_schedule_document(pdf_bytes, "turnaround.pdf", allow_external_ai=False)
+            urlopen.assert_not_called()
+        self.assertEqual(res["extraction_method"], "pdf_text")
+
+        prose_only = _build_docx_bytes(paragraphs=["We will finish the brackets soon after the alloy arrives."])
+        with patch("schedule_parser.ai_reader.urllib.request.urlopen") as urlopen:
+            with self.assertRaises(schedule_parser.ScheduleParseError) as ctx:
+                schedule_parser.parse_schedule_document(prose_only, "notes.docx", allow_external_ai=False)
+            urlopen.assert_not_called()
+        self.assertIn("On-premises mode", str(ctx.exception))
+
     def test_legacy_binary_doc_gives_clear_error(self):
         ole2_bytes = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 64
         with self.assertRaises(schedule_parser.ScheduleParseError) as ctx:
@@ -246,7 +263,7 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
         os.environ.pop("GEMINI_API_KEY", None)
         tasks = schedule_parser.compute_cpm(
             [
-                schedule_parser._build_task_dict(
+                schedule_parser.base._build_task_dict(
                     code="WBS-9.1",
                     name="Vacuum Brazing Assembly",
                     planned=4.0,
@@ -255,7 +272,7 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
             ]
         )
         analyzed = analyze_schedule(tasks, "Vacuum Manifold Build")
-        state.ACTIVE_ANALYSIS = {
+        uploaded = {
             "source": "upload",
             "filename": "manifold_build.pdf",
             "extraction_method": "gemini_pdf",
@@ -267,6 +284,7 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
         res = copilot_service._run_grounded_copilot(
             "Summarize the uploaded PDF schedule",
             "Operations Manager",
+            analysis=uploaded,
         )
         self.assertIn("nitrogen purge", res["reply"].lower())
         doc_codes = [c["doc_code"] for c in res["citations"]]

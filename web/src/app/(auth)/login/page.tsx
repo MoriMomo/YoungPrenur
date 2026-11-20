@@ -5,45 +5,44 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ManufacturingRole } from "@/types";
 import { ROLES } from "@/lib/mock-data";
-import { AuthError, fetchGoogleAuthConfig, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
+import { AuthError, loginUser, loginWithGoogle, registerUser } from "@/lib/api";
 import { MdipLogo } from "@/components/ui/MdipLogo";
-import CRTWarp from "@/components/ui/CRTWarp";
+import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
-import { usePageMotion } from "@/lib/usePageMotion";
 
-function AuthModeSync({ onRegisterMode }: { onRegisterMode: () => void }) {
+function AuthModeSync({
+  onRegisterMode,
+  onSessionExpired,
+}: {
+  onRegisterMode: () => void;
+  onSessionExpired: () => void;
+}) {
   const searchParams = useSearchParams();
   const syncedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const mode = searchParams.get("mode");
-    if (syncedRef.current === mode) return;
-    syncedRef.current = mode;
+    const expired = searchParams.get("expired");
+    const key = `${mode}|${expired}`;
+    if (syncedRef.current === key) return;
+    syncedRef.current = key;
     if (mode === "register") {
       onRegisterMode();
     }
-  }, [searchParams, onRegisterMode]);
+    if (expired === "1") {
+      onSessionExpired();
+    }
+  }, [searchParams, onRegisterMode, onSessionExpired]);
 
   return null;
 }
 
-declare global {
-  interface Window {
-    google?: {
-      accounts?: {
-        id?: {
-          initialize: (cfg: {
-            client_id: string;
-            callback: (resp: { credential?: string }) => void;
-          }) => void;
-          renderButton: (el: HTMLElement, opts: Record<string, string | number>) => void;
-        };
-      };
-    };
-  }
-}
-
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+/** What a signed-in user gets, in the certificate's own verdict marks. */
+const COCKPIT_FEATURES: { mark: string; tone: VerdictTone; text: string }[] = [
+  { mark: "Hold", tone: "hold", text: "Tasks likely to slip, scored by the delay-risk model with the reasons behind each score." },
+  { mark: "Sign-off", tone: "info", text: "Recommended actions wait for a named reviewer before they enter the audit log." },
+  { mark: "Cited", tone: "neutral", text: "Copilot answers quote the SOP clause or schedule line they rely on." },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,98 +53,17 @@ export default function LoginPage() {
   const [selectedDemoRole, setSelectedDemoRole] = useState<ManufacturingRole>("Operations Manager");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState<string>(GOOGLE_CLIENT_ID);
-  const [googleReady, setGoogleReady] = useState(false);
 
-  const pageRef = useRef<HTMLDivElement>(null);
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-  const selectedRoleRef = useRef<ManufacturingRole>(selectedDemoRole);
-
-  usePageMotion(pageRef);
-
-  useEffect(() => {
-    selectedRoleRef.current = selectedDemoRole;
-  }, [selectedDemoRole]);
-
-  useEffect(() => {
-    if (GOOGLE_CLIENT_ID) return;
-    let active = true;
-    fetchGoogleAuthConfig().then((cfg) => {
-      if (active && cfg.enabled && cfg.client_id) {
-        setGoogleClientId(cfg.client_id);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!googleClientId || !googleBtnRef.current) return;
-
-    const initGoogle = () => {
-      const gid = window.google?.accounts?.id;
-      const target = googleBtnRef.current;
-      if (!gid || !target) return;
-      target.replaceChildren();
-      const width = Math.min(380, Math.max(240, Math.floor(target.parentElement?.clientWidth || 320)));
-      gid.initialize({
-        client_id: googleClientId,
-        callback: async (resp: { credential?: string }) => {
-          if (!resp.credential) {
-            setErrorMsg("Google sign-in did not return a credential.");
-            return;
-          }
-          setErrorMsg(null);
-          setIsSubmitting(true);
-          try {
-            const session = await loginWithGoogle(resp.credential, selectedRoleRef.current);
-            router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
-          } catch (err) {
-            setErrorMsg(err instanceof AuthError ? err.message : "Google sign-in failed.");
-            setIsSubmitting(false);
-          }
-        },
-      });
-      gid.renderButton(target, {
-        theme: "outline",
-        size: "large",
-        shape: "rectangular",
-        text: authMode === "register" ? "signup_with" : "continue_with",
-        width,
-      });
-      setGoogleReady(true);
-    };
-
-    if (window.google?.accounts?.id) {
-      const frame = requestAnimationFrame(initGoogle);
-      return () => cancelAnimationFrame(frame);
+  const handleGoogleSignIn = async () => {
+    setErrorMsg(null);
+    setIsSubmitting(true);
+    try {
+      const session = await loginWithGoogle(selectedDemoRole);
+      router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
+    } catch (err) {
+      setErrorMsg(err instanceof AuthError ? err.message : "Google sign-in failed.");
+      setIsSubmitting(false);
     }
-
-    const existing = document.getElementById("google-gsi-script") as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", initGoogle);
-      return () => existing.removeEventListener("load", initGoogle);
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-gsi-script";
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.addEventListener("load", initGoogle);
-    document.head.appendChild(script);
-    return () => script.removeEventListener("load", initGoogle);
-  }, [googleClientId, authMode, router]);
-
-  const handleGoogleFallbackClick = () => {
-    if (!googleClientId) {
-      setErrorMsg(
-        "Google Sign-In needs a Google Cloud Web OAuth Client ID. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in web/.env.local and GOOGLE_CLIENT_ID in backend/.env, then restart."
-      );
-      return;
-    }
-    setErrorMsg("Google Sign-In could not initialize. Check your connection or continue with work email.");
   };
 
   const handleLogin = async (e?: React.FormEvent) => {
@@ -165,7 +83,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-paper text-ink flex flex-col justify-between">
+    <div className="min-h-screen bg-paper text-ink flex flex-col justify-between">
       <Suspense fallback={null}>
         <AuthModeSync
           onRegisterMode={() => {
@@ -173,10 +91,11 @@ export default function LoginPage() {
             setPassword("");
             setIsSubmitting(false);
           }}
+          onSessionExpired={() => setErrorMsg("Your session expired. Please sign in again.")}
         />
       </Suspense>
 
-      <header data-gsap="reveal" className="h-14 border-b border-rule-strong px-6 sm:px-10 flex items-center justify-between">
+      <header className="h-14 border-b border-rule-strong px-6 sm:px-10 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
           <MdipLogo variant="color" size={30} className="shrink-0" />
           <div>
@@ -198,7 +117,6 @@ export default function LoginPage() {
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
         <div className="cert-frame w-full grid grid-cols-1 lg:grid-cols-12 bg-sheet overflow-hidden">
           <div
-            data-gsap="reveal"
             className="lg:col-span-5 p-6 sm:p-8 bg-paper border-b lg:border-b-0 lg:border-r border-rule-strong flex flex-col justify-between space-y-6"
           >
             <div>
@@ -211,24 +129,20 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div
-              className="relative w-full h-[260px] sm:h-[300px] lg:flex-1 lg:min-h-[320px] rounded-lg border border-rule-strong bg-paper overflow-hidden"
-              aria-hidden="true"
-            >
-              <CRTWarp
-                color="#2b3fbf"
-                backgroundColor="#f3f5f1"
-                lightMode
-                mask="aperture"
-                curvature={0.25}
-                persistence={0.4}
-                brightness={1.05}
-              />
-            </div>
+            <ul aria-label="What the cockpit gives you" className="divide-y divide-rule border border-rule-strong bg-sheet">
+              {COCKPIT_FEATURES.map((item) => (
+                <li key={item.mark} className="flex items-start gap-3 px-4 py-3.5">
+                  <Verdict tone={item.tone} className="mt-0.5 w-[72px] justify-center">
+                    {item.mark}
+                  </Verdict>
+                  <span className="text-sm leading-snug text-ink-2">{item.text}</span>
+                </li>
+              ))}
+            </ul>
 
           </div>
 
-          <div data-gsap="reveal" className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
+          <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
             <div className="max-w-md w-full mx-auto space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -237,8 +151,8 @@ export default function LoginPage() {
                   </h2>
                   <p className="text-xs text-ink-2">
                     {authMode === "register"
-                      ? "Register a plant account stored in the backend database"
-                      : "Continue with Google or use your plant email and password"}
+                      ? "Register a plant account stored in Firebase Authentication & Firestore"
+                      : "Continue with Google or use your email and password"}
                   </p>
                 </div>
                 <div className="flex bg-sheet p-0.5 rounded-lg border border-rule-strong text-xs shrink-0">
@@ -298,40 +212,34 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-3">
-                <div
-                  ref={googleBtnRef}
-                  className={googleReady ? "min-h-10 flex items-center justify-center" : "hidden"}
-                />
-                {!googleReady && (
-                  <button
-                    type="button"
-                    onClick={handleGoogleFallbackClick}
-                    disabled={isSubmitting}
-                    className="w-full h-10 px-4 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
-                  >
-                    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    <span>
-                      {authMode === "register" ? "Sign up with Google" : "Continue with Google"}
-                    </span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting}
+                  className="w-full h-10 px-4 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+                >
+                  <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  <span>
+                    {authMode === "register" ? "Sign up with Google" : "Continue with Google"}
+                  </span>
+                </button>
                 <div className="flex items-center gap-3 text-xs text-ink-2">
                   <span className="h-px flex-1 bg-rule" />
                   <span>or continue with work email</span>

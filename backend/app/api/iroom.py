@@ -3,9 +3,11 @@
 
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Body, HTTPException, Path, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
 import database
+from app import state
+from app.security import require_user
 from app.services.insights import _compute_iroom_overview
 
 router = APIRouter()
@@ -17,8 +19,10 @@ def get_iroom_materials():
 
 
 @router.get("/api/v1/iroom/progress")
-def get_iroom_progress():
-    return database.get_stream("progress")
+def get_iroom_progress(user: Dict[str, Any] = Depends(require_user)):
+    """Plant projects, plus the signed-in user's uploaded schedule (shown only to them)."""
+    own = state.uploaded_project_row(state.get_analysis(user["id"]))
+    return ([own] if own else []) + database.get_stream("progress")
 
 
 @router.get("/api/v1/iroom/drawings")
@@ -59,5 +63,6 @@ def ingest_iroom_stream(
 
 
 @router.get("/api/v1/iroom/overview")
-def get_iroom_overview():
-    return _compute_iroom_overview()
+def get_iroom_overview(user: Dict[str, Any] = Depends(require_user)):
+    own = state.uploaded_project_row(state.get_analysis(user["id"]))
+    return _compute_iroom_overview([own] if own else None)

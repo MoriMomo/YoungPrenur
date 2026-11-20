@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useDashboard } from "../layout";
+import { useDashboard } from "@/features/workspace/dashboard-context";
 import { KnowledgeDoc } from "@/types";
 import { ChevronRight, X, Bookmark, Plus, MessageSquareText } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { usePageMotion } from "@/lib/usePageMotion";
 
 function findMatchingDoc(docs: KnowledgeDoc[], docCode: string | null): KnowledgeDoc | null {
   if (!docCode) return null;
@@ -29,8 +28,6 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
   const [docClause, setDocClause] = useState("");
   const [docKeywords, setDocKeywords] = useState("");
   const [docExcerpt, setDocExcerpt] = useState("");
-  const pageRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
   const activeDoc =
     selectedDoc
@@ -38,13 +35,6 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
       : dismissedUrlCode !== initialDocCode
         ? findMatchingDoc(knowledgeDocs, initialDocCode)
         : null;
-
-  usePageMotion(pageRef);
-  usePageMotion(modalRef, {
-    triggerKey: activeDoc?.id ?? "",
-    selector: '[data-gsap="modal"]',
-    y: 8,
-  });
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -105,7 +95,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
   };
 
   return (
-    <div ref={pageRef} className="space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="SOP knowledge"
         description="Standard operating procedures the copilot cites, clause by clause, and supervisors check before they sign off"
@@ -178,7 +168,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
         {knowledgeDocs.map((doc) => (
           <div
             key={doc.id}
-            data-gsap="reveal"
+
             className="bg-white rounded-xl border border-rule p-5 flex flex-col justify-between"
           >
             <div>
@@ -227,7 +217,6 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
 
       {activeDoc && (
         <div
-          ref={modalRef}
           className="fixed inset-0 bg-paper/65 backdrop-blur-xs z-50 flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) handleCloseModal();
@@ -236,7 +225,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
           aria-modal="true"
           aria-labelledby="sop-modal-title"
         >
-          <div data-gsap="modal" className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-rule overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-rule overflow-hidden flex flex-col max-h-[85vh]">
             <div className="p-5 border-b border-rule flex items-start justify-between gap-4 bg-paper">
               <div>
                 <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-stamp-wash text-stamp border border-stamp-line inline-block mb-1 font-mono-numbers">

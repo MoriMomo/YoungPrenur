@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useDashboard } from "../layout";
+import React, { useState, useEffect } from "react";
+import { useDashboard } from "@/features/workspace/dashboard-context";
 import { ScheduleUploader } from "@/features/scheduler/ScheduleUploader";
 import { GanttTimeline } from "@/features/scheduler/GanttTimeline";
 import { DeviationTable } from "@/features/scheduler/DeviationTable";
@@ -15,7 +15,6 @@ import {
 } from "@/lib/api";
 import { DelayRiskPrediction, WbsTask, RiskDriver } from "@/types";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { usePageMotion } from "@/lib/usePageMotion";
 
 export default function SchedulerPage() {
   const { showToast, setActions, askCopilotWithPrompt } = useDashboard();
@@ -29,9 +28,6 @@ export default function SchedulerPage() {
   const [methodology, setMethodology] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<RiskDriver[]>([]);
   const [modelCard, setModelCard] = useState<MlModelCard>(DEFAULT_MODEL_CARD);
-  const pageRef = useRef<HTMLDivElement>(null);
-
-  usePageMotion(pageRef);
 
   const applyPrediction = (pred: DelayRiskPrediction) => {
     setProjectName(pred.project_name || null);
@@ -112,13 +108,13 @@ export default function SchedulerPage() {
   };
 
   return (
-    <div ref={pageRef} className="space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Scheduler and delay risk"
         description="Normalises CSV, Excel, PDF and Word schedules into WBS work packages, traces the critical path and scores each task's slippage risk."
       />
 
-      <div data-gsap="reveal">
+      <div>
         <ScheduleUploader
           activeFilename={activeFilename}
           activeTaskCount={tasks.length}
@@ -130,7 +126,7 @@ export default function SchedulerPage() {
         />
       </div>
 
-      <div data-gsap="reveal" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-white rounded-xl border border-rule p-5">
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -204,7 +200,7 @@ export default function SchedulerPage() {
         </div>
       </div>
 
-      <div data-gsap="reveal">
+      <div>
         <GanttTimeline
           tasks={tasks}
           baseRisk={overallRisk ?? 0}
@@ -212,7 +208,7 @@ export default function SchedulerPage() {
         />
       </div>
 
-      <div data-gsap="reveal">
+      <div>
         <DeviationTable tasks={tasks} />
       </div>
     </div>

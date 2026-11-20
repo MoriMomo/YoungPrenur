@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 import { usePathname } from "next/navigation";
 import { Menu, RotateCcw, ChevronDown, MessageSquareText, Shield, LogOut } from "lucide-react";
 import { ManufacturingRole, DeploymentMode } from "@/types";
 import { ROLES } from "@/lib/mock-data";
 import { buttonClass } from "@/components/ui/Button";
-import gsap from "gsap";
 
 interface TopbarProps {
   selectedRole: ManufacturingRole;
@@ -42,13 +41,9 @@ export const Topbar: React.FC<TopbarProps> = ({
   onSignOut,
 }) => {
   const pathname = usePathname();
-  const refreshIconRef = useRef<SVGSVGElement>(null);
   const currentTitle = ROUTE_TITLES[pathname] || "Workspace";
 
   const handleRefreshClick = () => {
-    if (refreshIconRef.current) {
-      gsap.to(refreshIconRef.current, { rotation: "+=360", duration: 0.5, ease: "power2.inOut" });
-    }
     onRefresh();
   };
 
@@ -84,8 +79,13 @@ export const Topbar: React.FC<TopbarProps> = ({
               key={mode}
               type="button"
               aria-pressed={deploymentMode === mode}
+              aria-label={mode === "saas" ? "Cloud" : "On-premises"}
               onClick={() => onChangeDeploymentMode(mode)}
-              title={mode === "internal" ? "Keeps CAD drawings and PO data inside the plant network" : undefined}
+              title={
+                mode === "internal"
+                  ? "Documents and Copilot questions are handled only by the MDIP server. Google Gemini is not called."
+                  : "PDF and Word schedules and Copilot answers may be sent to Google Gemini."
+              }
               className={`flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded-sm px-2.5 font-medium transition-colors ${
                 deploymentMode === mode ? "bg-sheet text-ink shadow-sm" : "text-ink-2 hover:text-ink"
               }`}
@@ -122,7 +122,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           title="Check the service and refresh data"
           aria-label="Refresh data"
         >
-          <RotateCcw ref={refreshIconRef} className="h-3.5 w-3.5" strokeWidth={1.6} />
+          <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.6} />
           <span className="hidden sm:inline">Refresh</span>
         </button>
 

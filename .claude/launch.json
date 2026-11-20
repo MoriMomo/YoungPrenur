@@ -6,6 +6,21 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "web", "run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "api-scratch",
+      "runtimeExecutable": "backend/.venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "-c",
+        "import os, sys, tempfile; os.environ['MDIP_DB_PATH'] = os.path.join(tempfile.gettempdir(), 'mdip-preview.db'); os.chdir('backend'); sys.path.insert(0, os.getcwd()); import uvicorn; uvicorn.run('main:app', port=8000)"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "web-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "start", "--", "-p", "3100"],
+      "port": 3100
     }
   ]
 }

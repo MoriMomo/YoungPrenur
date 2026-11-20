@@ -1,0 +1,346 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T12:00:00Z",
+  "title": "Design System: MDIP",
+  "extensions": {
+    "colorMeta": {
+      "stamp": {
+        "role": "primary",
+        "displayName": "Ink-Pad Stamp Blue",
+        "canonical": "#2b3fbf",
+        "tonalRamp": [
+          "#10184f",
+          "#1f2f95",
+          "#2b3fbf",
+          "#5566d6",
+          "#8793e3",
+          "#c2c9ef",
+          "#e7eaf8",
+          "#f4f5fc"
+        ]
+      },
+      "pass": {
+        "role": "secondary",
+        "displayName": "Pass Green",
+        "canonical": "#2a7449",
+        "tonalRamp": [
+          "#0f2e1c",
+          "#1c5233",
+          "#2a7449",
+          "#4f9a6b",
+          "#85bb9b",
+          "#b8d8c5",
+          "#e3f0e8",
+          "#f2f8f4"
+        ]
+      },
+      "hold": {
+        "role": "secondary",
+        "displayName": "Hold Red",
+        "canonical": "#c0302a",
+        "tonalRamp": [
+          "#4a1210",
+          "#8a2320",
+          "#c0302a",
+          "#d96a64",
+          "#e79a95",
+          "#ecbfba",
+          "#f8e5e3",
+          "#fcf3f2"
+        ]
+      },
+      "warn": {
+        "role": "secondary",
+        "displayName": "Warn Ochre",
+        "canonical": "#82500a",
+        "tonalRamp": [
+          "#33200a",
+          "#5c3908",
+          "#82500a",
+          "#aa7a2e",
+          "#cba264",
+          "#e6d0a1",
+          "#f6edd9",
+          "#fbf6ec"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Security Paper",
+        "canonical": "#f3f5f1",
+        "tonalRamp": [
+          "#14181c",
+          "#3b434b",
+          "#5f6870",
+          "#aab6ac",
+          "#d5ddd6",
+          "#e6ebe6",
+          "#eceff0",
+          "#f3f5f1"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet",
+        "canonical": "#fbfcfa",
+        "tonalRamp": [
+          "#14181c",
+          "#3b434b",
+          "#5f6870",
+          "#aab6ac",
+          "#d5ddd6",
+          "#eceff0",
+          "#f3f5f1",
+          "#fbfcfa"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Print Ink",
+        "canonical": "#14181c",
+        "tonalRamp": [
+          "#14181c",
+          "#2a3036",
+          "#3b434b",
+          "#4d565e",
+          "#5f6870",
+          "#8b949b",
+          "#b9c0c5",
+          "#e3e6e8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display-hero": {
+        "displayName": "Display hero",
+        "purpose": "Landing H1 only, uppercase condensed."
+      },
+      "display-section": {
+        "displayName": "Section display",
+        "purpose": "Landing section titles."
+      },
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "PageHeader title on every dashboard route."
+      },
+      "panel-title": {
+        "displayName": "Panel title",
+        "purpose": "Panel and card headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text, max 32 to 36rem."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field and KPI captions; 12px minimum."
+      },
+      "verdict": {
+        "displayName": "Verdict",
+        "purpose": "Status marks in condensed caps."
+      },
+      "measure": {
+        "displayName": "Measure",
+        "purpose": "Measured values and codes only, tabular slashed-zero mono."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hairline",
+        "value": "0 1px 2px rgb(20 24 28 / 0.06)",
+        "purpose": "At-rest lift; rarely used."
+      },
+      {
+        "name": "raised",
+        "value": "0 2px 6px rgb(20 24 28 / 0.07)",
+        "purpose": "Small popovers."
+      },
+      {
+        "name": "floating",
+        "value": "0 8px 20px rgb(20 24 28 / 0.1)",
+        "purpose": "Menus, drawers, modals only."
+      },
+      {
+        "name": "floating-high",
+        "value": "0 18px 40px rgb(20 24 28 / 0.16)",
+        "purpose": "Highest floating layer."
+      },
+      {
+        "name": "cert-frame",
+        "value": "border: 1px solid #aab6ac; outline: 1px solid #aab6ac; outline-offset: 4px",
+        "purpose": "Double rule around a certificate sheet instead of a shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "stamp-land",
+        "value": "520ms cubic-bezier(0.16, 1, 0.3, 1) 380ms both",
+        "purpose": "The inspector's stamp landing on the landing page; the one authored motion. Static under prefers-reduced-motion."
+      },
+      {
+        "name": "color-transition",
+        "value": "transition-colors (150ms default)",
+        "purpose": "Hover state changes on buttons and rail items."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action; stamp blue, crisp 3px corners.",
+      "html": "<button class=\"ds-btn-primary\">Run inspection</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;background:var(--color-stamp,#2b3fbf);color:var(--color-sheet,#fbfcfa);border:1px solid var(--color-stamp,#2b3fbf);border-radius:3px;font:500 14px 'Public Sans',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s}.ds-btn-primary:hover{background:var(--color-stamp-deep,#1f2f95);border-color:var(--color-stamp-deep,#1f2f95)}.ds-btn-primary:focus-visible{outline:2px solid var(--color-stamp,#2b3fbf);outline-offset:2px}.ds-btn-primary:active{background:var(--color-stamp-deep,#1f2f95)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ruled sheet button for supporting actions.",
+      "html": "<button class=\"ds-btn-secondary\">Export</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;background:var(--color-sheet,#fbfcfa);color:var(--color-ink,#14181c);border:1px solid var(--color-rule-strong,#aab6ac);border-radius:3px;font:500 14px 'Public Sans',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s}.ds-btn-secondary:hover{background:var(--color-sheet-sunk,#eceff0);border-color:var(--color-ink-3,#5f6870)}.ds-btn-secondary:focus-visible{outline:2px solid var(--color-stamp,#2b3fbf);outline-offset:2px}"
+    },
+    {
+      "name": "Verdict Mark",
+      "kind": "chip",
+      "refersTo": "verdict-hold",
+      "description": "Condensed caps status label in a ruled box; tones pass, hold, warn, info, neutral.",
+      "html": "<span class=\"ds-verdict ds-verdict-pass\">On track</span> <span class=\"ds-verdict ds-verdict-warn\">Pending</span> <span class=\"ds-verdict ds-verdict-hold\">Critical</span>",
+      "css": ".ds-verdict{display:inline-flex;align-items:center;white-space:nowrap;padding:1px 6px;border:1px solid;border-radius:2px;font:600 12px/18px 'Sofia Sans Condensed','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase}.ds-verdict-pass{color:var(--color-pass,#2a7449);background:var(--color-pass-wash,#e3f0e8);border-color:var(--color-pass-line,#b8d8c5)}.ds-verdict-warn{color:var(--color-warn,#82500a);background:var(--color-warn-wash,#f6edd9);border-color:var(--color-warn-line,#e6d0a1)}.ds-verdict-hold{color:var(--color-hold,#c0302a);background:var(--color-hold-wash,#f8e5e3);border-color:var(--color-hold-line,#ecbfba)}"
+    },
+    {
+      "name": "Page Header",
+      "kind": "custom",
+      "refersTo": "page-header",
+      "description": "Condensed title, one line of purpose, ruled base; one per dashboard route.",
+      "html": "<header class=\"ds-page-header\"><h1>Scheduler</h1><p>Compare plan against predicted slip by WBS task.</p></header>",
+      "css": ".ds-page-header{border-bottom:1px solid var(--color-rule-strong,#aab6ac);padding-bottom:20px}.ds-page-header h1{margin:0;font:700 34px/1.05 'Sofia Sans Condensed','Arial Narrow',sans-serif;letter-spacing:-.01em;color:var(--color-ink,#14181c)}.ds-page-header p{margin:6px 0 0;max-width:36rem;font:400 14px/1.625 'Public Sans',system-ui,sans-serif;color:var(--color-ink-2,#3b434b)}"
+    },
+    {
+      "name": "KPI Field",
+      "kind": "card",
+      "refersTo": "kpi-field",
+      "description": "Ruled measurement cell: caption, mono value, tolerance dot and deviation (sample values).",
+      "html": "<dl class=\"ds-kpi\"><div><dt>Schedule variance <span class=\"ds-dot\"></span></dt><dd class=\"ds-kpi-value\">+2.4 d</dd><dd class=\"ds-kpi-note\">Near tolerance · sample data</dd></div></dl>",
+      "css": ".ds-kpi{margin:0;border-left:1px solid var(--color-rule-strong,#aab6ac);border-top:1px solid var(--color-rule-strong,#aab6ac);background:var(--color-sheet,#fbfcfa);display:inline-block}.ds-kpi>div{border-bottom:1px solid var(--color-rule-strong,#aab6ac);border-right:1px solid var(--color-rule-strong,#aab6ac);padding:16px 20px;min-width:200px}.ds-kpi dt{display:flex;justify-content:space-between;gap:12px;font:400 12px 'Public Sans',system-ui,sans-serif;color:var(--color-ink-2,#3b434b)}.ds-dot{width:8px;height:8px;border-radius:9999px;background:var(--color-warn,#82500a);margin-top:4px}.ds-kpi dd{margin:0}.ds-kpi-value{margin-top:8px;font:500 30px/1 'Red Hat Mono',ui-monospace,monospace;font-feature-settings:'tnum' 1,'zero' 1;color:var(--color-ink,#14181c)}.ds-kpi-note{margin-top:10px;font:400 12px 'Public Sans',system-ui,sans-serif;color:var(--color-ink-3,#5f6870)}"
+    },
+    {
+      "name": "Sheet Rail Item",
+      "kind": "nav",
+      "refersTo": "sidebar-item-active",
+      "description": "Dashboard rail link on the light sheet rail; active item on stamp-wash with stamp-deep text.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-item ds-active\" href=\"#\">Overview <span>3</span></a><a class=\"ds-rail-item\" href=\"#\">Scheduler</a></nav>",
+      "css": ".ds-rail{width:240px;padding:10px;background:var(--color-sheet,#fbfcfa);border-right:1px solid var(--color-rule-strong,#aab6ac);display:flex;flex-direction:column;gap:2px}.ds-rail-item{display:flex;align-items:center;justify-content:space-between;height:36px;padding:0 12px;border-radius:3px;font:400 14px 'Public Sans',system-ui,sans-serif;color:var(--color-ink-2,#3b434b);text-decoration:none;transition:background-color .15s,color .15s}.ds-rail-item:hover{background:var(--color-sheet-sunk,#eceff0);color:var(--color-ink,#14181c)}.ds-rail-item.ds-active{background:var(--color-stamp-wash,#e7eaf8);color:var(--color-stamp-deep,#1f2f95);font-weight:500}.ds-rail-item span{font:400 12px 'Red Hat Mono',ui-monospace,monospace;color:var(--color-warn,#82500a)}.ds-rail-item:focus-visible{outline:2px solid var(--color-stamp,#2b3fbf);outline-offset:2px}"
+    },
+    {
+      "name": "Ink Layer",
+      "kind": "custom",
+      "refersTo": "ink-layer",
+      "description": "Toast and chart tooltip: ink fill, light text; floating overlays only.",
+      "html": "<div class=\"ds-ink-layer\">Decision recorded</div>",
+      "css": ".ds-ink-layer{display:inline-block;padding:10px 14px;background:var(--color-ink,#14181c);color:var(--color-sheet,#fbfcfa);border-radius:4px;font:500 13px 'Public Sans',system-ui,sans-serif;box-shadow:0 8px 20px rgb(20 24 28 / .1)}"
+    },
+    {
+      "name": "Inspector Stamp",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "Double-ringed round stamp in stamp blue; one per page, certifying a real fact.",
+      "html": "<div class=\"ds-stamp\"><svg viewBox=\"0 0 200 200\" width=\"120\" height=\"120\" aria-hidden=\"true\"><circle cx=\"100\" cy=\"100\" r=\"94\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\"/><circle cx=\"100\" cy=\"100\" r=\"86\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><circle cx=\"100\" cy=\"100\" r=\"50\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><text x=\"100\" y=\"110\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"30\" font-weight=\"800\" font-family=\"Sofia Sans Condensed, Arial Narrow, sans-serif\">OK</text></svg></div>",
+      "css": ".ds-stamp{display:inline-block;width:120px;height:120px;color:var(--color-stamp,#2b3fbf);transform:rotate(-9deg);opacity:.94}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Mill Test Certificate",
+    "overview": "MDIP looks like the certificate that ships with a batch of certified steel: cool security paper, print ink, ruled fields, one round ink-pad stamp. Decisions about delay risk are presented as inspected findings with a verdict, not as a glowing analytics feed. The tone is institutional and exact: dense but calm, every value in a ruled box, every status a stamped word.\n\nDepth is printed, not lit. Surfaces are flat sheets separated by rules (hairline and double-rule), corners are crisp, and the single accent is stamp blue, the colour an inspector's pad would leave. The dashboard keeps the same paper: a light sheet rail with a ruled edge, a sticky topbar, and no dark surfaces beyond small floating layers.\n\nBrand constraints carried from the product record: no partner, university or company names appear in the interface, no TRL label is shown, and any sample data is labelled as sample.",
+    "keyCharacteristics": [
+      "Cool paper ground, print-ink text, ruled (not carded) structure.",
+      "One accent: stamp blue. Verdict colours exist only to say pass, hold or warn.",
+      "Condensed display face for titles; monospace only for measured values.",
+      "Crisp 2 to 4px corners; shadows only on floating layers.",
+      "One authored motion: the inspector's stamp landing on the landing page."
+    ],
+    "rules": [
+      {
+        "name": "The One Token Source Rule",
+        "body": "Every colour comes from the @theme block in globals.css as a generated utility. No hex literals in components.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Accent Rule",
+        "body": "Stamp blue is the only accent (primary action, links, selection, focus, the stamp). Do not introduce a second brand hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Verdict Rule",
+        "body": "Pass, hold and warn colour mean status and nothing else.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Layer Rule",
+        "body": "bg-ink with light text is for floating overlays only (the toast and the chart tooltip). Rails, pages, cards and panels stay on paper and sheet; there is no dark navy surface family.",
+        "section": "colors"
+      },
+      {
+        "name": "The Titles Only Rule",
+        "body": "The condensed face is for page and section titles (and verdict marks, stamp text, the wordmark). Eyebrow labels above headings are banned.",
+        "section": "typography"
+      },
+      {
+        "name": "The Readings Only Rule",
+        "body": "Monospace is for measured values and codes. Never for prose, nav or buttons.",
+        "section": "typography"
+      },
+      {
+        "name": "The Seventy Rule",
+        "body": "Line length stays near 70 characters, set with rem-based max widths. Minimum text size is 12px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Pretty Wrap Rule",
+        "body": "Paragraphs, list items and definitions use text-wrap: pretty; headings use balance.",
+        "section": "typography"
+      },
+      {
+        "name": "The Certificate Frame Rule",
+        "body": "A sheet gets a double rule (cert-frame), not a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Narrow Band Rule",
+        "body": "Guilloche is an authored SVG sine-wave pattern, never gradients, and appears only in narrow header bands, never behind body text.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do pull every colour from the @theme tokens in globals.css.",
+      "Do use stamp blue for the primary action, links, selection and focus, and nothing else.",
+      "Do label sample data as sample wherever it appears.",
+      "Do keep text at 12px minimum and prose near 70 characters wide.",
+      "Do use Verdict for every status and font-mono-numbers for every measured value."
+    ],
+    "donts": [
+      "Don't put eyebrow labels above headings.",
+      "Don't use verdict colours for decoration or a second accent.",
+      "Don't use pill buttons or radii above 6px (dots excepted).",
+      "Don't put guilloche behind body text or place more than one stamp on a page.",
+      "Don't use dark bg-ink surfaces for anything except toasts and tooltips.",
+      "Don't name partners, universities or companies, or show a TRL label.",
+      "Don't add motion beyond the landing stamp."
+    ]
+  }
+}

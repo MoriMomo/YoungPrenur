@@ -1,8 +1,8 @@
 {
   "suite": "MDIP TRL 3 System Verification",
-  "timestamp": "2026-11-19T17:19:14.895391",
-  "total_tests": 11,
-  "passed": 11,
+  "timestamp": "2026-11-20T11:12:55.698065",
+  "total_tests": 12,
+  "passed": 12,
   "failed": 0,
   "success_rate_percent": 100.0,
   "results": [
@@ -12,7 +12,7 @@
       "endpoint": "/health",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 7.12,
+      "latency_ms": 11.31,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Verifies that the FastAPI engine is running and responding to ping requests."
     },
@@ -22,7 +22,7 @@
       "endpoint": "/api/v1/scheduler/upload",
       "method": "POST",
       "status": "PASSED",
-      "latency_ms": 18.14,
+      "latency_ms": 17.0,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Tests WBS normalization, CPM float/critical-path computation and per-task ML risk scoring."
     },
@@ -32,7 +32,7 @@
       "endpoint": "/api/v1/risks/prediction",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 3.0,
+      "latency_ms": 12.61,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates XGBoost task scoring, SHAP root-cause drivers and Monte Carlo project slippage (P50 <= P80)."
     },
@@ -42,7 +42,7 @@
       "endpoint": "/api/v1/ml/model-card",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 2.0,
+      "latency_ms": 11.87,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Model must reach ROC-AUC >= 0.80 on held-out projects and beat the legacy rule-based baseline."
     },
@@ -52,7 +52,7 @@
       "endpoint": "/api/v1/copilot/chat",
       "method": "POST",
       "status": "PASSED",
-      "latency_ms": 13.5,
+      "latency_ms": 20.78,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Ensures that AI Copilot reasoning strictly cites indexed documents with zero hallucination."
     },
@@ -62,7 +62,7 @@
       "endpoint": "/api/v1/risks/decisions/flag",
       "method": "POST",
       "status": "PASSED",
-      "latency_ms": 17.01,
+      "latency_ms": 24.71,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates cryptographic human authorization logging for automated decision mitigation."
     },
@@ -72,7 +72,7 @@
       "endpoint": "/api/v1/iroom/materials",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 4.51,
+      "latency_ms": 14.92,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Verifies ingestion of raw material delivery telemetry and buffer-hour depletion alerts."
     },
@@ -82,7 +82,7 @@
       "endpoint": "/api/v1/iroom/progress",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 4.0,
+      "latency_ms": 14.11,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates live project milestone tracking and WBS-level schedule variance logging."
     },
@@ -92,7 +92,7 @@
       "endpoint": "/api/v1/iroom/drawings",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 4.0,
+      "latency_ms": 13.14,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Ensures CAD engineering drawings are tracked against technical approval gates."
     },
@@ -102,7 +102,7 @@
       "endpoint": "/api/v1/iroom/quotations",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 5.0,
+      "latency_ms": 14.76,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Verifies purchase order generation, quotation matching, and expedite PO triggers."
     },
@@ -112,9 +112,19 @@
       "endpoint": "/api/v1/iroom/operations",
       "method": "GET",
       "status": "PASSED",
-      "latency_ms": 4.5,
+      "latency_ms": 14.16,
       "notes": "200 OK \u00b7 Schema & domain logic verified",
       "description": "Validates shop-floor sensor ingestion (+18% vibration sensor trigger on Press P-07)."
+    },
+    {
+      "id": "TC-11",
+      "name": "Anonymous Decision Sign-off Refused",
+      "endpoint": "/api/v1/risks/decisions/flag",
+      "method": "POST",
+      "status": "PASSED",
+      "latency_ms": 12.14,
+      "notes": "HTTP 401 \u00b7 expected 401",
+      "description": "Confirms that a request without a session token cannot write to the audit log."
     }
   ]
 }

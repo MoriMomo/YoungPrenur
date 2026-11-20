@@ -2,6 +2,7 @@
 """
 
 import json
+import logging
 import math
 import os
 import re
@@ -14,6 +15,8 @@ import database
 from app import state
 from app.config import DEFAULT_PROJECT_NAME
 from app.services.insights import CATEGORY_ROUTING, _infer_task_category
+
+log = logging.getLogger("mdip.copilot")
 
 
 def _gemini_config() -> Tuple[str, str]:
@@ -44,10 +47,14 @@ def _run_grounded_copilot(
     message: str,
     role: str,
     history: Optional[List[Dict[str, str]]] = None,
+    analysis: Optional[Dict[str, Any]] = None,
+    allow_external_ai: bool = True,
 ) -> Dict[str, Any]:
-    """Live grounded retrieval over SQLite SOPs, active WBS tasks, and live IRoom records."""
+    """Grounded retrieval over SOPs, the user's schedule tasks (baseline if None) and IRoom records."""
+    if analysis is None:
+        analysis = state.get_analysis()
     sops = database.get_sops()
-    tasks = state.ACTIVE_ANALYSIS.get("tasks", [])
+    tasks = analysis.get("tasks", [])
     materials = database.get_stream("materials")
     operations = database.get_stream("operations")
     drawings = database.get_stream("drawings")
@@ -135,10 +142,10 @@ def _run_grounded_copilot(
             + (f" ({', '.join(d['label'] for d in t.get('drivers', [])[:2])})" if t.get("drivers") else "")
             for t in matched_tasks[:2]
         ]
-        proj = state.ACTIVE_ANALYSIS.get("project_name", DEFAULT_PROJECT_NAME)
-        prob = state.ACTIVE_ANALYSIS.get("overall_delay_probability", 0)
-        p50 = state.ACTIVE_ANALYSIS.get("estimated_project_slippage_days", 0)
-        p80 = state.ACTIVE_ANALYSIS.get("p80_slippage_days", 0)
+        proj = analysis.get("project_name", DEFAULT_PROJECT_NAME)
+        prob = analysis.get("overall_delay_probability", 0)
+        p50 = analysis.get("estimated_project_slippage_days", 0)
+        p80 = analysis.get("p80_slippage_days", 0)
         context_sections.append(
             "\n".join(
                 [
@@ -162,9 +169,9 @@ def _run_grounded_copilot(
     if iroom_bullets:
         context_sections.append("\n".join([f"**Shop-floor streams ({role})**:", *iroom_bullets]))
 
-    doc_summary = str(state.ACTIVE_ANALYSIS.get("document_summary") or "").strip()
-    doc_excerpt = str(state.ACTIVE_ANALYSIS.get("document_excerpt") or "").strip()
-    active_filename = str(state.ACTIVE_ANALYSIS.get("filename") or "").strip()
+    doc_summary = str(analysis.get("document_summary") or "").strip()
+    doc_excerpt = str(analysis.get("document_excerpt") or "").strip()
+    active_filename = str(analysis.get("filename") or "").strip()
     doc_citation: Optional[Dict[str, Any]] = None
     if (doc_summary or doc_excerpt) and active_filename:
         matched_lines = [
@@ -195,7 +202,7 @@ def _run_grounded_copilot(
                 doc_citation = {
                     "doc_code": active_filename,
                     "clause": "Uploaded Schedule Document",
-                    "title": str(state.ACTIVE_ANALYSIS.get("project_name") or active_filename),
+                    "title": str(analysis.get("project_name") or active_filename),
                     "excerpt": doc_snippet[:320],
                 }
 
@@ -240,8 +247,11 @@ def _run_grounded_copilot(
     sections = (sop_sections + context_sections) if direct_sop_hit else (context_sections + sop_sections)
 
     deterministic_reply = "\n\n".join(sections)
-    llm_reply, llm_error = _synthesize_with_gemini(
-        message, role, deterministic_reply, citations, history=history
+    # On-premises mode answers from retrieval alone: nothing leaves the MDIP server.
+    llm_reply, llm_error = (
+        _synthesize_with_gemini(message, role, deterministic_reply, citations, history=history)
+        if allow_external_ai
+        else (None, None)
     )
     _, model = _gemini_config()
     reply = llm_reply or deterministic_reply
@@ -255,6 +265,7 @@ def _run_grounded_copilot(
         "llm_enhanced": bool(llm_reply),
         "model": model if llm_reply else None,
         "llm_error": llm_error,
+        "external_ai_allowed": allow_external_ai,
         "source_documents_indexed": len(sops),
     }
 
@@ -324,4 +335,5 @@ def _synthesize_with_gemini(
             return None, "Gemini API quota or rate limit exceeded"
         return None, f"Gemini HTTP {exc.code}"
     except Exception:
+        log.warning("Gemini copilot request failed; answering from retrieval", exc_info=True)
         return None, "Gemini API request timed out or failed"

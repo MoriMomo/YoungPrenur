@@ -12,7 +12,6 @@ export function PageHeader({
 }) {
   return (
     <header
-      data-gsap="reveal"
       className="flex flex-col gap-4 border-b border-rule-strong pb-5 sm:flex-row sm:items-end sm:justify-between"
     >
       <div className="min-w-0">

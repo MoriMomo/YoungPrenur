@@ -2,11 +2,11 @@
 """
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import database
-from app import state
 from ml.features import infer_category
+from ml.predictor import watch_threshold
 
 
 CATEGORY_ROUTING: Dict[str, tuple[str, str, str]] = {
@@ -30,9 +30,12 @@ def _infer_task_category(task: Dict[str, Any]) -> str:
     return infer_category(str(task.get("task", "")), str(task.get("work_center", "")))
 
 
-def compute_live_decisions() -> List[Dict[str, Any]]:
-    """Derive prioritized HITL decision briefs from live XGBoost/SHAP predictions & IRoom telemetry."""
-    statuses = database.get_decision_statuses()
+def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Derive prioritized HITL decision briefs from a schedule analysis & IRoom telemetry.
+
+    `workspace` scopes sign-off statuses to one user's schedule.
+    """
+    statuses = database.get_decision_statuses(workspace)
     materials = database.get_stream("materials")
     operations = database.get_stream("operations")
     drawings = database.get_stream("drawings")
@@ -42,8 +45,8 @@ def compute_live_decisions() -> List[Dict[str, Any]]:
     # 1. Task-level XGBoost & SHAP risk recommendations from the active schedule
     risk_tasks = sorted(
         [
-            t for t in state.ACTIVE_ANALYSIS.get("tasks", [])
-            if float(t.get("delay_risk", 0)) >= 0.35 or float(t.get("variance_days", 0)) > 0
+            t for t in analysis.get("tasks", [])
+            if float(t.get("delay_risk", 0)) >= watch_threshold() or float(t.get("variance_days", 0)) > 0
         ],
         key=lambda t: (float(t.get("delay_risk", 0)), float(t.get("expected_slip_days", 0))),
         reverse=True,
@@ -83,7 +86,7 @@ def compute_live_decisions() -> List[Dict[str, Any]]:
             ),
             "impact": (
                 f"Reduces expected +{slip:.1f}d slip on {'critical path' if t.get('critical') else 'WBS chain'} "
-                f"(P50 project slip currently +{state.ACTIVE_ANALYSIS.get('estimated_project_slippage_days', 0):.1f}d)"
+                f"(P50 project slip currently +{analysis.get('estimated_project_slippage_days', 0):.1f}d)"
             ),
             "owner": t.get("owner") or default_owner,
             "due": "Immediate (within 4 hours)" if urgency == "Urgent" else "Before next shift handover",
@@ -190,8 +193,8 @@ def compute_live_decisions() -> List[Dict[str, Any]]:
     return decisions
 
 
-def _compute_overview_kpis() -> Dict[str, Any]:
-    tasks = state.ACTIVE_ANALYSIS.get("tasks", [])
+def _compute_overview_kpis(analysis: Dict[str, Any], workspace: Optional[str] = None) -> Dict[str, Any]:
+    tasks = analysis.get("tasks", [])
     total_planned = sum(float(t.get("planned_days", 0)) for t in tasks)
     total_actual = sum(float(t.get("actual_days", 0)) for t in tasks)
     attainment = round(min(100.0, (total_planned / total_actual) * 100.0), 1) if total_actual > 0 else 100.0
@@ -205,11 +208,11 @@ def _compute_overview_kpis() -> Dict[str, Any]:
     quality_yield = round(max(75.0, min(99.9, 100.0 - elevated_sensors * 1.8 - revision_dwgs * 1.1)), 1)
     quality_delta = round(quality_yield - 98.0, 1)
 
-    decisions = compute_live_decisions()
+    decisions = compute_live_decisions(analysis, workspace)
     pending_count = sum(1 for d in decisions if not d["flagged"])
 
-    prob = float(state.ACTIVE_ANALYSIS.get("overall_delay_probability", 0.0))
-    slip = float(state.ACTIVE_ANALYSIS.get("estimated_project_slippage_days", 0.0))
+    prob = float(analysis.get("overall_delay_probability", 0.0))
+    slip = float(analysis.get("estimated_project_slippage_days", 0.0))
 
     return {
         "attainment": attainment,
@@ -245,9 +248,9 @@ def _compute_overview_kpis() -> Dict[str, Any]:
     }
 
 
-def _compute_production_lines() -> List[Dict[str, Any]]:
+def _compute_production_lines(analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
     ops = database.get_stream("operations")
-    tasks = state.ACTIVE_ANALYSIS.get("tasks", [])
+    tasks = analysis.get("tasks", [])
     lines: List[Dict[str, Any]] = []
 
     for idx, op in enumerate(ops):
@@ -291,9 +294,9 @@ def _compute_production_lines() -> List[Dict[str, Any]]:
     return lines
 
 
-def _compute_performance_series(metric: str) -> Dict[str, Any]:
+def _compute_performance_series(metric: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
     ops = database.get_stream("operations")
-    tasks = state.ACTIVE_ANALYSIS.get("tasks", [])
+    tasks = analysis.get("tasks", [])
     avg_oee = sum(float(o.get("oeePercent", 84.0)) for o in ops) / max(1, len(ops))
     avg_util = sum(float(o.get("spindleUtilization", 85.0)) for o in ops) / max(1, len(ops))
     high_risk_ratio = sum(1 for t in tasks if float(t.get("delay_risk", 0)) >= 0.6) / max(1, len(tasks))
@@ -338,9 +341,9 @@ def _compute_performance_series(metric: str) -> Dict[str, Any]:
     }
 
 
-def _compute_iroom_overview() -> Dict[str, Any]:
+def _compute_iroom_overview(extra_projects: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     materials = database.get_stream("materials")
-    projects = database.get_stream("progress")
+    projects = (extra_projects or []) + database.get_stream("progress")
     drawings = database.get_stream("drawings")
     quotations = database.get_stream("quotations")
     operations = database.get_stream("operations")

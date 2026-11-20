@@ -10,6 +10,15 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
+      # Production mode: refuses to start without a strong MDIP_AUTH_SECRET and trusts X-Forwarded-For.
+      - key: MDIP_ENV
+        value: production
+      # Browser origins allowed to call the API (comma-separated): set it to the Vercel URL(s).
+      - key: MDIP_CORS_ORIGINS
+        sync: false
+      # Accept Firebase Auth ID tokens from this project.
+      - key: FIREBASE_PROJECT_ID
+        value: mdip-f4347
       - key: SUPABASE_URL
         value: "https://mkurfdbznwhgocecombq.supabase.co"
       - key: SUPABASE_SERVICE_ROLE_KEY
