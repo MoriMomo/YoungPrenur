@@ -1,4 +1,4 @@
-"""Grounded SOP copilot: retrieval over the knowledge index with optional Gemini synthesis.
+"""Grounded SOP copilot: retrieval over the knowledge index with optional cloud synthesis.
 """
 
 import json
@@ -19,18 +19,23 @@ from app.services.insights import CATEGORY_ROUTING, _infer_task_category
 log = logging.getLogger("mdip.copilot")
 
 
-def _gemini_config() -> Tuple[str, str]:
+def _copilot_config() -> Tuple[str, str, str]:
+    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if deepseek_key:
+        model = os.environ.get("DEEPSEEK_MODEL", "").strip() or "deepseek-flash"
+        return "deepseek", deepseek_key, model
+
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
-    return api_key, model
+    return ("gemini" if api_key else "retrieval"), api_key, model
 
 
 def get_copilot_status() -> Dict[str, Any]:
     """Report active Copilot synthesis provider, model, and indexed SOP count."""
-    api_key, model = _gemini_config()
+    provider, api_key, model = _copilot_config()
     return {
         "llm_configured": bool(api_key),
-        "provider": "gemini" if api_key else "retrieval",
+        "provider": provider,
         "model": model if api_key else None,
         "indexed_sops": len(database.get_sops()),
     }
@@ -248,12 +253,12 @@ def _run_grounded_copilot(
 
     deterministic_reply = "\n\n".join(sections)
     # On-premises mode answers from retrieval alone: nothing leaves the MDIP server.
+    provider, api_key, model = _copilot_config()
     llm_reply, llm_error = (
-        _synthesize_with_gemini(message, role, deterministic_reply, citations, history=history)
-        if allow_external_ai
+        _synthesize(provider, api_key, model, message, role, deterministic_reply, citations, history)
+        if allow_external_ai and api_key
         else (None, None)
     )
-    _, model = _gemini_config()
     reply = llm_reply or deterministic_reply
 
     return {
@@ -270,18 +275,17 @@ def _run_grounded_copilot(
     }
 
 
-def _synthesize_with_gemini(
+def _synthesize(
+    provider: str,
+    api_key: str,
+    model: str,
     question: str,
     role: str,
     facts_context: str,
     citations: List[Dict[str, Any]],
     history: Optional[List[Dict[str, str]]] = None,
 ) -> Tuple[Optional[str], Optional[str]]:
-    """Use Gemini 2.5 Flash for concise Markdown answers grounded in retrieved telemetry and SOPs."""
-    api_key, model = _gemini_config()
-    if not api_key:
-        return None, None
-
+    """Request a Markdown answer grounded in retrieved telemetry and SOPs."""
     sop_lines = "\n".join(
         f"- {c['doc_code']} ({c['clause']}): {c.get('excerpt', '')}" for c in citations
     )
@@ -292,48 +296,69 @@ def _synthesize_with_gemini(
         "Use ONLY the provided verified plant metrics, uploaded schedule document, and SOP excerpts; never invent numbers or SOP codes."
     )
 
-    contents: List[Dict[str, Any]] = []
+    messages: List[Dict[str, str]] = []
     for item in (history or [])[-6:]:
         raw_text = str(item.get("text") or "").strip()
         if not raw_text:
             continue
         raw_role = str(item.get("role") or "").strip().lower()
-        mapped_role = "model" if raw_role in {"copilot", "model", "assistant"} else "user"
-        contents.append({"role": mapped_role, "parts": [{"text": raw_text}]})
+        mapped_role = "assistant" if raw_role in {"copilot", "model", "assistant"} else "user"
+        messages.append({"role": mapped_role, "content": raw_text})
 
     user_prompt = (
         f"Live Telemetry & Schedule:\n{facts_context}\n\n"
         f"Verified SOP Excerpts:\n{sop_lines or 'None'}\n\n"
         f"Question ({role}): {question}"
     )
-    contents.append({"role": "user", "parts": [{"text": user_prompt}]})
-
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model)}:generateContent"
-        f"?key={urllib.parse.quote(api_key)}"
-    )
-    payload = json.dumps(
-        {
-            "systemInstruction": {"parts": [{"text": system_text}]},
-            "contents": contents,
+    messages.append({"role": "user", "content": user_prompt})
+    headers = {"Content-Type": "application/json"}
+    if provider == "deepseek":
+        label = "DeepSeek"
+        url = "https://api.deepseek.com/chat/completions"
+        headers["Authorization"] = f"Bearer {api_key}"
+        body = {
+            "model": model,
+            "messages": [{"role": "system", "content": system_text}, *messages],
+            "thinking": {"type": "disabled"},
+            "max_tokens": 1024,
         }
-    ).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
-    )
+    else:
+        label = "Gemini"
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model)}:generateContent"
+            f"?key={urllib.parse.quote(api_key)}"
+        )
+        body = {
+            "systemInstruction": {"parts": [{"text": system_text}]},
+            "contents": [
+                {
+                    "role": "model" if item["role"] == "assistant" else "user",
+                    "parts": [{"text": item["content"]}],
+                }
+                for item in messages
+            ],
+        }
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        if not text:
-            return None, "Gemini API returned an empty response"
-        return text, None
+        if provider == "deepseek":
+            text = data["choices"][0]["message"]["content"]
+        else:
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+        if not isinstance(text, str) or not text.strip():
+            return None, f"{label} API returned an empty response"
+        return text.strip(), None
     except urllib.error.HTTPError as exc:
-        if exc.code in (400, 401, 403):
+        if provider == "deepseek" and exc.code == 402:
+            return None, "DeepSeek API balance is insufficient"
+        if provider == "deepseek" and exc.code == 401:
+            return None, "Invalid DEEPSEEK_API_KEY"
+        if provider == "gemini" and exc.code in (400, 401, 403):
             return None, "Invalid GEMINI_API_KEY"
         if exc.code == 429:
-            return None, "Gemini API quota or rate limit exceeded"
-        return None, f"Gemini HTTP {exc.code}"
-    except Exception:
-        log.warning("Gemini copilot request failed; answering from retrieval", exc_info=True)
-        return None, "Gemini API request timed out or failed"
+            return None, f"{label} API quota or rate limit exceeded"
+        return None, f"{label} HTTP {exc.code}"
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        log.warning("%s Copilot request failed; answering from retrieval", label)
+        return None, f"{label} API request timed out or failed"
