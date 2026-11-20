@@ -83,8 +83,8 @@ export const Topbar: React.FC<TopbarProps> = ({
               onClick={() => onChangeDeploymentMode(mode)}
               title={
                 mode === "internal"
-                  ? "Documents and Copilot questions are handled only by the MDIP server. Google Gemini is not called."
-                  : "PDF and Word schedules and Copilot answers may be sent to Google Gemini."
+                  ? "The MDIP server handles documents and Copilot questions locally."
+                  : "Google Gemini may process PDF and Word schedules. DeepSeek or Gemini may process Copilot questions and retrieved context."
               }
               className={`flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded-sm px-2.5 font-medium transition-colors ${
                 deploymentMode === mode ? "bg-sheet text-ink shadow-sm" : "text-ink-2 hover:text-ink"
