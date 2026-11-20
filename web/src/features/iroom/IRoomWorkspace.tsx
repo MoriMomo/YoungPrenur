@@ -280,7 +280,6 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
           {HOW_IROOM_WORKS.map((item) => (
             <li key={item.step} className="px-4 py-3">
               <div className="flex items-baseline gap-2">
-                <span className="font-mono-numbers text-xs font-medium text-stamp">{item.step}</span>
                 <span className="text-xs font-semibold text-ink">{item.title}</span>
               </div>
               <p className="mt-1 text-xs leading-relaxed text-ink-2">{item.body}</p>

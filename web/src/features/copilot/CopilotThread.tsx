@@ -139,7 +139,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
   const statusText = isGeminiActive
     ? `${copilotStatus.model || "Gemini 2.5 Flash"} · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
     : isApiLive
-      ? `SOP retrieval · ${copilotStatus.indexed_sops} SOPs · Set GEMINI_API_KEY in backend/.env`
+      ? `SOP retrieval · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
       : `Offline SOP index · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`;
 
   const latestCopilotIdx = messages.reduce(

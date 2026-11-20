@@ -46,17 +46,17 @@ export const DeviationTable: React.FC<DeviationTableProps> = ({ tasks }) => {
                 return (
                   <tr key={task.code} className="hover:bg-paper transition-colors">
                     <td className="py-3.5 pr-3">
-                      <span className="font-mono-numbers px-2 py-0.5 rounded bg-sheet-sunk text-ink font-semibold text-xs">
+                      <span className="whitespace-nowrap font-mono-numbers px-2 py-0.5 rounded bg-sheet-sunk text-ink font-semibold text-xs">
                         {task.code}
                       </span>
                     </td>
                     <td className="py-3.5 pr-3 font-medium text-ink">
                       {task.task}
                     </td>
-                    <td className="py-3.5 pr-3 font-mono-numbers text-ink-3">
+                    <td className="whitespace-nowrap py-3.5 pr-3 font-mono-numbers text-ink-3">
                       {task.plannedDays} days
                     </td>
-                    <td className="py-3.5 pr-3 font-mono-numbers font-semibold text-ink">
+                    <td className="whitespace-nowrap py-3.5 pr-3 font-mono-numbers font-semibold text-ink">
                       {task.actualDays} days
                     </td>
                     <td className="py-3.5 pr-3 font-mono-numbers font-medium">

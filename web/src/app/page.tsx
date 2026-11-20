@@ -222,8 +222,8 @@ export default function LandingPage() {
               top="Validated on real data"
               center="AUC 0.78"
               bottom="51 held-out projects"
-              size={112}
-              className="absolute -top-[40px] right-3 z-20 hidden md:block"
+              size={100}
+              className="absolute -top-[84px] right-1.5 z-20 hidden xl:block"
             />
 
             {/* Desktop and tablet: the ruled inspection table */}
@@ -238,7 +238,7 @@ export default function LandingPage() {
                     <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Float (d)</th>
                     <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Delay risk</th>
                     <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Main driver</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Verdict</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium xl:pr-28">Verdict</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -324,7 +324,7 @@ export default function LandingPage() {
                 center="AUC 0.78"
                 bottom="51 held-out projects"
                 size={116}
-                className="mt-3 md:hidden"
+                className="mt-3 xl:hidden"
               />
             </div>
           </div>

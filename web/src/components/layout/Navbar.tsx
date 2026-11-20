@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MdipLogo } from "@/components/ui/MdipLogo";
@@ -11,9 +11,15 @@ const NAV_LINKS = [
   { href: "#roles", label: "Roles" },
 ];
 
-/** Header band: mark and wordmark, navigation, sign-in. */
+const CERTIFICATE_NO = "MDIP-DR-0001";
+const noopSubscribe = () => () => {};
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+/** Certificate header band: mark and wordmark, navigation, certificate fields, sign-in. */
 export const Navbar: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Issue date comes from the browser: a date read during prerender would freeze at build time.
+  const issued = useSyncExternalStore(noopSubscribe, todayIso, () => "");
 
   return (
     <header className="guilloche border-b border-rule-strong">
@@ -37,6 +43,17 @@ export const Navbar: React.FC = () => {
             </a>
           ))}
         </nav>
+
+        <dl className="hidden items-stretch border border-rule-strong bg-sheet text-left lg:flex">
+          <div className="border-r border-rule px-3 py-1">
+            <dt className="text-xs text-ink-3">Certificate no.</dt>
+            <dd className="font-mono-numbers text-xs text-ink">{CERTIFICATE_NO}</dd>
+          </div>
+          <div className="px-3 py-1">
+            <dt className="text-xs text-ink-3">Issued</dt>
+            <dd className="font-mono-numbers text-xs text-ink">{issued || "—"}</dd>
+          </div>
+        </dl>
 
         <div className="flex shrink-0 items-center gap-2">
           <LinkButton href="/login" variant="secondary" size="md" className="hidden sm:inline-flex">

@@ -228,6 +228,23 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     );
   };
 
+  /** Runs the bundled sample schedule through the same scoring path as an upload, so the timeline is never empty in a demo. */
+  const handleLoadSample = async () => {
+    setIsUploading(true);
+    try {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+      const res = await fetch(`${basePath}/sample_master_schedule_wbs.csv`);
+      if (!res.ok) {
+        onToast?.("The sample schedule could not be loaded.");
+        return;
+      }
+      const text = await res.text();
+      await ingest(new Blob([text], { type: "text/csv" }), "sample_master_schedule_wbs.csv", async () => text);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleDownloadTemplate = () => {
     const blob = new Blob([CSV_TEMPLATE_HEADER], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -277,6 +294,16 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
           >
             <FileDown className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
             <span>Download CSV Template</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleLoadSample}
+            disabled={isUploading}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
+            <span>Load sample schedule</span>
           </button>
 
           <button
