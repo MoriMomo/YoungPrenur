@@ -3,7 +3,7 @@
 import { ManufacturingRole } from "@/types";
 import { getSupabase } from "@/lib/supabase";
 
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 export const API_BASE = `${API_ORIGIN}/api/v1`;
 
@@ -22,6 +22,8 @@ export function setOnPremisesMode(enabled: boolean): void {
 }
 
 export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  // The bearer token must only ever reach the MDIP API.
+  if (!input.startsWith(API_BASE + "/")) throw new Error(`apiFetch only calls ${API_BASE}`);
   const { data: { session } } = await getSupabase().auth.getSession();
   const headers = new Headers(init.headers);
   if (session) headers.set("Authorization", "Bearer " + session.access_token);

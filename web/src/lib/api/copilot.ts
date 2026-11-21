@@ -88,12 +88,13 @@ export async function askManufacturingCopilot(
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  if (scoredDocs.length > 0) {
+  if (/\bsop\b/i.test(message) && scoredDocs.length > 0) {
     const { doc } = scoredDocs[0];
     const sectionLines = doc.sections.map((s) => `- **${s.clause}**: ${s.content}`);
     return {
       success: true,
-      reply: `Grounded guidance from **${doc.code} (${doc.title})** for ${activeRole}:\n\n${sectionLines.join("\n")}`,
+      offline: true,
+      reply: `Live schedule data is unavailable. Cached guidance from **${doc.code} (${doc.title})** for ${activeRole}:\n\n${sectionLines.join("\n")}`,
       citations: scoredDocs.slice(0, 3).map(({ doc: d }) => ({
         doc_code: d.code,
         clause: d.sections[0]?.clause || "Clause 1.0",
@@ -109,56 +110,12 @@ export async function askManufacturingCopilot(
     };
   }
 
-  if (qLower.includes("wbs") || qLower.includes("delay") || qLower.includes("cnc") || qLower.includes("slip")) {
-    return {
-      success: true,
-      reply: `CPM & Schedule Analysis (${activeRole} view):\n\n- **WBS-1.2 (Raw Material Procurement)**: 85% risk score (+2d variance); verify INGOT-AL7075-T6 air-freight authorization (**SOP-SCM-12**).\n- **WBS-3.1 (Cell 02 Sub-Assembly)**: 79% risk score (+2d variance); evaluate operator shift transfer (**SOP-LINE2-OPT**).`,
-      citations: [
-        {
-          doc_code: "SOP-SCM-12",
-          clause: "Clause 2.1: Buffer Inventory Warning",
-          title: "Critical Component Shortage & Express Procurement",
-          excerpt: "When buffer stock falls below 48 hours and supplier lead time exceeds 48 hours, trigger express air freight."
-        },
-        {
-          doc_code: "SOP-LINE2-OPT",
-          clause: "Clause 1.4: Throughput Variance Trigger",
-          title: "Assembly Cell Line Balancing & Operator Reallocation",
-          excerpt: "If cell attainment falls below 90% of shift target for >2h, transfer one cross-trained operator."
-        }
-      ],
-      confidence: 0.91,
-      is_grounded: true,
-      llm_enhanced: false,
-      model: null,
-      llm_error: null,
-      source_documents_indexed: localDocs.length,
-    };
-  }
-
   return {
-    success: true,
-    reply: `Top operational priorities for ${activeRole}:\n\n- Mitigate **INGOT-AL7075-T6** stock cover (36h left vs 3-day vendor lead time) per **SOP-SCM-12**.\n- Inspect **Press P-07** hydraulic seal before next stamping cycle (+18% vibration vs nominal baseline) per **SOP-PRS-04**.\n- Rebalance **Cell 02** shift staffing to recover output under **SOP-LINE2-OPT**.`,
-    citations: [
-      {
-        doc_code: "SOP-SCM-12",
-        clause: "Clause 5.3: Commercial Penalty Protection",
-        title: "Critical Component Shortage & Express Procurement",
-        excerpt: "Expedited shipping up to Rp 25,000,000 is pre-approved when mitigating penalties exceeding Rp 100,000,000."
-      },
-      {
-        doc_code: "SOP-PRS-04",
-        clause: "Clause 3.2: Vibration Thresholds",
-        title: "Hydraulic Stamping & Press P-07 Operating Protocol",
-        excerpt: "If vibration index exceeds baseline by >15%, condition inspection of seals and bearings is mandatory."
-      }
-    ],
-    confidence: 0.94,
-    is_grounded: true,
+    reply: "The live Copilot is unavailable. Reconnect and send your question again to check the current schedule.",
+    citations: [],
+    offline: true,
     llm_enhanced: false,
     model: null,
-    llm_error: null,
-    source_documents_indexed: localDocs.length,
   };
 }
 

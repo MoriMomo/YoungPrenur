@@ -126,6 +126,7 @@ export interface ChatMessage {
   text: string;
   citations?: CitationItem[];
   timestamp: string;
+  offline?: boolean;
   llmEnhanced?: boolean;
   model?: string | null;
   llmError?: string | null;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ManufacturingRole } from "@/types";
 import { ROLES } from "@/lib/mock-data";
-import { loginUser, loginWithGoogle, registerUser } from "@/lib/api";
+import { loginUser, loginWithGoogle, registerUser, subscribeAuth } from "@/lib/api";
 import { MdipLogo } from "@/components/ui/MdipLogo";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
@@ -13,9 +13,11 @@ import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-rea
 function AuthModeSync({
   onRegisterMode,
   onSessionExpired,
+  onOAuthError,
 }: {
   onRegisterMode: () => void;
   onSessionExpired: () => void;
+  onOAuthError: (message: string) => void;
 }) {
   const searchParams = useSearchParams();
   const syncedRef = useRef<string | null>(null);
@@ -23,7 +25,8 @@ function AuthModeSync({
   useEffect(() => {
     const mode = searchParams.get("mode");
     const expired = searchParams.get("expired");
-    const key = `${mode}|${expired}`;
+    const oauthError = searchParams.get("error_description") || searchParams.get("error");
+    const key = `${mode}|${expired}|${oauthError}`;
     if (syncedRef.current === key) return;
     syncedRef.current = key;
     if (mode === "register") {
@@ -32,7 +35,10 @@ function AuthModeSync({
     if (expired === "1") {
       onSessionExpired();
     }
-  }, [searchParams, onRegisterMode, onSessionExpired]);
+    if (oauthError) {
+      onOAuthError(oauthError);
+    }
+  }, [searchParams, onRegisterMode, onSessionExpired, onOAuthError]);
 
   return null;
 }
@@ -53,6 +59,15 @@ export default function LoginPage() {
   const [selectedDemoRole, setSelectedDemoRole] = useState<ManufacturingRole>("Operations Manager");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    return subscribeAuth(
+      (user) => {
+        router.replace(`/dashboard?role=${encodeURIComponent(user.role)}`);
+      },
+      () => {}
+    );
+  }, [router]);
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
@@ -96,6 +111,7 @@ export default function LoginPage() {
             setIsSubmitting(false);
           }}
           onSessionExpired={() => setErrorMsg("Your session expired. Please sign in again.")}
+          onOAuthError={(msg) => setErrorMsg(msg)}
         />
       </Suspense>
 

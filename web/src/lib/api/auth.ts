@@ -51,9 +51,50 @@ export function subscribeAuth(onUser: (user: AuthUser) => void, onSignedOut: () 
     onSignedOut();
     return () => {};
   }
-  const { data } = getSupabase().auth.onAuthStateChange((_event, session) => {
-    if (session) onUser(profile(session.user));
-    else onSignedOut();
+
+  let pkceWaitTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearPkceTimer = () => {
+    if (pkceWaitTimer !== null) {
+      clearTimeout(pkceWaitTimer);
+      pkceWaitTimer = null;
+    }
+  };
+
+  const { data } = getSupabase().auth.onAuthStateChange((event, session) => {
+    if (session) {
+      clearPkceTimer();
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("code") || url.searchParams.has("state")) {
+          url.searchParams.delete("code");
+          url.searchParams.delete("state");
+          window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+        }
+      }
+      onUser(profile(session.user));
+      return;
+    }
+
+    // PKCE OAuth lands on /dashboard?code=... while the async code exchange is still running.
+    if (event === "INITIAL_SESSION" && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("code")) {
+        clearPkceTimer();
+        pkceWaitTimer = setTimeout(async () => {
+          const { data: current } = await getSupabase().auth.getSession();
+          if (current.session) onUser(profile(current.session.user));
+          else onSignedOut();
+        }, 8000);
+        return;
+      }
+    }
+
+    clearPkceTimer();
+    onSignedOut();
   });
-  return () => data.subscription.unsubscribe();
+
+  return () => {
+    clearPkceTimer();
+    data.subscription.unsubscribe();
+  };
 }

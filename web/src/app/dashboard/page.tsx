@@ -100,7 +100,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* Primary Analytics Grid: Operational Chart + Role-Sorted Decision Brief */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-5">
         <div className="lg:col-span-7">
           <PerformanceChart />
         </div>
@@ -114,7 +114,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* Shop-Floor Work Centers & Risk Monitor */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-5">
         <div className="lg:col-span-7">
           <ProductionLineStatus
             onSelectLine={(line) => {

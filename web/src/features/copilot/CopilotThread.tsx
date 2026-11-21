@@ -243,7 +243,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
                     <span className="font-medium text-ink-2">
-                      MDIP Copilot · {msg.llmEnhanced ? msg.model || "Cloud AI" : "SOP retrieval"}
+                      MDIP Copilot · {msg.llmEnhanced ? msg.model || "Cloud AI" : msg.offline ? "Offline" : "SOP retrieval"}
                     </span>
                     <span className="font-mono-numbers">{msg.timestamp}</span>
                   </div>

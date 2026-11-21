@@ -180,7 +180,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
   };
 
   return (
-    <div className="bg-white border border-rule rounded-xl p-5 sm:p-6 space-y-4">
+    <div className="@container bg-white border border-rule rounded-xl p-5 sm:p-6 space-y-4">
       {/* Header & View Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rule-soft">
         <div>
@@ -222,9 +222,9 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
       </div>
 
       {viewMode === "map" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 @3xl:grid-cols-12 gap-4">
           {/* SVG Floor Grid */}
-          <div className="lg:col-span-8 bg-paper rounded-xl p-4 border border-rule overflow-hidden">
+          <div className="@3xl:col-span-8 bg-paper rounded-xl p-4 border border-rule overflow-hidden">
             <div className="flex items-center justify-between text-xs font-mono-numbers text-ink-2 mb-2 pb-2 border-b border-rule">
               <span className="text-stamp font-medium">
                 Shop A Work Center Matrix
@@ -366,7 +366,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
           </div>
 
           {/* Inspector Card */}
-          <div className="lg:col-span-4 bg-sheet rounded-xl p-5 border border-rule flex flex-col justify-between space-y-4">
+          <div className="@3xl:col-span-4 bg-sheet rounded-xl p-5 border border-rule flex flex-col justify-between space-y-4">
             <div>
               <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-rule">
                 <span className="font-mono-numbers text-xs font-medium text-ink-3">
@@ -402,7 +402,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-2 text-xs font-mono-numbers">
+              <div className="mt-3 grid grid-cols-1 @md:grid-cols-2 gap-2 text-xs font-mono-numbers">
                 <div className="p-2 rounded-lg bg-white border border-rule">
                   <span className="text-xs text-ink-3 block">Utilization</span>
                   <span className="text-sm font-medium text-ink">{activeBay.utilization}%</span>

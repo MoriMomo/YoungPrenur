@@ -281,6 +281,7 @@ export default function DashboardLayout({
         sender: "copilot",
         text: response.reply,
         citations: response.citations,
+        offline: response.offline === true,
         llmEnhanced: Boolean(response.llm_enhanced),
         model: typeof response.model === "string" ? response.model : null,
         llmError: typeof response.llm_error === "string" ? response.llm_error : null,
@@ -291,7 +292,8 @@ export default function DashboardLayout({
       const fallbackMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: "copilot",
-        text: "Backend connection unavailable. Showing grounded guidance from local SOP index.",
+        offline: true,
+        text: "Copilot is unavailable. Please send your question again.",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
       };
       setChatMessages((prev) => [...prev, fallbackMsg]);
