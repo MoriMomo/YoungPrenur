@@ -23,7 +23,7 @@ export function getSupabase() {
               headers: { "Content-Type": "application/json" },
               body: init.body,
               signal: init.signal,
-              credentials: "omit",
+              credentials: "same-origin",
               cache: "no-store",
             });
           }
