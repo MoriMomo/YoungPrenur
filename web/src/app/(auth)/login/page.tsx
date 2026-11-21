@@ -83,12 +83,28 @@ export default function LoginPage() {
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
+
+    const cleanEmail = email.trim();
+    const cleanName = fullName.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
+      setErrorMsg("Enter a valid work email address (for example, name@plant.co.id).");
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMsg("Password must be at least 8 characters.");
+      return;
+    }
+    if (authMode === "register" && cleanName.length < 2) {
+      setErrorMsg("Enter your full name to register.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const session =
         authMode === "register"
-          ? await registerUser(email, password, fullName, selectedDemoRole)
-          : await loginUser(email, password);
+          ? await registerUser(cleanEmail, password, cleanName, selectedDemoRole)
+          : await loginUser(cleanEmail, password);
       if (!session) {
         setErrorMsg("Check your email to confirm your account before signing in.");
         setIsSubmitting(false);

@@ -11,10 +11,24 @@ if (process.env.VERCEL_ENV === "production") {
 
 const nextConfig: NextConfig = {
   // Hosted on Vercel (server build); no static export or base path.
+  productionBrowserSourceMaps: false,
   cacheComponents: true,
   partialPrefetching: true,
   experimental: {
     agentUpgrade: "security",
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
   },
   turbopack: {
     rules: {

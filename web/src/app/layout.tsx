@@ -20,10 +20,24 @@ const sofiaCondensed = Sofia_Sans_Condensed({
   weight: ["500", "600", "700", "800"],
 });
 
+const APP_DESCRIPTION =
+  "MDIP predicts which WBS tasks will slip before a work cell stalls, explains why, and routes the fix to a human for approval. Critical-path scheduling, XGBoost delay-risk scoring and a cited SOP copilot for project-based manufacturers.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://mdip-ecru.vercel.app"),
   title: "MDIP: Manufacturing Decision Intelligence",
-  description:
-    "MDIP predicts which WBS tasks will slip before a work cell stalls, explains why, and routes the fix to a human for approval. Critical-path scheduling, XGBoost delay-risk scoring and a cited SOP copilot for project-based manufacturers.",
+  description: APP_DESCRIPTION,
+  openGraph: {
+    title: "MDIP: Manufacturing Decision Intelligence",
+    description: APP_DESCRIPTION,
+    type: "website",
+    siteName: "MDIP",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MDIP: Manufacturing Decision Intelligence",
+    description: APP_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

@@ -191,15 +191,21 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
 
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!draftCode.trim()) return;
+    const cleanCode = draftCode.trim();
+    const cleanParty = draftParty.trim();
+    const cleanMetric = draftMetric.trim();
+    if (!cleanCode || !cleanParty) {
+      onToast?.("Enter both a record code and party/title before adding.");
+      return;
+    }
     const id = `${activeTab}-${Date.now().toString().slice(-4)}`;
     if (activeTab === "material") {
-      const hours = Math.max(4, Number(draftMetric) || 32);
+      const hours = Math.max(4, Number(cleanMetric) || 32);
       const item: MaterialDeliveryItem = {
         id,
-        partNumber: draftCode.trim().toUpperCase(),
+        partNumber: cleanCode.toUpperCase(),
         description: "Shop-floor ingested material lot",
-        supplier: draftParty.trim() || "Approved Vendor",
+        supplier: cleanParty,
         eta: "Scheduled",
         stockCoverHours: hours,
         supplierLeadDays: 3,
@@ -210,11 +216,11 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       setMaterials((prev) => [item, ...prev]);
       await ingestIRoomRecord("materials", { ...item });
     } else if (activeTab === "progress") {
-      const pct = Math.min(100, Math.max(0, Number(draftMetric) || 50));
+      const pct = Math.min(100, Math.max(0, Number(cleanMetric) || 50));
       const item: ProjectProgressItem = {
         id,
-        projectCode: draftCode.trim().toUpperCase(),
-        name: draftParty.trim() || draftCode.trim(),
+        projectCode: cleanCode.toUpperCase(),
+        name: cleanParty,
         customer: "Client Order",
         currentMilestone: "In Machining",
         progressPercent: pct,
@@ -227,9 +233,9 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     } else if (activeTab === "drawing") {
       const item: DrawingApprovalItem = {
         id,
-        dwgNumber: draftCode.trim().toUpperCase(),
-        title: draftParty.trim() || "Engineering revision drawing",
-        revision: draftMetric.trim() || "Rev A.0",
+        dwgNumber: cleanCode.toUpperCase(),
+        title: cleanParty,
+        revision: cleanMetric || "Rev A.0",
         engineer: "Tooling Engineering",
         department: "Tooling R&D",
         submittedDate: "Just now",
@@ -241,10 +247,10 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     } else if (activeTab === "quotation") {
       const item: QuotationPoItem = {
         id,
-        poNumber: draftCode.trim().toUpperCase(),
+        poNumber: cleanCode.toUpperCase(),
         quotationRef: `QTN-${Date.now().toString().slice(-4)}`,
-        vendorName: draftParty.trim() || "Industrial Supplier",
-        totalValueIdr: draftMetric.trim() || "Rp 45.000.000",
+        vendorName: cleanParty,
+        totalValueIdr: cleanMetric || "Rp 45.000.000",
         status: "Pending Approval",
         paymentTerm: "Net 30 Days",
         expedited: true,
@@ -252,11 +258,11 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       setQuotations((prev) => [item, ...prev]);
       await ingestIRoomRecord("quotations", { ...item });
     } else {
-      const oee = Math.min(100, Math.max(10, Number(draftMetric) || 88));
+      const oee = Math.min(100, Math.max(10, Number(cleanMetric) || 88));
       const item: OperationTrackerItem = {
         id,
-        workCenter: draftCode.trim(),
-        machineId: draftParty.trim() || `CELL-${Date.now().toString().slice(-3)}`,
+        workCenter: cleanCode,
+        machineId: cleanParty,
         operator: "Assigned Operator",
         shift: "Shift 1",
         oeePercent: oee,
