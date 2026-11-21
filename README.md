@@ -43,7 +43,7 @@ MDIP adalah platform pendukung keputusan (*AI Decision Intelligence Layer*) terp
 youngprenur/ (MDIP)
 ├── README.md
 ├── package.json                          # Skrip root (dev/build/start/lint → web/)
-├── render.yaml                           # Deploy backend ke Render
+├── backend/vercel.json                  # Deploy backend sebagai Vercel Function
 ├── .mcp.json                             # Konfigurasi MCP (Supabase, Context7) untuk Claude Code
 ├── .github/workflows/
 │   └── ci.yml                            # Lint, unit test & smoke test (frontend di-deploy oleh Vercel)
@@ -161,11 +161,11 @@ npm run build && npm run test:e2e   # smoke test Playwright: menyalakan backend 
 
 ### E. Deploy
 - **Frontend (Vercel):** impor repositori di Vercel dengan **Root Directory** `web`; Vercel membangun ulang setiap push ke `main` dan membuat preview untuk tiap pull request.
-- **Backend (Render):** `render.yaml` men-deploy folder `backend/` (`uvicorn main:app`). Isi `SUPABASE_SERVICE_ROLE_KEY` agar data tersimpan di Supabase; tanpa itu backend memakai SQLite lokal yang hilang saat server restart.
+- **Backend (Vercel, gratis tanpa kartu):** proyek Vercel kedua dengan **Root Directory** `backend`; Vercel mendeteksi FastAPI di `main.py` dan membangun ulang setiap push ke `main`. Disk function tidak permanen (SQLite di `/tmp` hilang saat cold start), jadi isi `SUPABASE_SERVICE_ROLE_KEY` agar data tersimpan di Supabase.
 - Tanpa backend yang di-deploy, situs hanya menampilkan data contoh.
 
 Langkah menghubungkan situs publik ke backend sungguhan:
-1. Di Render: **New → Blueprint**, pilih repositori ini. `MDIP_AUTH_SECRET` dan `MDIP_ADMIN_KEY` dibuat otomatis; `MDIP_ENV=production` membuat server menolak berjalan tanpa secret yang kuat. Isi `SUPABASE_SERVICE_ROLE_KEY`, dan bila perlu `GEMINI_API_KEY` .
+1. Di Vercel: **Add New → Project**, impor repositori yang sama, set **Root Directory** `backend` (Framework Preset: FastAPI). Di **Settings → Environment Variables** isi `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MDIP_AUTH_SECRET` dan `MDIP_ADMIN_KEY` (string acak panjang, misalnya `python -c "import secrets;print(secrets.token_urlsafe(48))"`), `MDIP_CORS_ORIGINS=https://mdip-ecru.vercel.app`, dan bila perlu `DEEPSEEK_API_KEY` / `GEMINI_API_KEY`. Deployment production Vercel otomatis berjalan dalam mode produksi, yang menolak menandatangani sesi tanpa secret yang kuat. URL backend: domain proyek tersebut, misalnya `https://<nama-proyek>.vercel.app`.
 2. Di Supabase: jalankan semua berkas di `supabase/migrations/` (termasuk tabel `user_schedules` untuk jadwal per pengguna).
 3. Set `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` di Vercel sebelum build. Di FastAPI, isi `SUPABASE_URL` untuk proyek yang sama dan `MDIP_CORS_ORIGINS` dengan origin frontend.
 4. Di Supabase Authentication, aktifkan Email dengan konfirmasi dan Google. Masukkan OAuth client ID dan secret Google di dashboard Supabase. Tambahkan callback `https://mkurfdbznwhgocecombq.supabase.co/auth/v1/callback` ke authorized redirect URIs pada Google Cloud OAuth client.
@@ -175,8 +175,8 @@ Langkah menghubungkan situs publik ke backend sungguhan:
 
 Akun baru mendapat workspace dan identitas reviewer `supabase:<UUID>`. Untuk akun lama, verifikasi kepemilikan kedua identitas terlebih dahulu. Dengan Supabase Admin API server-side, set `app_metadata.mdip_user_id` ke ID internal MDIP lama dan, khusus pengguna Firebase, `app_metadata.mdip_firebase_uid` ke UID Firebase lama. Pertahankan field metadata lain ketika memperbarui akun. Pengguna perlu memperbarui sesi sesudahnya. Pemetaan eksplisit ini memulihkan akses ke jadwal, audit, dan grant reviewer lama. Jangan isi metadata ini dari input pengguna. Akun email/password Firebase perlu mendaftar atau diundang ke Supabase. Salin SOP dan record iRoom yang hanya tersimpan di Firestore ke backend sebelum cutover.
 
-Paket gratis Render tidur saat tidak dipakai; buka `<URL Render>/health` sekali sebelum demo agar permintaan pertama tidak lambat.
+Function Vercel dimuat ulang setelah lama tidak dipakai; permintaan pertama butuh beberapa detik, jadi buka `<URL backend>/health` sekali sebelum demo. Retraining model (`/api/v1/ml/retrain`) tidak bisa menyimpan model di Vercel; jalankan secara lokal.
 
 **Akses API:** semua endpoint memerlukan login, kecuali health check, login/registrasi, model card, dan `POST /api/v1/scheduler/inspect` (pratinjau publik CSV/Excel yang tidak menyimpan apa pun). Setiap pengguna punya jadwal aktif sendiri; unggahan satu pengguna tidak mengubah tampilan pengguna lain. Mode **On-premises** di dashboard membuat server tidak memanggil Google Gemini untuk dokumen maupun Copilot.
 
-**Persetujuan produksi:** Tambahkan migrasi `supabase/migrations/20261120010000_workspace_decision_reviews.sql` ke database Supabase dan deploy ulang `firestore.rules` bersama rilis ini. Atur `MDIP_DECISION_REVIEWERS` di Render dengan objek JSON yang memetakan `supabase:<UUID>`, `firebase:<UID>` atau `mdip:<ID akun>` ke peran reviewer, misalnya `{"supabase:UUID_REVIEWER":"Plant Manager"}`. Peran yang dipilih di UI hanya mengatur tampilan dashboard. Review tersimpan di FastAPI setelah status dan audit log berhasil ditulis dalam satu transaksi. Entri lama tanpa pemilik tetap tersimpan di database tetapi tidak muncul di workspace pengguna. Riwayat Firestore lama tetap tersimpan tanpa akses dari klien.
+**Persetujuan produksi:** Tambahkan migrasi `supabase/migrations/20261120010000_workspace_decision_reviews.sql` ke database Supabase dan deploy ulang `firestore.rules` bersama rilis ini. Atur `MDIP_DECISION_REVIEWERS` di Environment Variables proyek backend dengan objek JSON yang memetakan `supabase:<UUID>`, `firebase:<UID>` atau `mdip:<ID akun>` ke peran reviewer, misalnya `{"supabase:UUID_REVIEWER":"Plant Manager"}`. Peran yang dipilih di UI hanya mengatur tampilan dashboard. Review tersimpan di FastAPI setelah status dan audit log berhasil ditulis dalam satu transaksi. Entri lama tanpa pemilik tetap tersimpan di database tetapi tidak muncul di workspace pengguna. Riwayat Firestore lama tetap tersimpan tanpa akses dari klien.

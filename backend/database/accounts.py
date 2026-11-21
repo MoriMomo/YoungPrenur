@@ -23,7 +23,7 @@ _DEV_AUTH_SECRET = "mdip-local-dev-auth-secret-change-in-prod"
 
 
 def _is_production() -> bool:
-    return bool(os.environ.get("RENDER")) or os.environ.get("MDIP_ENV", "").lower() == "production"
+    return os.environ.get("VERCEL_ENV") == "production" or os.environ.get("MDIP_ENV", "").lower() == "production"
 
 
 def _auth_secret() -> bytes:

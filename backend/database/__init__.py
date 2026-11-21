@@ -24,7 +24,8 @@ from database._core import (  # noqa: E402
 )
 
 # The SQLite file; tests and scripts repoint it with `database.DB_PATH = ...` (see _core._db_path).
-DB_PATH = os.environ.get("MDIP_DB_PATH", os.path.join(DATA_DIR, "mdip.db"))
+# On Vercel only /tmp is writable (and is wiped between cold starts); set SUPABASE_SERVICE_ROLE_KEY to keep data.
+DB_PATH = os.environ.get("MDIP_DB_PATH") or os.path.join("/tmp" if os.environ.get("VERCEL") else DATA_DIR, "mdip.db")
 
 from database.accounts import (  # noqa: E402
     DEFAULT_DEMO_PASSWORD,

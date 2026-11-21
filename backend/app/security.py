@@ -22,7 +22,7 @@ import database
 from app.supabase_auth import supabase_user
 from app import firebase_auth
 
-PRODUCTION = bool(os.environ.get("RENDER")) or os.environ.get("MDIP_ENV", "").lower() == "production"
+PRODUCTION = os.environ.get("VERCEL_ENV") == "production" or os.environ.get("MDIP_ENV", "").lower() == "production"
 
 DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000",
