@@ -7,6 +7,7 @@ import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
 import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import Dither from "@/components/landing/Dither";
+import LetterGlitch from "@/components/landing/LetterGlitch";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
@@ -158,19 +159,7 @@ export default function LandingPage() {
         {/* Subject and action */}
         <section className="relative isolate grid overflow-hidden gap-8 border-b border-rule-strong bg-[#120f17] px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-            <Dither
-              waveColor="#bcbcbc"
-              backgroundColor="#120f17"
-              ditherMode="bayer"
-              colorNum={4}
-              pixelSize={2}
-              waveSpeed={0.05}
-              waveFrequency={3}
-              waveAmplitude={0.3}
-              mouseEffect="erase"
-              mouseRadius={0.3}
-              dpr={1}
-            />
+            <LetterGlitch glitchColors={["#fbfcfa", "#c2c9ef"]} glitchAmount={0.5} speed={1} flow={0.5} clickEffect="tear" />
             <div className="absolute inset-0 bg-gradient-to-b from-[#120f17]/85 to-[#120f17]/35 lg:bg-gradient-to-r lg:from-[#120f17]/90 lg:via-[#120f17]/75 lg:to-[#120f17]/15" />
           </div>
           <div className="lg:col-span-7">
@@ -343,7 +332,10 @@ export default function LandingPage() {
         </section>
 
         {/* Method: one axis, four stations */}
-        <section id="method" aria-labelledby="method-title" className="border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
+        <section id="method" aria-labelledby="method-title" className="relative isolate overflow-hidden border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-60 motion-reduce:hidden">
+            <Dither backgroundColor="#f3f5f1" waveColor="#c9d5cb" pixelSize={2} waveSpeed={0.04} dpr={1} />
+          </div>
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
             How a verdict is reached
           </h2>
@@ -354,12 +346,7 @@ export default function LandingPage() {
           <ol className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
             {METHOD.map((step, index) => (
               <li key={step.title} className="relative pl-12 before:absolute before:bottom-[-2rem] before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:right-[-1.5rem] md:before:border-l-0 md:before:border-t">
-                <span aria-hidden="true" className="absolute left-0 top-0 isolate grid size-8 place-items-center overflow-hidden border border-ink bg-ink font-mono text-sm font-bold text-white md:relative">
-                  {index === 0 && (
-                    <span className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden">
-                      <Dither backgroundColor="#14181c" waveColor="#537468" pixelSize={2} dpr={1} />
-                    </span>
-                  )}
+                <span aria-hidden="true" className="absolute left-0 top-0 grid size-8 place-items-center border border-ink bg-ink font-mono text-sm font-bold text-white md:relative">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <h3 className="min-h-8 content-center font-display text-xl font-bold text-ink md:mt-4">{step.title}</h3>

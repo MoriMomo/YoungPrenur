@@ -1,3 +1,6 @@
 {
-  "ignoreDependencies": ["@tailwindcss/turbopack"]
+  "ignoreDependencies": ["@tailwindcss/turbopack"],
+  "duplicates": {
+    "ignore": ["src/components/landing/**"]
+  }
 }
