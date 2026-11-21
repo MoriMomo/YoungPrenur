@@ -9,6 +9,7 @@ import { LinkButton } from "@/components/ui/Button";
 const NAV_LINKS = [
   { href: "#method", label: "Method" },
   { href: "#roles", label: "Roles" },
+  { href: "#plans", label: "Plans" },
 ];
 
 const CERTIFICATE_NO = "MDIP-DR-0001";

@@ -126,7 +126,7 @@ export const PerformanceChart: React.FC = () => {
       : "Daily Unplanned Downtime vs. 2.5h Tolerance (Last 7 Days)";
 
   return (
-    <div className="bg-white border border-rule rounded-xl p-5 sm:p-6 relative">
+    <div className="bg-sheet border border-rule-strong p-5 sm:p-6 relative">
       {/* Title & Metric Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>

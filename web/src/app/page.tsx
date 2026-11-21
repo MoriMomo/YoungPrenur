@@ -7,7 +7,6 @@ import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
 import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import Dither from "@/components/landing/Dither";
-import LetterGlitch from "@/components/landing/LetterGlitch";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
@@ -157,23 +156,30 @@ export default function LandingPage() {
         <Navbar />
 
         {/* Subject and action */}
-        <section className="relative isolate grid overflow-hidden gap-8 border-b border-rule-strong bg-[#120f17] px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-            <LetterGlitch glitchColors={["#fbfcfa", "#c2c9ef"]} glitchAmount={0.5} speed={1} flow={0.5} clickEffect="tear" />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#120f17]/85 to-[#120f17]/35 lg:bg-gradient-to-r lg:from-[#120f17]/90 lg:via-[#120f17]/75 lg:to-[#120f17]/15" />
-          </div>
+        <section className="relative isolate grid gap-8 border-b border-rule-strong bg-paper px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
           <div className="lg:col-span-7">
-            <h1 className="font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-white sm:text-[56px] lg:text-[60px] xl:text-[76px]">
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-ink-3">
+              Schedule Delay-Risk Inspection · B2B Manufacturing SaaS
+            </p>
+            <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[72px]">
               Know which tasks will slip before the work cell stalls
             </h1>
-            <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-white/90">
+            <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-ink-2">
               MDIP inspects a project schedule the way your plant inspects a steel bar: every task&apos;s forecast measured
               against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.
             </p>
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              <LinkButton href="/login?mode=register" size="lg">
+                Start 30-day pilot
+              </LinkButton>
+              <LinkButton href="/dashboard" variant="secondary" size="lg">
+                Open live cockpit
+              </LinkButton>
+            </div>
           </div>
 
           <div className="lg:col-span-5 lg:self-end">
-            <div className="border border-rule-strong bg-paper p-5">
+            <div className="border border-rule-strong bg-sheet p-5">
               <label htmlFor="schedule-file" className="font-display text-xl font-bold text-ink">
                 Submit a schedule for inspection
               </label>
@@ -203,6 +209,21 @@ export default function LandingPage() {
               )}
             </div>
           </div>
+        </section>
+
+        {/* Compatibility & plant governance strip */}
+        <section
+          aria-label="Supported exports and governance"
+          className="grid gap-3 border-b border-rule-strong bg-sheet-sunk px-5 py-3.5 text-xs text-ink-2 sm:px-8 lg:grid-cols-2 lg:items-center"
+        >
+          <p>
+            <span className="font-semibold text-ink">Schedule exports:</span>{" "}
+            SAP PS · MS Project · Primavera P6 · Excel / CSV (English &amp; Indonesian headers)
+          </p>
+          <p className="lg:text-right">
+            <span className="font-semibold text-ink">Plant controls:</span>{" "}
+            Isolated workspace · Zero public model training · Full HITL audit trail
+          </p>
         </section>
 
         {/* Inspection table */}
@@ -339,9 +360,9 @@ export default function LandingPage() {
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
             How a verdict is reached
           </h2>
-          <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
-            The model was trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules.
-            On 51 real projects it never saw, it ranks late tasks with a ROC-AUC of 0.78, against 0.53 for rule-based scoring. At the 0.25 alert threshold, precision was 36% and recall was 45%.
+          <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
+            Trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules.
+            On 51 held-out real projects, MDIP ranks late tasks at ROC-AUC 0.78 versus 0.53 for rule-based scoring, tuned for early-warning coverage before downstream work cells stall.
           </p>
           <ol className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
             {METHOD.map((step, index) => (
@@ -408,6 +429,76 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Plans & Pilot */}
+        <section id="plans" aria-labelledby="plans-title" className="border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
+                Pilot &amp; plant plans
+              </h2>
+              <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
+                Validate MDIP on one active tooling or production schedule before rolling out across your facility.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            <article className="flex flex-col justify-between border border-rule-strong bg-sheet p-5">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">30-Day Plant Pilot</p>
+                <h3 className="mt-2 font-display text-2xl font-bold text-ink">Guided Trial</h3>
+                <p className="mt-2 text-sm text-ink-2">For one active manufacturing line or tooling build.</p>
+                <ul className="mt-4 space-y-2 border-t border-rule pt-4 text-sm text-ink-2">
+                  <li>Up to 5 WBS schedules inspected</li>
+                  <li>CPM + 2,000-run Monte Carlo forecast</li>
+                  <li>6 role-scoped cockpit views</li>
+                  <li>Supervisor sign-off &amp; audit log</li>
+                </ul>
+              </div>
+              <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
+                Start 30-day pilot
+              </LinkButton>
+            </article>
+
+            <article className="flex flex-col justify-between border-2 border-stamp bg-sheet p-5">
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">Single Plant</p>
+                  <Verdict tone="info">Recommended</Verdict>
+                </div>
+                <h3 className="mt-2 font-display text-2xl font-bold text-ink">Plant License</h3>
+                <p className="mt-2 text-sm text-ink-2">Annual per-site license for continuous schedule control.</p>
+                <ul className="mt-4 space-y-2 border-t border-rule pt-4 text-sm text-ink-2">
+                  <li>Unlimited WBS &amp; CSV/Excel inspections</li>
+                  <li>Custom plant SOP knowledge base</li>
+                  <li>AI copilot with cited SOP clauses</li>
+                  <li>Role-based access &amp; exportable audit trail</li>
+                </ul>
+              </div>
+              <LinkButton href="/login?mode=register" variant="primary" size="md" className="mt-6 w-full justify-center">
+                Create plant workspace
+              </LinkButton>
+            </article>
+
+            <article className="flex flex-col justify-between border border-rule-strong bg-sheet p-5">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">Enterprise</p>
+                <h3 className="mt-2 font-display text-2xl font-bold text-ink">Custom Quote</h3>
+                <p className="mt-2 text-sm text-ink-2">Multi-plant operations with strict IT/OT governance.</p>
+                <ul className="mt-4 space-y-2 border-t border-rule pt-4 text-sm text-ink-2">
+                  <li>Multi-site portfolio &amp; executive rollups</li>
+                  <li>Dedicated deployment or VPC isolation</li>
+                  <li>SAP PS / Primavera P6 / MS Project sync</li>
+                  <li>SSO, custom retention &amp; onboarding SLA</li>
+                </ul>
+              </div>
+              <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
+                Request enterprise quote
+              </LinkButton>
+            </article>
+          </div>
+        </section>
+
         <footer className="flex flex-col items-center justify-between gap-3 border-t border-rule-strong px-5 py-5 text-xs text-ink-3 sm:flex-row sm:px-8">
           <span>MDIP · Manufacturing Decision Intelligence Platform</span>
           <div className="flex items-center gap-5">
@@ -416,6 +507,9 @@ export default function LandingPage() {
             </a>
             <a href="#roles" className="hover:text-ink">
               Roles
+            </a>
+            <a href="#plans" className="hover:text-ink">
+              Plans
             </a>
             <a href="/login" className="font-medium text-ink hover:underline">
               Sign in

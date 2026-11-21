@@ -40,7 +40,7 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-rule p-5 flex flex-col h-full">
+    <div className="bg-sheet border border-rule-strong p-5 flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
@@ -55,26 +55,26 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
         </span>
       </div>
 
-      <div className="space-y-3 flex-1 flex flex-col justify-between">
+      <div className="space-y-2.5 max-h-[390px] overflow-y-auto pr-1">
         {actions.map((act) => {
           const isRoleMatch = priorityDepartment && act.department === priorityDepartment;
           return (
             <div
               key={act.id}
-              className={`p-3.5 rounded-xl border transition-colors ${
+              className={`p-3 border transition-colors ${
                 isRoleMatch
-                  ? "border-rule-strong bg-white"
+                  ? "border-rule-strong bg-paper"
                   : "border-rule bg-sheet"
               }`}
             >
-              <div className="flex items-start justify-between gap-2 mb-1.5">
+              <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="min-w-0">
                   {isRoleMatch && (
-                    <div className="text-xs font-mono-numbers text-stamp font-medium mb-0.5">
+                    <div className="text-[11px] font-mono-numbers text-stamp font-medium mb-0.5">
                       Role Focus
                     </div>
                   )}
-                  <h3 className="text-sm font-medium text-ink">
+                  <h3 className="text-sm font-medium text-ink leading-snug">
                     {act.title}
                   </h3>
                 </div>
@@ -88,7 +88,7 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
                 </span>
               </div>
 
-              <p className="text-xs text-ink-2 leading-relaxed mb-3">{act.description}</p>
+              <p className="text-xs text-ink-2 leading-relaxed line-clamp-2 mb-2.5">{act.description}</p>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-rule-soft text-xs">
                 <div className="flex items-center gap-2 text-ink-3">

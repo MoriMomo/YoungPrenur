@@ -25,6 +25,7 @@ export interface SopPayload {
 }
 
 export interface DashboardContextType {
+  userName: string | null;
   selectedRole: ManufacturingRole;
   setSelectedRole: (role: ManufacturingRole) => void;
   deploymentMode: DeploymentMode;

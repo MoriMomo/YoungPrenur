@@ -34,7 +34,7 @@ export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast
   };
 
   return (
-    <div className="bg-white rounded-xl border border-rule p-5">
+    <div className="bg-sheet border border-rule-strong p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -49,7 +49,7 @@ export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast
           onClick={onSeeAllToast}
           className="text-xs font-medium text-stamp hover:underline cursor-pointer shrink-0"
         >
-          See all →
+          Inspect schedule →
         </button>
       </div>
 

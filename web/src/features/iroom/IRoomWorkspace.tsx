@@ -36,6 +36,34 @@ import { Button } from "@/components/ui/Button";
 
 export type IRoomTab = "material" | "progress" | "drawing" | "quotation" | "operations";
 
+const STREAM_EXPLANATIONS: Record<IRoomTab, { title: string; what: string; feeds: string }> = {
+  material: {
+    title: "Material Delivery",
+    what: "Tracks inbound raw alloys, fasteners, and sub-assemblies against remaining stock cover hours.",
+    feeds: "Flags stockout risks early so procurement can expedite POs before a work cell starves.",
+  },
+  progress: {
+    title: "Project Progress",
+    what: "Monitors active manufacturing programs, milestone completion %, and schedule variance.",
+    feeds: "Surfaces slipping builds so project leads can reallocate capacity or escalate blockers.",
+  },
+  drawing: {
+    title: "Drawing Approval",
+    what: "Controls engineering CAD revisions, GD&T tolerance checks, and QA sign-off status.",
+    feeds: "Prevents machining from starting on unapproved or superseded print revisions.",
+  },
+  quotation: {
+    title: "Quotation & PO",
+    what: "Tracks supplier RFQs, committed purchase orders, and unit price variance against target.",
+    feeds: "Catches cost overruns and stalled vendor approvals before spend hits the shop floor.",
+  },
+  operations: {
+    title: "Operation Tracker",
+    what: "Monitors active shop-floor work centers, machine utilization, and run status.",
+    feeds: "Highlights overloaded cells and downtime constraints for shift rescheduling.",
+  },
+};
+
 const HOW_IROOM_WORKS = [
   {
     step: "01",
@@ -301,7 +329,16 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       </div>
 
       {/* Main Content Card */}
-      <div className="bg-white border border-rule rounded-xl p-5 sm:p-6">
+      <div role="tabpanel" className="bg-sheet border border-rule-strong p-5 sm:p-6">
+        <div className="mb-5 border border-rule bg-paper px-4 py-3">
+          <p className="text-xs font-semibold text-ink">
+            What is {STREAM_EXPLANATIONS[activeTab].title}?
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-ink-2">
+            {STREAM_EXPLANATIONS[activeTab].what} {STREAM_EXPLANATIONS[activeTab].feeds}
+          </p>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />

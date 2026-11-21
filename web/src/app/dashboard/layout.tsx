@@ -383,6 +383,7 @@ export default function DashboardLayout({
   return (
     <DashboardContext.Provider
       value={{
+        userName: currentUser?.name || null,
         selectedRole,
         setSelectedRole: handleRoleChange,
         deploymentMode,

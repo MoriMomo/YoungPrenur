@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ProductionLineItem } from "@/types";
+import { OperationTrackerItem, ProductionLineItem } from "@/types";
 import {
   ChevronRight,
   MapPin,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 interface ProductionLineStatusProps {
+  operations?: OperationTrackerItem[];
   onSelectLine?: (line: ProductionLineItem) => void;
 }
 
@@ -136,15 +137,64 @@ function toLineItem(bay: WorkCenterTwin): ProductionLineItem {
   };
 }
 
+function fromOperations(operations: OperationTrackerItem[]): WorkCenterTwin[] {
+  const slots = [
+    { x: 40, y: 40, w: 320, h: 130 },
+    { x: 400, y: 40, w: 360, h: 130 },
+    { x: 40, y: 195, w: 320, h: 130 },
+    { x: 400, y: 195, w: 360, h: 130 },
+  ];
+  return operations.slice(0, 4).map((op, idx) => {
+    const slot = slots[idx] ?? slots[0];
+    const status: WorkCenterTwin["status"] =
+      op.vibrationSensor === "CRITICAL"
+        ? "Critical Constraint"
+        : op.vibrationSensor === "ELEVATED"
+        ? "Attention"
+        : op.oeePercent >= 88
+        ? "Above target"
+        : "On track";
+    const statusTone: WorkCenterTwin["statusTone"] =
+      status === "Critical Constraint"
+        ? "red"
+        : status === "Attention"
+        ? "amber"
+        : status === "Above target"
+        ? "cyan"
+        : "green";
+    const target = 1000;
+    const actual = Math.round((op.oeePercent / 100) * target);
+    const wbsMatch = op.activeJob.match(/WBS-[\d.]+/i);
+    return {
+      id: op.id,
+      name: op.workCenter,
+      machineModel: op.machineId,
+      wbsCode: wbsMatch ? wbsMatch[0].toUpperCase() : op.machineId,
+      wbsTask: op.activeJob,
+      wbsProject: `Shift ${op.shift}`,
+      utilization: Math.min(100, Math.max(0, Math.round(op.spindleUtilization))),
+      outputActual: actual,
+      outputTarget: target,
+      operator: op.operator,
+      status,
+      statusTone,
+      ...slot,
+      telemetryNote: `OEE ${op.oeePercent}% · Vibration ${op.vibrationSensor} · Shift ${op.shift}`,
+    };
+  });
+}
+
 export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
+  operations,
   onSelectLine,
 }) => {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"map" | "table">("map");
-  const [selectedBayId, setSelectedBayId] = useState<string>("bay-02");
+  const workCenters = operations && operations.length > 0 ? fromOperations(operations) : WORK_CENTERS_TWIN;
+  const [selectedBayId, setSelectedBayId] = useState<string>(workCenters[1]?.id ?? workCenters[0]?.id ?? "bay-02");
 
   const activeBay =
-    WORK_CENTERS_TWIN.find((b) => b.id === selectedBayId) || WORK_CENTERS_TWIN[0];
+    workCenters.find((b) => b.id === selectedBayId) || workCenters[0];
 
   const getStatusBadge = (status: WorkCenterTwin["status"]) => {
     switch (status) {
@@ -180,7 +230,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
   };
 
   return (
-    <div className="@container bg-white border border-rule rounded-xl p-5 sm:p-6 space-y-4">
+    <div className="@container bg-sheet border border-rule-strong p-5 sm:p-6 space-y-4">
       {/* Header & View Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rule-soft">
         <div>
@@ -229,7 +279,9 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
               <span className="text-stamp font-medium">
                 Shop A Work Center Matrix
               </span>
-              <span>4 cells monitored (simulated)</span>
+              <span>
+                {workCenters.length} cells monitored ({operations && operations.length > 0 ? "live IRoom stream" : "sample"})
+              </span>
             </div>
 
             <svg
@@ -240,8 +292,8 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
             >
               <rect width="780" height="345" fill="var(--color-paper)" rx="10" />
 
-              {WORK_CENTERS_TWIN.map((bay) => {
-                const isSelected = bay.id === selectedBayId;
+              {workCenters.map((bay) => {
+                const isSelected = bay.id === activeBay.id;
                 const strokeColor =
                   bay.statusTone === "red"
                     ? "var(--color-hold)"
@@ -251,7 +303,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                     ? "var(--color-stamp)"
                     : "var(--color-pass)";
 
-                const fillColor = isSelected ? "var(--color-sheet-sunk)" : "var(--color-sheet-sunk)";
+                const fillColor = isSelected ? "var(--color-sheet)" : "var(--color-sheet)";
 
                 return (
                   <g
@@ -275,7 +327,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                       width={bay.w}
                       height="28"
                       rx="10"
-                      fill="var(--color-paper)"
+                      fill="var(--color-sheet-sunk)"
                     />
                     <circle
                       cx={bay.x + 18}
@@ -286,7 +338,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                     <text
                       x={bay.x + 30}
                       y={bay.y + 18}
-                      fill="var(--color-sheet)"
+                      fill="var(--color-ink)"
                       fontSize="11"
                       fontWeight="600"
                     >
@@ -314,11 +366,11 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                     </text>
 
                     <text x={bay.x + 14} y={bay.y + 48} fill="var(--color-ink-3)" fontSize="10">
-                      Tool: <tspan fill="var(--color-rule)">{bay.machineModel}</tspan>
+                      Tool: <tspan fill="var(--color-ink-2)">{bay.machineModel}</tspan>
                     </text>
 
                     <text x={bay.x + 14} y={bay.y + 66} fill="var(--color-ink-3)" fontSize="10">
-                      WBS: <tspan fill="var(--color-stamp-line)" fontWeight="600">{bay.wbsTask}</tspan>
+                      WBS: <tspan fill="var(--color-ink)" fontWeight="600">{bay.wbsTask}</tspan>
                     </text>
 
                     <rect
@@ -341,7 +393,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                     <text
                       x={bay.x + 14}
                       y={bay.y + 105}
-                      fill="var(--color-rule-strong)"
+                      fill="var(--color-ink-2)"
                       fontSize="10"
                       fontWeight="600"
                       fontFamily="monospace"
@@ -454,7 +506,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-rule-soft">
-              {WORK_CENTERS_TWIN.map((bay) => (
+              {workCenters.map((bay) => (
                 <tr key={bay.id} className="hover:bg-sheet transition-colors">
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2.5">
