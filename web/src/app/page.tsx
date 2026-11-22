@@ -715,30 +715,30 @@ export default function LandingPage() {
         </section>
 
         <footer className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 motion-reduce:hidden">
             <Topography
               color="#2b3fbf"
               lightMode={true}
               lineCount={22}
-              lineWidth={1}
-              elevation={1}
-              foreground={0.2}
-              tilt={32}
+              lineWidth={1.3}
+              elevation={1.15}
+              foreground={0.25}
+              tilt={38}
               speed={0.25}
               direction="forward"
               glow={0}
               depthOfField={0}
-              fog={0.35}
+              fog={0.25}
               hoverEffect="lift"
               clickEffect="none"
-              majorLines={false}
-              brightness={1.1}
-              opacity={0.26}
+              majorLines={true}
+              brightness={1.35}
+              opacity={0.55}
               dpr={1}
             />
           </div>
 
-          <div className="guilloche border-b border-rule-strong px-5 py-4 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative z-10 guilloche border-b border-rule-strong px-5 py-4 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2.5">
               <MdipLogo variant="color" size={26} />
               <div>
@@ -760,8 +760,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-px bg-rule border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs">
-            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+          <div className="relative z-10 grid grid-cols-1 border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs [&>*]:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:[&>*]:border-b-0 lg:[&>*:not(:last-child)]:border-r">
+            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
               <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Platform</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
                 <li><a href="#inspection-title" className="hover:text-ink hover:underline">Schedule Inspector</a></li>
@@ -771,7 +771,7 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
               <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Intelligence &amp; Governance</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
                 <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">Cited SOP Copilot</Link></li>
@@ -781,7 +781,7 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
               <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Standards &amp; Exports</p>
               <ul className="space-y-1.5 text-ink-2">
                 <li>ISO 9001 Cl. 7.5 Audit Trail</li>
@@ -791,7 +791,7 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
               <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Access &amp; Deployment</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
                 <li><a href="#plans" className="hover:text-ink hover:underline">Pilot &amp; Plant Plans</a></li>
@@ -802,7 +802,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="bg-paper/85 px-5 py-3.5 sm:px-8 flex flex-col items-center justify-between gap-2 text-center sm:text-left text-xs text-ink-3 sm:flex-row">
+          <div className="relative z-10 bg-paper/55 px-5 py-3.5 sm:px-8 flex flex-col items-center justify-between gap-2 text-center sm:text-left text-xs text-ink-3 sm:flex-row">
             <span>MDIP · Manufacturing Decision Intelligence Platform</span>
             <span className="font-mono-numbers">
               XGBoost + 2,000-run Monte Carlo · Human-in-the-loop sign-off required
