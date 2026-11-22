@@ -114,18 +114,35 @@ def _trim_excerpt(text: str, limit: int = 4000) -> Optional[str]:
     return cleaned[: limit - 3].rstrip() + "..."
 
 
-_PDM_WITH_LAG_RE = re.compile(
-    r"^(.+?)\s*(FS|SS|FF|SF)\s*([+-]\s*\d+(?:\.\d+)?\s*[dhw]?)$",
+# "<code>[ ]FS|SS|FF|SF[ ±lag]" or "<code> ±lag" (FS implied). Lag units: d (default), h (8 h = 1 d), w (5 d).
+_PRED_LINK_RE = re.compile(
+    r"^(?P<code>.+?)\s*(?:"
+    r"(?P<rel>FS|SS|FF|SF)(?:\s*(?P<sign>[+-])\s*(?P<val>\d+(?:\.\d+)?)\s*(?P<unit>[dhw]?))?"
+    r"|(?P<psign>[+-])\s*(?P<pval>\d+(?:\.\d+)?)\s*(?P<punit>[dhw])"
+    r")$",
     re.IGNORECASE,
 )
-_PDM_NO_LAG_RE = re.compile(
-    r"^(.+?(?:\d|\s))\s*(FS|SS|FF|SF)$",
-    re.IGNORECASE,
-)
-_PURE_LAG_RE = re.compile(
-    r"^(.+?)\s*([+-]\s*\d+(?:\.\d+)?\s*[dhw])$",
-    re.IGNORECASE,
-)
+_LAG_UNIT_DAYS = {"d": 1.0, "h": 1.0 / 8.0, "w": 5.0}
+
+
+def _parse_pred_token(token: str) -> tuple[str, str, float]:
+    """One predecessor token -> (code, relation, lag_days); anything unrecognised is a plain FS code."""
+    raw = token.strip()
+    m = _PRED_LINK_RE.match(raw)
+    if not m:
+        return raw, "FS", 0.0
+    if m.group("rel"):
+        sign, val, unit = m.group("sign"), m.group("val"), m.group("unit")
+        # "GLASS" or "STAFF" are codes, not GLA+SS: a bare relation must follow a digit or a space.
+        before = raw[m.start("rel") - 1]
+        if val is None and not (before.isdigit() or before.isspace()):
+            return raw, "FS", 0.0
+    else:
+        sign, val, unit = m.group("psign"), m.group("pval"), m.group("punit")
+    lag = 0.0
+    if val is not None:
+        lag = (-1.0 if sign == "-" else 1.0) * float(val) * _LAG_UNIT_DAYS[(unit or "d").lower()]
+    return m.group("code").strip(), (m.group("rel") or "FS").upper(), lag
 
 _DATE_FORMATS = (
     "%Y-%m-%d",
@@ -165,20 +182,6 @@ def _parse_date(val: Any) -> Optional[datetime]:
     return None
 
 
-def _parse_lag_days(lag_raw: Optional[str]) -> float:
-    if not lag_raw:
-        return 0.0
-    s = re.sub(r"\s+", "", lag_raw.lower())
-    unit = s[-1] if s and s[-1] in {"d", "h", "w"} else "d"
-    num_str = s[:-1] if s and s[-1] in {"d", "h", "w"} else s
-    num = float(num_str)
-    if unit == "h":
-        return num / 8.0
-    if unit == "w":
-        return num * 5.0
-    return num
-
-
 def _parse_pred_links(raw: Any) -> List[Dict[str, Any]]:
     """Parse predecessor strings/lists into structured PDM links ({code, rel, lag_days})."""
     if isinstance(raw, list):
@@ -204,22 +207,7 @@ def _parse_pred_links(raw: Any) -> List[Dict[str, Any]]:
     for tok in tokens:
         if not tok or tok.lower() in {"none", "nan", "-"}:
             continue
-        code, rel, lag_days = tok, "FS", 0.0
-        m = _PDM_WITH_LAG_RE.match(tok)
-        if m:
-            code = m.group(1).strip()
-            rel = m.group(2).upper()
-            lag_days = _parse_lag_days(m.group(3))
-        else:
-            m2 = _PDM_NO_LAG_RE.match(tok)
-            if m2:
-                code = m2.group(1).strip()
-                rel = m2.group(2).upper()
-            else:
-                m3 = _PURE_LAG_RE.match(tok)
-                if m3:
-                    code = m3.group(1).strip()
-                    lag_days = _parse_lag_days(m3.group(2))
+        code, rel, lag_days = _parse_pred_token(tok)
         key = (code, rel, lag_days)
         if code and key not in seen:
             seen.add(key)
