@@ -15,7 +15,7 @@ const EN = (
         <li>Sign-off decisions and the audit log are kept per workspace.</li>
         <li>
           The SOP knowledge base and IRoom records are shared by everyone on the same MDIP deployment. Plants that need
-          them separated get a dedicated deployment on the enterprise plan.
+          them separated use the on-premise / private VPC licensing add-on.
         </li>
         <li>MDIP does not train its delay-risk model, or any other model, on your schedules or SOPs.</li>
       </ul>
@@ -67,8 +67,8 @@ const EN = (
     <section>
       <h2>Hosting</h2>
       <p>
-        The cloud service runs on Vercel and stores data in a Supabase Postgres database, served over HTTPS. Enterprise
-        plans can run in a dedicated deployment or an isolated VPC instead.
+        The cloud service runs on Vercel and stores data in a Supabase Postgres database, served over HTTPS. With the
+        on-premise / private VPC licensing add-on, MDIP runs in your own network instead.
       </p>
     </section>
   </>
@@ -83,7 +83,7 @@ const ID = (
         <li>Keputusan pengesahan dan log audit disimpan per workspace.</li>
         <li>
           Basis pengetahuan SOP dan catatan IRoom dipakai bersama oleh semua pengguna di deployment MDIP yang sama. Pabrik
-          yang perlu memisahkannya mendapat deployment khusus pada paket enterprise.
+          yang perlu memisahkannya memakai layanan tambahan lisensi on-premise / VPC privat.
         </li>
         <li>MDIP tidak melatih model risiko keterlambatannya, maupun model lain, dengan jadwal atau SOP Anda.</li>
       </ul>
@@ -135,8 +135,8 @@ const ID = (
     <section>
       <h2>Hosting</h2>
       <p>
-        Layanan cloud berjalan di Vercel dan menyimpan data di basis data Supabase Postgres, dilayani melalui HTTPS. Paket
-        enterprise dapat berjalan di deployment khusus atau VPC terisolasi.
+        Layanan cloud berjalan di Vercel dan menyimpan data di basis data Supabase Postgres, dilayani melalui HTTPS. Dengan
+        layanan tambahan lisensi on-premise / VPC privat, MDIP berjalan di jaringan Anda sendiri.
       </p>
     </section>
   </>

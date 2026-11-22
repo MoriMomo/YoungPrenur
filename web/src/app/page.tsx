@@ -24,10 +24,82 @@ import { InspectionRow, SAMPLE_ROWS, TONE_BAR, verdictFor } from "@/components/l
 import { InspectionDetail } from "@/components/landing/InspectionDetail";
 import { CockpitPreview } from "@/components/landing/CockpitPreview";
 import { PilotAndFaq } from "@/components/landing/PilotAndFaq";
+import { Words } from "@/components/landing/Words";
 import { useT } from "@/lib/i18n";
 
-/** Plant License list price; null shows "quoted after the pilot" until a real price is set. */
-const PLANT_LICENSE_PRICE: { amount: string; unit: string; unitId: string } | null = { amount: "Rp 7 juta", unit: "per plant / month", unitId: "per pabrik / bulan" };
+type Pair = [string, string];
+
+// shortcut: dummy sales inbox until a real one exists; replace before launch.
+const SALES_EMAIL = "sales@mdip.example";
+
+const PLANS: { tag: Pair; name: Pair; price: string | null; desc: Pair; items: Pair[]; cta: Pair; href: string; featured?: boolean }[] = [
+  {
+    tag: ["Starts with a 30-day pilot", "Dimulai dengan pilot 30 hari"],
+    name: ["Starter", "Starter"],
+    price: "Rp 3,5 juta",
+    desc: ["Core scheduling, project visibility and basic reporting.", "Penjadwalan inti, visibilitas proyek, dan pelaporan dasar."],
+    items: [
+      ["Schedule upload from CSV, Excel, PDF or Word", "Unggah jadwal dari CSV, Excel, PDF, atau Word"],
+      ["Critical-path timeline and project visibility", "Linimasa jalur kritis dan visibilitas proyek"],
+      ["Basic reporting and exportable brief", "Pelaporan dasar dan ringkasan yang bisa diekspor"],
+      ["Guided 30-day pilot on one active schedule", "Pilot terpandu 30 hari pada satu jadwal aktif"],
+    ],
+    cta: ["Start with a 30-day pilot", "Mulai dengan pilot 30 hari"],
+    href: "/login?mode=register",
+  },
+  {
+    tag: ["Recommended", "Disarankan"],
+    name: ["Pro", "Pro"],
+    price: "Rp 7,5 juta",
+    desc: ["Advanced planning, delay-risk detection and AI Copilot access.", "Perencanaan lanjutan, deteksi risiko keterlambatan, dan akses Copilot AI."],
+    items: [
+      ["Everything in Starter", "Semua fitur Starter"],
+      ["Delay-risk scores with the reasons behind them", "Skor risiko keterlambatan beserta alasannya"],
+      ["2,000-run Monte Carlo slip forecast", "Prakiraan kemunduran 2.000 simulasi Monte Carlo"],
+      ["AI Copilot with cited SOP clauses", "Copilot AI dengan kutipan klausul SOP"],
+      ["Supervisor sign-off and audit log", "Pengesahan supervisor dan log audit"],
+    ],
+    cta: ["Choose Pro", "Pilih Pro"],
+    href: "/login?mode=register",
+    featured: true,
+  },
+  {
+    tag: ["Multi-site", "Multi-lokasi"],
+    name: ["Industrial Enterprise", "Industrial Enterprise"],
+    price: null,
+    desc: ["Full features across sites, integrations and dedicated support.", "Fitur lengkap lintas lokasi, integrasi, dan dukungan khusus."],
+    items: [
+      ["Everything in Pro", "Semua fitur Pro"],
+      ["Multi-site portfolio and executive rollups", "Portofolio multi-lokasi dan ringkasan eksekutif"],
+      ["Integrations with your ERP and planning tools", "Integrasi dengan ERP dan alat perencanaan Anda"],
+      ["Dedicated support, SSO and custom retention", "Dukungan khusus, SSO, dan retensi khusus"],
+    ],
+    cta: ["Contact sales", "Hubungi sales"],
+    href: `mailto:${SALES_EMAIL}?subject=MDIP%20Industrial%20Enterprise`,
+  },
+];
+
+const INCLUDED: Pair[] = [
+  ["Monthly or annual subscription", "Langganan bulanan atau tahunan"],
+  ["Onboarding with Excel/PDF migration", "Onboarding dengan migrasi Excel/PDF"],
+  ["Quarterly performance reviews", "Tinjauan kinerja per kuartal"],
+  ["Technical helpdesk", "Helpdesk teknis"],
+];
+
+const ADD_ONS: { name: Pair; body: Pair }[] = [
+  {
+    name: ["ERP connector implementation", "Implementasi konektor ERP"],
+    body: ["One-time integration with SAP PS, Primavera P6, MS Project or your ERP.", "Integrasi satu kali dengan SAP PS, Primavera P6, MS Project, atau ERP Anda."],
+  },
+  {
+    name: ["On-premise / private VPC licensing", "Lisensi on-premise / VPC privat"],
+    body: ["Deployment inside your network for security or compliance needs.", "Deployment di dalam jaringan Anda untuk kebutuhan keamanan atau kepatuhan."],
+  },
+  {
+    name: ["Operator training", "Pelatihan operator"],
+    body: ["For project managers, planners and shop-floor teams.", "Untuk manajer proyek, perencana, dan tim lantai produksi."],
+  },
+];
 
 const METHOD: { title: [string, string]; body: [string, string] }[] = [
   {
@@ -206,11 +278,21 @@ export default function LandingPage() {
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.from("[data-hero-item]", {
-          y: 12,
+        // Headline words rise out of a blur. No opacity, so the headline counts as painted at once (LCP).
+        gsap.from("h1 [data-word]", {
+          yPercent: 35,
+          filter: "blur(10px)",
+          duration: 0.8,
+          stagger: 0.05,
+          ease: "power3.out",
+          clearProps: "transform,filter",
+        });
+        gsap.from("[data-hero-item] > :not(h1)", {
+          y: 14,
           opacity: 0,
-          duration: 0.35,
-          stagger: 0.06,
+          duration: 0.6,
+          stagger: 0.08,
+          delay: 0.3,
           ease: "power2.out",
           clearProps: "transform,opacity",
         });
@@ -218,6 +300,33 @@ export default function LandingPage() {
       return () => mm.revert();
     },
     { scope: heroRef }
+  );
+
+  // Section titles: words rise in a stagger as they scroll into view, the intro line follows.
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.utils.toArray<HTMLElement>('h2[id$="-title"]').forEach((title) => {
+          const trigger = { trigger: title, start: "top 88%", once: true };
+          gsap.from(title.querySelectorAll("[data-word]"), {
+            yPercent: 70,
+            autoAlpha: 0,
+            duration: 0.7,
+            stagger: 0.06,
+            ease: "power3.out",
+            clearProps: "transform,opacity,visibility",
+            scrollTrigger: trigger,
+          });
+          const lead = title.nextElementSibling;
+          if (lead?.tagName === "P") {
+            gsap.from(lead, { y: 12, autoAlpha: 0, duration: 0.7, delay: 0.2, ease: "power2.out", clearProps: "transform,opacity,visibility", scrollTrigger: trigger });
+          }
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: deskRef }
   );
 
   useGSAP(
@@ -434,7 +543,7 @@ export default function LandingPage() {
               {t("Schedule Delay-Risk Inspection · B2B Manufacturing SaaS", "Inspeksi Risiko Keterlambatan Jadwal · SaaS Manufaktur B2B")}
             </p>
             <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[72px]">
-              {t("Know which tasks will slip before the work cell stalls", "Ketahui tugas yang akan mundur sebelum sel kerja berhenti")}
+              <Words>{t("Know which tasks will slip before the work cell stalls", "Ketahui tugas yang akan mundur sebelum sel kerja berhenti")}</Words>
             </h1>
             <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-ink-2">
               {t(
@@ -513,7 +622,7 @@ export default function LandingPage() {
         <section aria-labelledby="inspection-title" className="px-5 pb-8 pt-7 sm:px-8">
           <div>
             <h2 id="inspection-title" className="w-fit font-display text-2xl font-bold text-ink">
-              {t("Inspection results", "Hasil inspeksi")}
+              <Words>{t("Inspection results", "Hasil inspeksi")}</Words>
             </h2>
             <p className="mt-1 w-fit max-w-[calc(100%-140px)] text-sm text-ink-2">
               {t("Item inspected:", "Objek inspeksi:")} <span className="font-medium text-ink">{t(subject)}</span>
@@ -706,7 +815,7 @@ export default function LandingPage() {
             <Dither backgroundColor="#f3f5f1" waveColor="#c9d5cb" pixelSize={2} waveSpeed={0.04} dpr={1} />
           </div>
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-            {t("How a verdict is reached", "Bagaimana putusan dibuat")}
+            <Words>{t("How a verdict is reached", "Bagaimana putusan dibuat")}</Words>
           </h2>
           <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
             {t(
@@ -732,7 +841,7 @@ export default function LandingPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 id="roles-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-                {t("One certificate, six readers", "Satu sertifikat, enam pembaca")}
+                <Words>{t("One certificate, six readers", "Satu sertifikat, enam pembaca")}</Words>
               </h2>
               <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
                 {t(
@@ -820,91 +929,77 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-                  {t("Pilot & plant plans", "Paket pilot & pabrik")}
+                  <Words>{t("Plans & pricing", "Paket & harga")}</Words>
                 </h2>
                 <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
                   {t(
-                    "Validate MDIP on one active tooling or production schedule before rolling out across your facility.",
-                    "Uji MDIP pada satu jadwal tooling atau produksi yang aktif sebelum diterapkan di seluruh fasilitas Anda."
+                    "Every subscription starts with a guided 30-day pilot on one active schedule. Billed monthly or annually.",
+                    "Setiap langganan dimulai dengan pilot terpandu 30 hari pada satu jadwal aktif. Ditagih bulanan atau tahunan."
                   )}
                 </p>
               </div>
-              <p className="font-mono text-xs text-ink-3">{t("Form MDIP-PL-03 · Cloud or VPC isolation", "Formulir MDIP-PL-03 · Cloud atau isolasi VPC")}</p>
+              <p className="font-mono text-xs text-ink-3">
+                {t("Form MDIP-PL-03 · Cloud or hybrid (on-premise / private VPC)", "Formulir MDIP-PL-03 · Cloud atau hybrid (on-premise / VPC privat)")}
+              </p>
             </div>
 
             <div className="mt-8 grid border border-rule-strong bg-sheet/80 backdrop-blur-[1px] divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
-              <article className="flex flex-col justify-between p-6">
-                <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">{t("30-Day Plant Pilot", "Pilot Pabrik 30 Hari")}</p>
-                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t("Guided Trial", "Uji Coba Terpandu")}</h3>
-                  <p className="mt-3 flex items-baseline gap-1.5">
-                    <span className="font-display text-3xl font-bold text-ink">Rp 3,5 juta</span>
-                    <span className="text-sm text-ink-3">{t("for the 30-day pilot", "untuk pilot 30 hari")}</span>
-                  </p>
-                  <p className="mt-1.5 text-sm text-ink-2">{t("For one active manufacturing line or tooling build.", "Untuk satu lini manufaktur atau pembuatan tooling yang aktif.")}</p>
-                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                    <li>{t("Up to 5 WBS schedules inspected", "Hingga 5 jadwal WBS diinspeksi")}</li>
-                    <li>{t("CPM + 2,000-run Monte Carlo forecast", "CPM + prakiraan 2.000 simulasi Monte Carlo")}</li>
-                    <li>{t("6 role-scoped cockpit views", "6 tampilan kokpit per peran")}</li>
-                    <li>{t("Supervisor sign-off & audit log", "Pengesahan supervisor & log audit")}</li>
-                  </ul>
-                </div>
-                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
-                  {t("Start 30-day pilot", "Mulai pilot 30 hari")}
-                </LinkButton>
-              </article>
-
-              <article className="flex flex-col justify-between bg-paper/80 p-6 border-t-2 border-t-stamp md:border-t-2 md:border-t-stamp">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">{t("Single Plant", "Satu Pabrik")}</p>
-                    <Verdict tone="info">{t("Recommended")}</Verdict>
+              {PLANS.map((plan) => (
+                <article
+                  key={plan.name[0]}
+                  className={`flex flex-col justify-between p-6 ${plan.featured ? "border-t-2 border-t-stamp bg-paper/80" : ""}`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`font-mono text-xs uppercase tracking-[0.06em] ${plan.featured ? "text-stamp" : "text-ink-3"}`}>
+                        {t(...plan.tag)}
+                      </p>
+                    </div>
+                    <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t(...plan.name)}</h3>
+                    <p className="mt-3 flex items-baseline gap-1.5">
+                      <span className="font-display text-3xl font-bold text-ink">{plan.price ?? t("Contact us", "Hubungi kami")}</span>
+                      {plan.price && <span className="text-sm text-ink-3">{t("/ month", "/ bulan")}</span>}
+                    </p>
+                    <p className="mt-1.5 text-sm text-ink-2">{t(...plan.desc)}</p>
+                    <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                      {plan.items.map((item) => (
+                        <li key={item[0]}>{t(...item)}</li>
+                      ))}
+                    </ul>
                   </div>
-                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t("Plant License", "Lisensi Pabrik")}</h3>
-                  {PLANT_LICENSE_PRICE ? (
-                    <p className="mt-3 flex items-baseline gap-1.5">
-                      <span className="font-display text-3xl font-bold text-ink">{PLANT_LICENSE_PRICE.amount}</span>
-                      <span className="text-sm text-ink-3">{t(PLANT_LICENSE_PRICE.unit, PLANT_LICENSE_PRICE.unitId)}</span>
-                    </p>
-                  ) : (
-                    <p className="mt-3 flex items-baseline gap-1.5">
-                      <span className="font-display text-xl font-bold text-ink">{t("Per plant, per year", "Per pabrik, per tahun")}</span>
-                      <span className="text-sm text-ink-3">{t("quoted after the pilot", "ditawarkan setelah pilot")}</span>
-                    </p>
-                  )}
-                  <p className="mt-1.5 text-sm text-ink-2">{t("Per-site license for continuous schedule control.", "Lisensi per lokasi untuk kendali jadwal berkelanjutan.")}</p>
-                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                    <li>{t("Unlimited WBS & CSV/Excel inspections", "Inspeksi WBS & CSV/Excel tanpa batas")}</li>
-                    <li>{t("Custom plant SOP knowledge base", "Basis pengetahuan SOP khusus pabrik")}</li>
-                    <li>{t("AI copilot with cited SOP clauses", "Copilot AI dengan kutipan klausul SOP")}</li>
-                    <li>{t("Role-based access & exportable audit trail", "Akses per peran & jejak audit yang bisa diekspor")}</li>
-                  </ul>
-                </div>
-                <LinkButton href="/login?mode=register" variant="primary" size="md" className="mt-6 w-full justify-center">
-                  {t("Create plant workspace", "Buat workspace pabrik")}
-                </LinkButton>
-              </article>
+                  <LinkButton
+                    href={plan.href}
+                    variant={plan.featured ? "primary" : "secondary"}
+                    size="md"
+                    className="mt-6 w-full justify-center"
+                  >
+                    {t(...plan.cta)}
+                  </LinkButton>
+                </article>
+              ))}
+            </div>
 
-              <article className="flex flex-col justify-between p-6">
-                <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">{t("Enterprise", "Enterprise")}</p>
-                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t("Custom Quote", "Penawaran Khusus")}</h3>
-                  <p className="mt-3 flex items-baseline gap-1.5">
-                    <span className="font-display text-xl font-bold text-ink">{t("Contact us", "Hubungi kami")}</span>
-                    <span className="text-sm text-ink-3">{t("for a quote sized to your sites", "untuk penawaran sesuai lokasi Anda")}</span>
-                  </p>
-                  <p className="mt-1.5 text-sm text-ink-2">{t("Multi-plant operations with strict IT/OT governance.", "Operasi multi-pabrik dengan tata kelola IT/OT yang ketat.")}</p>
-                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                    <li>{t("Multi-site portfolio & executive rollups", "Portofolio multi-lokasi & ringkasan eksekutif")}</li>
-                    <li>{t("Dedicated deployment or VPC isolation", "Deployment khusus atau isolasi VPC")}</li>
-                    <li>{t("SAP PS / Primavera P6 / MS Project sync", "Sinkronisasi SAP PS / Primavera P6 / MS Project")}</li>
-                    <li>{t("SSO, custom retention & onboarding SLA", "SSO, retensi khusus & SLA onboarding")}</li>
-                  </ul>
-                </div>
-                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
-                  {t("Request enterprise quote", "Minta penawaran enterprise")}
-                </LinkButton>
-              </article>
+            <p className="mt-4 text-xs text-ink-2">
+              <span className="font-semibold text-ink">{t("Included in every plan:", "Termasuk di setiap paket:")}</span>{" "}
+              {INCLUDED.map((item) => t(...item)).join(" · ")}
+            </p>
+
+            <div className="mt-8">
+              <h3 className="font-display text-xl font-bold text-ink">{t("Add-ons", "Layanan tambahan")}</h3>
+              <ul className="mt-3 grid border border-rule-strong bg-sheet/80 divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0">
+                {ADD_ONS.map((addOn) => (
+                  <li key={addOn.name[0]} className="p-5">
+                    <p className="text-sm font-semibold text-ink">{t(...addOn.name)}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-2">{t(...addOn.body)}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-ink-3">
+                {t("Priced on request:", "Harga sesuai permintaan:")}{" "}
+                <a href={`mailto:${SALES_EMAIL}`} className="font-medium text-stamp hover:underline">
+                  {SALES_EMAIL}
+                </a>
+              </p>
             </div>
           </section>
 
@@ -968,7 +1063,7 @@ export default function LandingPage() {
             <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
               <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Access & Deployment", "Akses & Deployment")}</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><a href="#plans" className="hover:text-ink hover:underline">{t("Pilot & Plant Plans", "Paket Pilot & Pabrik")}</a></li>
+                <li><a href="#plans" className="hover:text-ink hover:underline">{t("Plans & Pricing", "Paket & Harga")}</a></li>
                 <li><Link href="/login" className="hover:text-ink hover:underline">{t("Operator Sign In", "Masuk Operator")}</Link></li>
                 <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">{t("Create Plant Account", "Buat Akun Pabrik")}</Link></li>
                 <li className="py-0.5">{t("Cloud SaaS & On-Premises VPC", "SaaS Cloud & VPC On-Premises")}</li>

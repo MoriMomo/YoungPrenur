@@ -3,7 +3,7 @@ import { LegalPage } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
   title: "Terms · MDIP",
-  description: "Draft terms of service for MDIP pilots and plant licenses.",
+  description: "Draft terms of service for MDIP pilots and subscriptions.",
 };
 
 const EN = (
@@ -12,8 +12,8 @@ const EN = (
       <h2>The service</h2>
       <p>
         MDIP inspects project schedules, scores each task&apos;s delay risk, recommends actions that cite your SOPs, and
-        records who authorized or overrode them. Pilots run for 30 days on one active schedule; plant and enterprise
-        licenses are agreed in writing.
+        records who authorized or overrode them. Every subscription starts with a 30-day pilot on one active schedule.
+        Starter and Pro are billed monthly or annually; Industrial Enterprise and add-ons are agreed in writing.
       </p>
     </section>
 
@@ -59,8 +59,9 @@ const ID = (
       <h2>Layanan</h2>
       <p>
         MDIP memeriksa jadwal proyek, menilai risiko keterlambatan tiap tugas, menyarankan tindakan yang mengutip SOP Anda,
-        dan mencatat siapa yang menyetujui atau membatalkannya. Pilot berjalan 30 hari pada satu jadwal aktif; lisensi pabrik
-        dan enterprise disepakati secara tertulis.
+        dan mencatat siapa yang menyetujui atau membatalkannya. Setiap langganan dimulai dengan pilot 30 hari pada satu jadwal
+        aktif. Starter dan Pro ditagih bulanan atau tahunan; Industrial Enterprise dan layanan tambahan disepakati secara
+        tertulis.
       </p>
     </section>
 
@@ -107,8 +108,8 @@ export default function TermsPage() {
     <LegalPage
       title={["Terms of service", "Ketentuan layanan"]}
       intro={[
-        "The terms for using MDIP during a pilot and under a plant or enterprise license.",
-        "Ketentuan penggunaan MDIP selama pilot dan di bawah lisensi pabrik atau enterprise.",
+        "The terms for using MDIP during a pilot and on a Starter, Pro or Industrial Enterprise subscription.",
+        "Ketentuan penggunaan MDIP selama pilot dan pada langganan Starter, Pro, atau Industrial Enterprise.",
       ]}
       updated={["22 November 2026", "22 November 2026"]}
       draft

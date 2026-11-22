@@ -1,6 +1,7 @@
 import React from "react";
 import { LinkButton } from "@/components/ui/Button";
 import { useT } from "@/lib/i18n";
+import { Words } from "./Words";
 import { InspectionRow, TONE_BAR, verdictFor } from "./inspection";
 
 /**
@@ -30,7 +31,7 @@ export function CockpitPreview({
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 id="cockpit-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-            {t("Inside the cockpit", "Di dalam kokpit")}
+            <Words>{t("Inside the cockpit", "Di dalam kokpit")}</Words>
           </h2>
           <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
             {t(

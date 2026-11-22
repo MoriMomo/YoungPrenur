@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { Words } from "./Words";
 
 type Pair = [string, string];
 
@@ -34,8 +35,8 @@ const PILOT: { when: Pair; title: Pair; body: Pair }[] = [
     when: ["Week 4", "Minggu 4"],
     title: ["Sign-off review", "Tinjauan pengesahan"],
     body: [
-      "Compare the tasks MDIP flagged with the ones that actually slipped, export the audit log, and decide on a plant license.",
-      "Bandingkan tugas yang ditandai MDIP dengan yang benar-benar mundur, ekspor log audit, lalu putuskan lisensi pabrik.",
+      "Compare the tasks MDIP flagged with the ones that actually slipped, export the audit log, and choose to stay on Starter or move to Pro.",
+      "Bandingkan tugas yang ditandai MDIP dengan yang benar-benar mundur, ekspor log audit, lalu pilih tetap di Starter atau naik ke Pro.",
     ],
   },
 ];
@@ -44,8 +45,8 @@ const FAQ: { q: Pair; a: Pair }[] = [
   {
     q: ["Can MDIP run on-premises or in our own VPC?", "Bisakah MDIP berjalan on-premises atau di VPC kami sendiri?"],
     a: [
-      "Yes. The enterprise plan includes a dedicated deployment or VPC isolation. In on-premises mode the MDIP server reads documents and answers Copilot questions itself, without sending them to an outside AI service.",
-      "Bisa. Paket enterprise mencakup deployment khusus atau isolasi VPC. Dalam mode on-premises, server MDIP membaca dokumen dan menjawab pertanyaan Copilot sendiri, tanpa mengirimnya ke layanan AI luar.",
+      "Yes, with the on-premise / private VPC licensing add-on. In on-premises mode the MDIP server reads documents and answers Copilot questions itself, without sending them to an outside AI service.",
+      "Bisa, dengan layanan tambahan lisensi on-premise / VPC privat. Dalam mode on-premises, server MDIP membaca dokumen dan menjawab pertanyaan Copilot sendiri, tanpa mengirimnya ke layanan AI luar.",
     ],
   },
   {
@@ -58,8 +59,8 @@ const FAQ: { q: Pair; a: Pair }[] = [
   {
     q: ["How do SAP PS and Primavera P6 schedules get in?", "Bagaimana jadwal SAP PS dan Primavera P6 masuk?"],
     a: [
-      "As file exports: CSV or Excel for the inspector, plus PDF and Word in the scheduler. Each upload is checked by its actual content, not its file name, and capped at 4 MB. Direct SAP PS, P6 and MS Project sync is part of the enterprise plan.",
-      "Sebagai file ekspor: CSV atau Excel untuk inspektur, ditambah PDF dan Word di penjadwal. Setiap unggahan diperiksa dari isi sebenarnya, bukan nama filenya, dengan batas 4 MB. Sinkronisasi langsung SAP PS, P6, dan MS Project termasuk dalam paket enterprise.",
+      "As file exports: CSV or Excel for the inspector, plus PDF and Word in the scheduler. Each upload is checked by its actual content, not its file name, and capped at 4 MB. Direct sync with SAP PS, P6, MS Project or your ERP is a one-time ERP connector implementation.",
+      "Sebagai file ekspor: CSV atau Excel untuk inspektur, ditambah PDF dan Word di penjadwal. Setiap unggahan diperiksa dari isi sebenarnya, bukan nama filenya, dengan batas 4 MB. Sinkronisasi langsung dengan SAP PS, P6, MS Project, atau ERP Anda tersedia lewat implementasi konektor ERP satu kali.",
     ],
   },
   {
@@ -84,7 +85,7 @@ export function PilotAndFaq() {
   return (
     <section id="pilot" aria-labelledby="pilot-title" className="border-t border-rule-strong px-5 py-12 sm:px-8">
       <h2 id="pilot-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-        {t("What happens in a 30-day pilot", "Apa yang terjadi dalam pilot 30 hari")}
+        <Words>{t("What happens in a 30-day pilot", "Apa yang terjadi dalam pilot 30 hari")}</Words>
       </h2>
       <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
         {t(
