@@ -643,78 +643,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Plans & Pilot */}
-        <section id="plans" aria-labelledby="plans-title" className="border-t border-rule-strong bg-sheet px-5 py-12 sm:px-8">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-                Pilot &amp; plant plans
-              </h2>
-              <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
-                Validate MDIP on one active tooling or production schedule before rolling out across your facility.
-              </p>
-            </div>
-            <p className="font-mono text-xs text-ink-3">Form MDIP-PL-03 · Cloud or VPC isolation</p>
-          </div>
-
-          <div className="mt-8 grid border border-rule-strong bg-sheet divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
-            <article className="flex flex-col justify-between p-6">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">30-Day Plant Pilot</p>
-                <h3 className="mt-2 font-display text-2xl font-bold text-ink">Guided Trial</h3>
-                <p className="mt-1.5 text-sm text-ink-2">For one active manufacturing line or tooling build.</p>
-                <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                  <li>Up to 5 WBS schedules inspected</li>
-                  <li>CPM + 2,000-run Monte Carlo forecast</li>
-                  <li>6 role-scoped cockpit views</li>
-                  <li>Supervisor sign-off &amp; audit log</li>
-                </ul>
-              </div>
-              <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
-                Start 30-day pilot
-              </LinkButton>
-            </article>
-
-            <article className="flex flex-col justify-between bg-paper/70 p-6 border-t-2 border-t-stamp md:border-t-2 md:border-t-stamp">
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">Single Plant</p>
-                  <Verdict tone="info">Recommended</Verdict>
-                </div>
-                <h3 className="mt-2 font-display text-2xl font-bold text-ink">Plant License</h3>
-                <p className="mt-1.5 text-sm text-ink-2">Annual per-site license for continuous schedule control.</p>
-                <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                  <li>Unlimited WBS &amp; CSV/Excel inspections</li>
-                  <li>Custom plant SOP knowledge base</li>
-                  <li>AI copilot with cited SOP clauses</li>
-                  <li>Role-based access &amp; exportable audit trail</li>
-                </ul>
-              </div>
-              <LinkButton href="/login?mode=register" variant="primary" size="md" className="mt-6 w-full justify-center">
-                Create plant workspace
-              </LinkButton>
-            </article>
-
-            <article className="flex flex-col justify-between p-6">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">Enterprise</p>
-                <h3 className="mt-2 font-display text-2xl font-bold text-ink">Custom Quote</h3>
-                <p className="mt-1.5 text-sm text-ink-2">Multi-plant operations with strict IT/OT governance.</p>
-                <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                  <li>Multi-site portfolio &amp; executive rollups</li>
-                  <li>Dedicated deployment or VPC isolation</li>
-                  <li>SAP PS / Primavera P6 / MS Project sync</li>
-                  <li>SSO, custom retention &amp; onboarding SLA</li>
-                </ul>
-              </div>
-              <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
-                Request enterprise quote
-              </LinkButton>
-            </article>
-          </div>
-        </section>
-
-        <footer className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
+        {/* Plans & Footer unified topographic backdrop */}
+        <div className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 motion-reduce:hidden">
             <Topography
               color="#2b3fbf"
@@ -722,23 +652,99 @@ export default function LandingPage() {
               lineCount={22}
               lineWidth={1.3}
               elevation={1.15}
-              foreground={0.25}
+              foreground={0.2}
               tilt={38}
               speed={0.25}
               direction="forward"
               glow={0}
               depthOfField={0}
-              fog={0.25}
+              fog={0.3}
               hoverEffect="lift"
               clickEffect="none"
               majorLines={true}
               brightness={1.35}
-              opacity={0.55}
+              opacity={0.5}
               dpr={1}
             />
+            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-sheet to-transparent" />
           </div>
 
-          <div className="relative z-10 guilloche border-b border-rule-strong px-5 py-4 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Plans & Pilot */}
+          <section id="plans" aria-labelledby="plans-title" className="relative z-10 px-5 py-12 sm:px-8">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
+                  Pilot &amp; plant plans
+                </h2>
+                <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
+                  Validate MDIP on one active tooling or production schedule before rolling out across your facility.
+                </p>
+              </div>
+              <p className="font-mono text-xs text-ink-3">Form MDIP-PL-03 · Cloud or VPC isolation</p>
+            </div>
+
+            <div className="mt-8 grid border border-rule-strong bg-sheet/80 backdrop-blur-[1px] divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
+              <article className="flex flex-col justify-between p-6">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">30-Day Plant Pilot</p>
+                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">Guided Trial</h3>
+                  <p className="mt-1.5 text-sm text-ink-2">For one active manufacturing line or tooling build.</p>
+                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                    <li>Up to 5 WBS schedules inspected</li>
+                    <li>CPM + 2,000-run Monte Carlo forecast</li>
+                    <li>6 role-scoped cockpit views</li>
+                    <li>Supervisor sign-off &amp; audit log</li>
+                  </ul>
+                </div>
+                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
+                  Start 30-day pilot
+                </LinkButton>
+              </article>
+
+              <article className="flex flex-col justify-between bg-paper/80 p-6 border-t-2 border-t-stamp md:border-t-2 md:border-t-stamp">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">Single Plant</p>
+                    <Verdict tone="info">Recommended</Verdict>
+                  </div>
+                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">Plant License</h3>
+                  <p className="mt-1.5 text-sm text-ink-2">Annual per-site license for continuous schedule control.</p>
+                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                    <li>Unlimited WBS &amp; CSV/Excel inspections</li>
+                    <li>Custom plant SOP knowledge base</li>
+                    <li>AI copilot with cited SOP clauses</li>
+                    <li>Role-based access &amp; exportable audit trail</li>
+                  </ul>
+                </div>
+                <LinkButton href="/login?mode=register" variant="primary" size="md" className="mt-6 w-full justify-center">
+                  Create plant workspace
+                </LinkButton>
+              </article>
+
+              <article className="flex flex-col justify-between p-6">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">Enterprise</p>
+                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">Custom Quote</h3>
+                  <p className="mt-1.5 text-sm text-ink-2">Multi-plant operations with strict IT/OT governance.</p>
+                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                    <li>Multi-site portfolio &amp; executive rollups</li>
+                    <li>Dedicated deployment or VPC isolation</li>
+                    <li>SAP PS / Primavera P6 / MS Project sync</li>
+                    <li>SSO, custom retention &amp; onboarding SLA</li>
+                  </ul>
+                </div>
+                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
+                  Request enterprise quote
+                </LinkButton>
+              </article>
+            </div>
+          </section>
+
+          <footer className="relative z-10 border-t border-rule-strong">
+            <div
+              className="guilloche border-b border-rule-strong px-5 py-4 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              style={{ backgroundColor: "rgb(251 252 250 / 0.72)" }}
+            >
             <div className="flex items-center gap-2.5">
               <MdipLogo variant="color" size={26} />
               <div>
@@ -809,6 +815,7 @@ export default function LandingPage() {
             </span>
           </div>
         </footer>
+        </div>
       </div>
     </div>
   );
