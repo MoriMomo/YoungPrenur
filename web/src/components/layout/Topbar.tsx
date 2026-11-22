@@ -53,7 +53,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         <button
           type="button"
           onClick={onOpenMobileMenu}
-          className="cursor-pointer rounded-md p-1.5 text-ink-2 hover:bg-sheet-sunk hover:text-ink lg:hidden"
+          className="-ml-2 cursor-pointer rounded-md p-2.5 text-ink-2 hover:bg-sheet-sunk hover:text-ink lg:hidden"
           aria-label="Open navigation menu"
         >
           <Menu className="h-4 w-4" strokeWidth={1.6} />
@@ -68,7 +68,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         </span>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <div
           className="hidden h-8 items-center rounded-md border border-rule-strong bg-sheet-sunk p-0.5 text-xs xl:flex"
           role="group"
@@ -100,7 +100,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <select
             value={selectedRole}
             onChange={(e) => onSelectRole(e.target.value as ManufacturingRole)}
-            className="h-8 cursor-pointer appearance-none rounded-md border border-rule-strong bg-sheet pl-3 pr-8 text-xs font-medium text-ink hover:bg-sheet-sunk"
+            className="h-8 max-w-36 sm:max-w-none cursor-pointer appearance-none truncate rounded-md border border-rule-strong bg-sheet pl-3 pr-8 text-xs font-medium text-ink hover:bg-sheet-sunk"
             aria-label="Viewing as role"
           >
             {ROLES.map((role) => (

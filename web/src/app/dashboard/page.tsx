@@ -206,7 +206,7 @@ export default function DashboardOverviewPage() {
           <button
             type="button"
             onClick={() => setReviewingAction(topPriorityAction)}
-            className="font-medium text-stamp hover:underline cursor-pointer shrink-0 self-start sm:self-auto"
+            className="font-medium text-stamp hover:underline cursor-pointer shrink-0 self-start py-2 sm:self-auto sm:py-0"
           >
             Review top priority →
           </button>

@@ -47,7 +47,7 @@ export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast
         </div>
         <button
           onClick={onSeeAllToast}
-          className="text-xs font-medium text-stamp hover:underline cursor-pointer shrink-0"
+          className="py-2 text-xs font-medium text-stamp hover:underline cursor-pointer shrink-0 sm:py-0"
         >
           Inspect schedule →
         </button>

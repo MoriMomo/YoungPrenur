@@ -102,7 +102,7 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
                 <button
                   type="button"
                   onClick={() => onReviewAction(act)}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 py-2 text-xs font-medium text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
                 >
                   <span>
                     {act.flagged

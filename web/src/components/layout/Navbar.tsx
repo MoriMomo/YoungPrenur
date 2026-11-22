@@ -57,12 +57,15 @@ export const Navbar: React.FC = () => {
         </dl>
 
         <div className="flex shrink-0 items-center gap-2">
-          <LinkButton href="/login" variant="ghost" size="md" className="hidden sm:inline-flex">
-            Sign in
-          </LinkButton>
-          <LinkButton href="/login?mode=register" variant="primary" size="md" className="hidden sm:inline-flex">
-            Create account
-          </LinkButton>
+          {/* The wrapper hides them: `hidden` on a button loses to its own inline-flex. */}
+          <div className="hidden items-center gap-2 sm:flex">
+            <LinkButton href="/login" variant="ghost" size="md">
+              Sign in
+            </LinkButton>
+            <LinkButton href="/login?mode=register" variant="primary" size="md">
+              Create account
+            </LinkButton>
+          </div>
           <button
             type="button"
             onClick={() => setMobileOpen((prev) => !prev)}

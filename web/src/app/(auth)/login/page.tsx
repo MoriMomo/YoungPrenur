@@ -153,7 +153,7 @@ export default function LoginPage() {
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
         <div className="cert-frame w-full grid grid-cols-1 lg:grid-cols-12 bg-sheet overflow-hidden">
           <div
-            className="lg:col-span-5 p-6 sm:p-8 bg-paper border-b lg:border-b-0 lg:border-r border-rule-strong flex flex-col justify-between space-y-6"
+            className="order-2 lg:order-1 lg:col-span-5 p-6 sm:p-8 bg-paper border-t lg:border-t-0 lg:border-r border-rule-strong flex flex-col justify-between space-y-6"
           >
             <div>
 
@@ -178,7 +178,7 @@ export default function LoginPage() {
 
           </div>
 
-          <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
+          <div className="order-1 lg:order-2 lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
             <div className="max-w-md w-full mx-auto space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -199,7 +199,7 @@ export default function LoginPage() {
                       setErrorMsg(null);
                       setIsSubmitting(false);
                     }}
-                    className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors ${
+                    className={`px-3 py-2 sm:px-2.5 sm:py-1 rounded-md font-medium cursor-pointer transition-colors ${
                       authMode === "login" ? "bg-stamp text-white" : "text-ink-2 hover:text-ink"
                     }`}
                   >
@@ -213,7 +213,7 @@ export default function LoginPage() {
                       setPassword("");
                       setIsSubmitting(false);
                     }}
-                    className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition-colors ${
+                    className={`px-3 py-2 sm:px-2.5 sm:py-1 rounded-md font-medium cursor-pointer transition-colors ${
                       authMode === "register" ? "bg-stamp text-white" : "text-ink-2 hover:text-ink"
                     }`}
                   >
@@ -237,7 +237,7 @@ export default function LoginPage() {
                   id="demo-role"
                   value={selectedDemoRole}
                   onChange={(e) => setSelectedDemoRole(e.target.value as ManufacturingRole)}
-                  className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg px-3.5 h-10 text-xs sm:text-sm"
+                  className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg px-3.5 h-10 text-base sm:text-sm"
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -299,7 +299,7 @@ export default function LoginPage() {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         required
-                        className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                        className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-base sm:text-sm font-normal transition-colors"
                         placeholder="e.g. Ahmad Fauzi"
                       />
                     </div>
@@ -322,7 +322,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                      className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-base sm:text-sm font-normal transition-colors"
                       placeholder="you@company.com"
                     />
                   </div>
@@ -349,7 +349,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={authMode === "register" ? 6 : 1}
-                      className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-xs sm:text-sm font-normal transition-colors"
+                      className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-base sm:text-sm font-normal transition-colors"
                     />
                   </div>
                 </div>

@@ -191,7 +191,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
               <p className="text-xs text-ink-2 leading-relaxed mb-4">{doc.summary}</p>
             </div>
 
-            <div className="pt-3 border-t border-rule-soft flex items-center justify-between gap-3">
+            <div className="pt-3 border-t border-rule-soft flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <span className="text-xs text-ink-3">
                 {doc.sections.length} indexed clauses
               </span>
@@ -199,7 +199,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
                 <button
                   type="button"
                   onClick={() => handleAskCopilot(doc)}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-ink-2 hover:text-stamp cursor-pointer"
+                  className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-medium text-ink-2 hover:text-stamp cursor-pointer"
                 >
                   <MessageSquareText className="w-3.5 h-3.5" strokeWidth={1.6} />
                   <span>Ask Copilot</span>
@@ -207,7 +207,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
                 <button
                   type="button"
                   onClick={() => handleOpenDoc(doc)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-semibold text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
                 >
                   <span>Inspect Clauses</span>
                   <ChevronRight className="w-3.5 h-3.5" />

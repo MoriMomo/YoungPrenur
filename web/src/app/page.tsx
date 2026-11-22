@@ -390,7 +390,7 @@ export default function LandingPage() {
             </LinkButton>
           </div>
 
-          <div role="tablist" aria-label="Roles" className="mt-6 flex flex-wrap gap-0 border-b border-rule-strong">
+          <div role="tablist" aria-label="Roles" className="mt-6 grid grid-cols-2 border-b border-rule-strong sm:flex sm:flex-wrap">
             {ROLES.map((r) => (
               <button
                 key={r}
@@ -398,7 +398,7 @@ export default function LandingPage() {
                 type="button"
                 aria-selected={activeRole === r}
                 onClick={() => setActiveRole(r)}
-                className={`-mb-px cursor-pointer border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-left text-sm font-medium transition-colors sm:px-4 ${
                   activeRole === r ? "border-stamp text-ink" : "border-transparent text-ink-2 hover:text-ink"
                 }`}
               >
@@ -498,7 +498,7 @@ export default function LandingPage() {
 
         <footer className="flex flex-col items-center justify-between gap-3 border-t border-rule-strong px-5 py-5 text-xs text-ink-3 sm:flex-row sm:px-8">
           <span>MDIP · Manufacturing Decision Intelligence Platform</span>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-5 [&>a]:py-2.5">
             <a href="#method" className="hover:text-ink">
               Method
             </a>

@@ -69,7 +69,7 @@ export function MaterialTab({ searchQuery, handleInspectWithAI, materials }: Mat
                         `Stock cover ${mat.stockCoverHours}h vs Lead time ${mat.supplierLeadDays}d, PO ${mat.openPo}`
                       )
                     }
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <MessageSquareText className="w-3 h-3 text-stamp" />
                     <span>Mitigate</span>

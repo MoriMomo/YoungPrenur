@@ -332,7 +332,7 @@ export const PerformanceChart: React.FC = () => {
               type="button"
               onMouseEnter={() => setHoverIndex(idx)}
               onFocus={() => setHoverIndex(idx)}
-              className={`cursor-pointer transition-colors ${
+              className={`cursor-pointer py-2 transition-colors ${
                 hoverIndex === idx ? "text-stamp font-medium" : ""
               }`}
             >

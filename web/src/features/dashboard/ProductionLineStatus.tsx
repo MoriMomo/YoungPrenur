@@ -246,7 +246,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
           <button
             type="button"
             onClick={() => setViewMode("map")}
-            className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               viewMode === "map"
                 ? "bg-white text-ink"
                 : "text-ink-2 hover:text-ink"
@@ -259,7 +259,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
           <button
             type="button"
             onClick={() => setViewMode("table")}
-            className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               viewMode === "table"
                 ? "bg-white text-ink"
                 : "text-ink-2 hover:text-ink"
@@ -284,9 +284,10 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
               </span>
             </div>
 
+            <div className="-mx-1 overflow-x-auto px-1">
             <svg
               viewBox="0 0 780 345"
-              className="w-full h-auto block"
+              className="block h-auto w-full min-w-[700px] @xl:min-w-0"
               role="img"
               aria-label="Shop-Floor Spatial Map"
             >
@@ -415,6 +416,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                 );
               })}
             </svg>
+            </div>
           </div>
 
           {/* Inspector Card */}
