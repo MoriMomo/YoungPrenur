@@ -63,6 +63,48 @@ const METHOD = [
   },
 ];
 
+const PLANS = [
+  {
+    eyebrow: "30-Day Plant Pilot",
+    title: "Guided Trial",
+    summary: "For one active manufacturing line or tooling build.",
+    features: [
+      "Up to 5 WBS schedules inspected",
+      "CPM + 2,000-run Monte Carlo forecast",
+      "6 role-scoped cockpit views",
+      "Supervisor sign-off & audit log",
+    ],
+    cta: "Start 30-day pilot",
+    recommended: false,
+  },
+  {
+    eyebrow: "Single Plant",
+    title: "Plant License",
+    summary: "Annual per-site license for continuous schedule control.",
+    features: [
+      "Unlimited WBS & CSV/Excel inspections",
+      "Custom plant SOP knowledge base",
+      "AI copilot with cited SOP clauses",
+      "Role-based access & exportable audit trail",
+    ],
+    cta: "Create plant workspace",
+    recommended: true,
+  },
+  {
+    eyebrow: "Enterprise",
+    title: "Custom Quote",
+    summary: "Multi-plant operations with strict IT/OT governance.",
+    features: [
+      "Multi-site portfolio & executive rollups",
+      "Dedicated deployment or VPC isolation",
+      "SAP PS / Primavera P6 / MS Project sync",
+      "SSO, custom retention & onboarding SLA",
+    ],
+    cta: "Request enterprise quote",
+    recommended: false,
+  },
+] as const;
+
 function RiskCell({ row, tone }: { row: InspectionRow; tone: VerdictTone }) {
   if (row.risk === null) {
     return <span className="text-xs text-ink-3">{row.done ? "Finished" : "Not scored"}</span>;
@@ -684,59 +726,38 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-8 grid border border-rule-strong bg-sheet/80 backdrop-blur-[1px] divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
-              <article className="flex flex-col justify-between p-6">
-                <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">30-Day Plant Pilot</p>
-                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">Guided Trial</h3>
-                  <p className="mt-1.5 text-sm text-ink-2">For one active manufacturing line or tooling build.</p>
-                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                    <li>Up to 5 WBS schedules inspected</li>
-                    <li>CPM + 2,000-run Monte Carlo forecast</li>
-                    <li>6 role-scoped cockpit views</li>
-                    <li>Supervisor sign-off &amp; audit log</li>
-                  </ul>
-                </div>
-                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
-                  Start 30-day pilot
-                </LinkButton>
-              </article>
-
-              <article className="flex flex-col justify-between bg-paper/80 p-6 border-t-2 border-t-stamp md:border-t-2 md:border-t-stamp">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">Single Plant</p>
-                    <Verdict tone="info">Recommended</Verdict>
+              {PLANS.map((plan) => (
+                <article
+                  key={plan.eyebrow}
+                  className={`flex flex-col justify-between p-6 ${
+                    plan.recommended ? "bg-paper/80 border-t-2 border-t-stamp" : ""
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`font-mono text-xs uppercase tracking-[0.06em] ${plan.recommended ? "text-stamp" : "text-ink-3"}`}>
+                        {plan.eyebrow}
+                      </p>
+                      {plan.recommended && <Verdict tone="info">Recommended</Verdict>}
+                    </div>
+                    <h3 className="mt-2 font-display text-2xl font-bold text-ink">{plan.title}</h3>
+                    <p className="mt-1.5 text-sm text-ink-2">{plan.summary}</p>
+                    <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                      {plan.features.map((feat) => (
+                        <li key={feat}>{feat}</li>
+                      ))}
+                    </ul>
                   </div>
-                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">Plant License</h3>
-                  <p className="mt-1.5 text-sm text-ink-2">Annual per-site license for continuous schedule control.</p>
-                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                    <li>Unlimited WBS &amp; CSV/Excel inspections</li>
-                    <li>Custom plant SOP knowledge base</li>
-                    <li>AI copilot with cited SOP clauses</li>
-                    <li>Role-based access &amp; exportable audit trail</li>
-                  </ul>
-                </div>
-                <LinkButton href="/login?mode=register" variant="primary" size="md" className="mt-6 w-full justify-center">
-                  Create plant workspace
-                </LinkButton>
-              </article>
-
-              <article className="flex flex-col justify-between p-6">
-                <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">Enterprise</p>
-                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">Custom Quote</h3>
-                  <p className="mt-1.5 text-sm text-ink-2">Multi-plant operations with strict IT/OT governance.</p>
-                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                    <li>Multi-site portfolio &amp; executive rollups</li>
-                    <li>Dedicated deployment or VPC isolation</li>
-                    <li>SAP PS / Primavera P6 / MS Project sync</li>
-                    <li>SSO, custom retention &amp; onboarding SLA</li>
-                  </ul>
-                </div>
-                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
-                  Request enterprise quote
-                </LinkButton>
-              </article>
+                  <LinkButton
+                    href="/login?mode=register"
+                    variant={plan.recommended ? "primary" : "secondary"}
+                    size="md"
+                    className="mt-6 w-full justify-center"
+                  >
+                    {plan.cta}
+                  </LinkButton>
+                </article>
+              ))}
             </div>
           </section>
 
