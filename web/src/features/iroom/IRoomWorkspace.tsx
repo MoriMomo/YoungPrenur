@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import {
   MaterialDeliveryItem,
   ProjectProgressItem,
@@ -110,6 +112,23 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   const [draftCode, setDraftCode] = useState("");
   const [draftParty, setDraftParty] = useState("");
   const [draftMetric, setDraftMetric] = useState("");
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      if (!panelRef.current) return;
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.fromTo(
+          panelRef.current,
+          { y: 6, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.22, ease: "power2.out", clearProps: "transform,opacity" }
+        );
+      });
+      return () => mm.revert();
+    },
+    { dependencies: [activeTab] }
+  );
 
   useEffect(() => {
     let active = true;
@@ -335,7 +354,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       </div>
 
       {/* Main Content Card */}
-      <div role="tabpanel" className="bg-sheet border border-rule-strong p-5 sm:p-6">
+      <div ref={panelRef} role="tabpanel" className="bg-sheet border border-rule-strong p-5 sm:p-6">
         <div className="mb-5 border border-rule bg-paper px-4 py-3">
           <p className="text-xs font-semibold text-ink">
             What is {STREAM_EXPLANATIONS[activeTab].title}?

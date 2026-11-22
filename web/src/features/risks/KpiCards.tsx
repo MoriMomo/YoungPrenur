@@ -1,6 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { KpiItem } from "@/types";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
@@ -15,14 +17,35 @@ const TONE = {
 } as const;
 
 /** Role KPIs as certificate measurement fields: one ruled grid, value, then deviation and context. */
-export const KpiCards: React.FC<KpiCardsProps> = ({ kpis }) => (
-  <dl className="grid grid-cols-1 border-l border-t border-rule-strong bg-sheet sm:grid-cols-2 xl:grid-cols-4">
-    {kpis.map((kpi, idx) => {
-      const tone = TONE[kpi.status] ?? TONE.normal;
-      const isUp = kpi.trend.includes("↑");
-      const isDown = kpi.trend.includes("↓");
-      return (
-        <div key={`${kpi.title}-${idx}`} className="border-b border-r border-rule-strong px-5 py-4">
+export const KpiCards: React.FC<KpiCardsProps> = ({ kpis }) => {
+  const gridRef = useRef<HTMLDListElement>(null);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from("[data-kpi-card]", {
+          y: 8,
+          opacity: 0,
+          duration: 0.28,
+          stagger: 0.05,
+          ease: "power2.out",
+          clearProps: "transform,opacity",
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: gridRef, dependencies: [kpis] }
+  );
+
+  return (
+    <dl ref={gridRef} className="grid grid-cols-1 border-l border-t border-rule-strong bg-sheet sm:grid-cols-2 xl:grid-cols-4">
+      {kpis.map((kpi, idx) => {
+        const tone = TONE[kpi.status] ?? TONE.normal;
+        const isUp = kpi.trend.includes("↑");
+        const isDown = kpi.trend.includes("↓");
+        return (
+          <div key={`${kpi.title}-${idx}`} data-kpi-card className="border-b border-r border-rule-strong px-5 py-4">
           <dt className="flex items-start justify-between gap-3 text-xs text-ink-2">
             <span>{kpi.title}</span>
             <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${tone.dot}`} title={tone.label} aria-label={tone.label} />
@@ -39,5 +62,6 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ kpis }) => (
         </div>
       );
     })}
-  </dl>
-);
+    </dl>
+  );
+};

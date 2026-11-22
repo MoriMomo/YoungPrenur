@@ -149,6 +149,18 @@
   outline-offset: 4px;
 }
 
+/* The desk the certificate lies on: a crisp drafting grid that fills the margins around the frame. */
+@utility drafting-grid {
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(var(--color-rule-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-rule-strong) 1px, transparent 1px),
+    linear-gradient(var(--color-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-rule) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: center top;
+}
+
 /*
  * Security-paper guilloche band for certificate header strips only (never behind body text).
  * Authored SVG: four interlaced sine waves, phase-shifted, as engraved on banknotes and certificates.

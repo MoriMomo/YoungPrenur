@@ -1,13 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import Link from "next/link";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(ScrollTrigger);
 import { FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
 import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import Dither from "@/components/landing/Dither";
+import Threads from "@/components/landing/Threads";
+import Topography from "@/components/landing/Topography";
 import { Button, LinkButton } from "@/components/ui/Button";
+import { MdipLogo } from "@/components/ui/MdipLogo";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
@@ -92,7 +101,86 @@ export default function LandingPage() {
   const [busy, setBusy] = useState(false);
   const [stampKey, setStampKey] = useState(0);
   const [activeRole, setActiveRole] = useState<ManufacturingRole>("Operations Manager");
+  const deskRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const rolePanelRef = useRef<HTMLDivElement>(null);
   const role = ROLE_PRESETS[activeRole];
+
+  useGSAP(
+    () => {
+      if (!deskRef.current) return;
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.fromTo(
+          "[data-scribble-path]",
+          { strokeDasharray: 1, strokeDashoffset: 1 },
+          {
+            strokeDashoffset: 0,
+            ease: "none",
+            stagger: 0.12,
+            scrollTrigger: {
+              trigger: deskRef.current,
+              start: "top top",
+              end: "bottom bottom",
+              scrub: 0.6,
+            },
+          }
+        );
+        gsap.fromTo(
+          "[data-scribble-label]",
+          { opacity: 0, y: 4 },
+          {
+            opacity: 1,
+            y: 0,
+            ease: "none",
+            stagger: 0.12,
+            scrollTrigger: {
+              trigger: deskRef.current,
+              start: "top top",
+              end: "bottom bottom",
+              scrub: 0.6,
+            },
+          }
+        );
+      });
+      return () => mm.revert();
+    },
+    { scope: deskRef }
+  );
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from("[data-hero-item]", {
+          y: 12,
+          opacity: 0,
+          duration: 0.35,
+          stagger: 0.06,
+          ease: "power2.out",
+          clearProps: "transform,opacity",
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: heroRef }
+  );
+
+  useGSAP(
+    () => {
+      if (!rolePanelRef.current) return;
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.fromTo(
+          rolePanelRef.current,
+          { y: 6, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.22, ease: "power2.out", clearProps: "transform,opacity" }
+        );
+      });
+      return () => mm.revert();
+    },
+    { dependencies: [activeRole] }
+  );
 
   const inspect = async (blob: Blob, name: string) => {
     setBusy(true);
@@ -145,13 +233,142 @@ export default function LandingPage() {
   const hold = rows.filter((r) => verdictFor(r).tone === "hold").length;
 
   return (
-    <div className="min-h-screen bg-paper px-3 py-4 sm:px-6 sm:py-8">
-      <div className="cert-frame mx-auto max-w-[1240px] bg-sheet">
+    <div ref={deskRef} className="drafting-grid relative min-h-screen px-3 py-4 sm:px-6 sm:py-8 xl:py-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0 hidden select-none xl:block"
+      >
+        <svg
+          viewBox="0 0 1920 1080"
+          preserveAspectRatio="xMidYMid slice"
+          className="h-full w-full"
+        >
+          {/* Left margin engineer scribbles */}
+          <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path
+              data-scribble-path
+              pathLength={1}
+              d="M 54 140 L 184 140 M 54 132 L 54 148 M 184 132 L 184 148"
+              stroke="var(--color-ink-3)"
+              strokeWidth="1.4"
+              opacity="0.32"
+            />
+            <path
+              data-scribble-path
+              pathLength={1}
+              d="M 62 360 C 95 340, 130 385, 172 362 L 172 440 C 135 458, 92 430, 66 452 M 56 520 C 56 498, 186 498, 186 520 C 186 542, 56 542, 56 520 Z"
+              stroke="var(--color-stamp)"
+              strokeWidth="1.5"
+              opacity="0.28"
+            />
+            <path
+              data-scribble-path
+              pathLength={1}
+              d="M 90 710 Q 145 745 205 725 M 192 717 L 206 725 L 195 736"
+              stroke="var(--color-stamp)"
+              strokeWidth="1.5"
+              opacity="0.3"
+            />
+
+            {/* Right margin engineer scribbles */}
+            <path
+              data-scribble-path
+              pathLength={1}
+              d="M 1765 170 A 22 22 0 1 0 1809 170 A 22 22 0 1 0 1765 170 M 1753 170 L 1821 170 M 1787 136 L 1787 204"
+              stroke="var(--color-ink-3)"
+              strokeWidth="1.4"
+              opacity="0.3"
+            />
+            <path
+              data-scribble-path
+              pathLength={1}
+              d="M 1715 510 L 1875 510 M 1720 508 C 1755 506, 1770 415, 1795 415 C 1820 415, 1835 506, 1870 508 M 1795 415 L 1795 514"
+              stroke="var(--color-stamp)"
+              strokeWidth="1.5"
+              opacity="0.28"
+            />
+            <path
+              data-scribble-path
+              pathLength={1}
+              d="M 1735 815 L 1762 842 L 1848 772 M 1725 862 C 1770 854, 1820 866, 1868 856"
+              stroke="var(--color-stamp)"
+              strokeWidth="1.6"
+              opacity="0.3"
+            />
+          </g>
+
+          <g fontFamily="var(--font-mono)" fontSize="11" letterSpacing="0.08em">
+            <text data-scribble-label x="54" y="166" fill="var(--color-ink-3)" fillOpacity="0.45">
+              ±0.02 MM · TOL
+            </text>
+            <text data-scribble-label x="66" y="524" fill="var(--color-stamp)" fillOpacity="0.42">
+              FLOAT = 0d (HOLD)
+            </text>
+            <text data-scribble-label x="72" y="758" fill="var(--color-stamp)" fillOpacity="0.42">
+              CPM SLIP +2.0d
+            </text>
+
+            <text data-scribble-label x="1720" y="226" fill="var(--color-ink-3)" fillOpacity="0.45">
+              ⌖ Ø0.05 DATUM A
+            </text>
+            <text data-scribble-label x="1720" y="534" fill="var(--color-stamp)" fillOpacity="0.42">
+              2,000 RUNS · P50 / P80
+            </text>
+            <text data-scribble-label x="1725" y="882" fill="var(--color-stamp)" fillOpacity="0.42">
+              OK · REV C.2 VERIFIED
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-y-6 left-3 z-10 hidden w-7 select-none flex-col items-center justify-between border-x border-rule-strong bg-paper/90 py-4 font-mono text-[10px] tracking-[0.18em] text-ink-3 2xl:flex"
+      >
+        <span>A1</span>
+        <span className="[writing-mode:vertical-rl] rotate-180 uppercase">
+          DRAWING NO. MDIP-DR-0001 · ISO 9001 CL. 7.5 · SCALE 1:1
+        </span>
+        <span>A4</span>
+      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-y-6 right-3 z-10 hidden w-7 select-none flex-col items-center justify-between border-x border-rule-strong bg-paper/90 py-4 font-mono text-[10px] tracking-[0.18em] text-ink-3 2xl:flex"
+      >
+        <span>B1</span>
+        <span className="[writing-mode:vertical-rl] uppercase">
+          REV C.2 · HELD-OUT ROC-AUC 0.78 · SHEET 01 OF 01
+        </span>
+        <span>B4</span>
+      </div>
+      <div className="cert-frame relative z-10 mx-auto max-w-[1440px] bg-sheet shadow-[0_24px_60px_-24px_rgb(20_24_28/0.18)]">
         <Navbar />
 
         {/* Subject and action */}
-        <section className="relative isolate grid gap-8 border-b border-rule-strong bg-paper px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
-          <div className="lg:col-span-7">
+        <section ref={heroRef} className="relative isolate grid gap-8 overflow-hidden border-b border-rule-strong bg-paper px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden">
+            <Threads
+              color="#2b3fbf"
+              accentColor="#aab6ac"
+              lineCount={90}
+              thickness={0.6}
+              softness={1.3}
+              amplitude={1.7}
+              distance={0.4}
+              waves={1.05}
+              speed={0.6}
+              split={0.04}
+              fray={0.5}
+              angle={25}
+              taper={0.85}
+              brightness={1.35}
+              parting={0}
+              enableMouseInteraction={true}
+              fade={0.18}
+              opacity={0.34}
+            />
+          </div>
+          <div data-hero-item className="lg:col-span-7">
             <p className="font-mono text-xs uppercase tracking-[0.08em] text-ink-3">
               Schedule Delay-Risk Inspection · B2B Manufacturing SaaS
             </p>
@@ -172,7 +389,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-5 lg:self-end">
+          <div data-hero-item className="lg:col-span-5 lg:self-center">
             <FileDrop
               accept=".csv,.xlsx,.xls"
               maxBytes={2 * 1024 * 1024}
@@ -407,7 +624,7 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12 md:items-center">
+          <div ref={rolePanelRef} role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12 md:items-center">
             <div className="md:col-span-5">
               <h3 className="font-display text-2xl font-bold text-ink">{role.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{role.sub}</p>
@@ -427,7 +644,7 @@ export default function LandingPage() {
         </section>
 
         {/* Plans & Pilot */}
-        <section id="plans" aria-labelledby="plans-title" className="border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
+        <section id="plans" aria-labelledby="plans-title" className="border-t border-rule-strong bg-sheet px-5 py-12 sm:px-8">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
@@ -437,15 +654,16 @@ export default function LandingPage() {
                 Validate MDIP on one active tooling or production schedule before rolling out across your facility.
               </p>
             </div>
+            <p className="font-mono text-xs text-ink-3">Form MDIP-PL-03 · Cloud or VPC isolation</p>
           </div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            <article className="flex flex-col justify-between border border-rule-strong bg-sheet p-5">
+          <div className="mt-8 grid border border-rule-strong bg-sheet divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
+            <article className="flex flex-col justify-between p-6">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">30-Day Plant Pilot</p>
                 <h3 className="mt-2 font-display text-2xl font-bold text-ink">Guided Trial</h3>
-                <p className="mt-2 text-sm text-ink-2">For one active manufacturing line or tooling build.</p>
-                <ul className="mt-4 space-y-2 border-t border-rule pt-4 text-sm text-ink-2">
+                <p className="mt-1.5 text-sm text-ink-2">For one active manufacturing line or tooling build.</p>
+                <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
                   <li>Up to 5 WBS schedules inspected</li>
                   <li>CPM + 2,000-run Monte Carlo forecast</li>
                   <li>6 role-scoped cockpit views</li>
@@ -457,15 +675,15 @@ export default function LandingPage() {
               </LinkButton>
             </article>
 
-            <article className="flex flex-col justify-between border-2 border-stamp bg-sheet p-5">
+            <article className="flex flex-col justify-between bg-paper/70 p-6 border-t-2 border-t-stamp md:border-t-2 md:border-t-stamp">
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">Single Plant</p>
                   <Verdict tone="info">Recommended</Verdict>
                 </div>
                 <h3 className="mt-2 font-display text-2xl font-bold text-ink">Plant License</h3>
-                <p className="mt-2 text-sm text-ink-2">Annual per-site license for continuous schedule control.</p>
-                <ul className="mt-4 space-y-2 border-t border-rule pt-4 text-sm text-ink-2">
+                <p className="mt-1.5 text-sm text-ink-2">Annual per-site license for continuous schedule control.</p>
+                <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
                   <li>Unlimited WBS &amp; CSV/Excel inspections</li>
                   <li>Custom plant SOP knowledge base</li>
                   <li>AI copilot with cited SOP clauses</li>
@@ -477,12 +695,12 @@ export default function LandingPage() {
               </LinkButton>
             </article>
 
-            <article className="flex flex-col justify-between border border-rule-strong bg-sheet p-5">
+            <article className="flex flex-col justify-between p-6">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">Enterprise</p>
                 <h3 className="mt-2 font-display text-2xl font-bold text-ink">Custom Quote</h3>
-                <p className="mt-2 text-sm text-ink-2">Multi-plant operations with strict IT/OT governance.</p>
-                <ul className="mt-4 space-y-2 border-t border-rule pt-4 text-sm text-ink-2">
+                <p className="mt-1.5 text-sm text-ink-2">Multi-plant operations with strict IT/OT governance.</p>
+                <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
                   <li>Multi-site portfolio &amp; executive rollups</li>
                   <li>Dedicated deployment or VPC isolation</li>
                   <li>SAP PS / Primavera P6 / MS Project sync</li>
@@ -496,21 +714,99 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <footer className="flex flex-col items-center justify-between gap-3 border-t border-rule-strong px-5 py-5 text-xs text-ink-3 sm:flex-row sm:px-8">
-          <span>MDIP · Manufacturing Decision Intelligence Platform</span>
-          <div className="flex items-center gap-5 [&>a]:py-2.5">
-            <a href="#method" className="hover:text-ink">
-              Method
-            </a>
-            <a href="#roles" className="hover:text-ink">
-              Roles
-            </a>
-            <a href="#plans" className="hover:text-ink">
-              Plans
-            </a>
-            <a href="/login" className="font-medium text-ink hover:underline">
-              Sign in
-            </a>
+        <footer className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden">
+            <Topography
+              color="#2b3fbf"
+              lightMode={true}
+              lineCount={22}
+              lineWidth={1}
+              elevation={1}
+              foreground={0.2}
+              tilt={32}
+              speed={0.25}
+              direction="forward"
+              glow={0}
+              depthOfField={0}
+              fog={0.35}
+              hoverEffect="lift"
+              clickEffect="none"
+              majorLines={false}
+              brightness={1.1}
+              opacity={0.26}
+              dpr={1}
+            />
+          </div>
+
+          <div className="guilloche border-b border-rule-strong px-5 py-4 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <MdipLogo variant="color" size={26} />
+              <div>
+                <p className="font-display text-base font-bold text-ink leading-none">
+                  MDIP · Certificate of Schedule Inspection
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-ink-3">
+                  Form MDIP-DR-0001 · Manufacturing Decision Intelligence Platform
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <LinkButton href="/login?mode=register" size="md">
+                Start 30-day pilot
+              </LinkButton>
+              <LinkButton href="/dashboard" variant="secondary" size="md">
+                Open live cockpit
+              </LinkButton>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-px bg-rule border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs">
+            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Platform</p>
+              <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                <li><a href="#inspection-title" className="hover:text-ink hover:underline">Schedule Inspector</a></li>
+                <li><Link href="/dashboard" className="hover:text-ink hover:underline">Operations Cockpit</Link></li>
+                <li><Link href="/dashboard/scheduler" className="hover:text-ink hover:underline">Critical-Path Scheduler</Link></li>
+                <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">IRoom Streams</Link></li>
+              </ul>
+            </div>
+
+            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Intelligence &amp; Governance</p>
+              <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">Cited SOP Copilot</Link></li>
+                <li><Link href="/dashboard/knowledge" className="hover:text-ink hover:underline">Plant Knowledge Base</Link></li>
+                <li><a href="#method" className="hover:text-ink hover:underline">Method &amp; Validation</a></li>
+                <li><a href="#roles" className="hover:text-ink hover:underline">Role Certificates</a></li>
+              </ul>
+            </div>
+
+            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Standards &amp; Exports</p>
+              <ul className="space-y-1.5 text-ink-2">
+                <li>ISO 9001 Cl. 7.5 Audit Trail</li>
+                <li>ROC-AUC 0.78 (51 Held-Out Projects)</li>
+                <li>SAP PS · Primavera P6 · MS Project</li>
+                <li>CSV / Excel Headers (EN &amp; ID)</li>
+              </ul>
+            </div>
+
+            <div className="bg-paper/80 p-5 sm:px-8 space-y-2">
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Access &amp; Deployment</p>
+              <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                <li><a href="#plans" className="hover:text-ink hover:underline">Pilot &amp; Plant Plans</a></li>
+                <li><Link href="/login" className="hover:text-ink hover:underline">Operator Sign In</Link></li>
+                <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">Create Plant Account</Link></li>
+                <li className="py-0.5">Cloud SaaS &amp; On-Premises VPC</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-paper/85 px-5 py-3.5 sm:px-8 flex flex-col items-center justify-between gap-2 text-center sm:text-left text-xs text-ink-3 sm:flex-row">
+            <span>MDIP · Manufacturing Decision Intelligence Platform</span>
+            <span className="font-mono-numbers">
+              XGBoost + 2,000-run Monte Carlo · Human-in-the-loop sign-off required
+            </span>
           </div>
         </footer>
       </div>

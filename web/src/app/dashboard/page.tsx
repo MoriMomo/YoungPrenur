@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { useDashboard } from "@/features/workspace/dashboard-context";
 import { KpiCards } from "@/features/risks/KpiCards";
 import { ModelCardStrip } from "@/features/risks/ModelCardStrip";
@@ -37,6 +39,7 @@ import { Download, CalendarClock, CheckCircle2, Clock } from "lucide-react";
 
 export default function DashboardOverviewPage() {
   const router = useRouter();
+  const pageRef = useRef<HTMLDivElement>(null);
   const {
     userName,
     selectedRole,
@@ -179,8 +182,26 @@ export default function DashboardOverviewPage() {
       ? `${urgentPendingCount} urgent of ${pendingActions.length} open decisions and ${criticalStreamsCount} critical IRoom alerts need ${selectedRole} attention — top priority: ${topPriorityAction.title}.`
       : `All ${sortedActions.length} operational decisions are signed off; ${criticalStreamsCount} critical IRoom alerts active.`;
 
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from("[data-dash-section]", {
+          y: 10,
+          opacity: 0,
+          duration: 0.3,
+          stagger: 0.05,
+          ease: "power2.out",
+          clearProps: "transform,opacity",
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: pageRef }
+  );
+
   return (
-    <div className="space-y-6">
+    <div ref={pageRef} className="space-y-6">
       <PageHeader
         title={`Hello, ${displayName}`}
         description={`${currentRolePreset.title} · ${currentRolePreset.sub}`}
@@ -198,7 +219,7 @@ export default function DashboardOverviewPage() {
         }
       />
 
-      <div className="border border-rule-strong bg-sheet px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+      <div data-dash-section className="border border-rule-strong bg-sheet px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
         <p className="text-ink-2">
           <span className="font-semibold text-ink">Key insight:</span> {keyInsightText}
         </p>
@@ -219,7 +240,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* Primary Analytics Grid: Operational Chart + Role-Sorted Decision Brief */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-5">
+      <div data-dash-section className="grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-5">
         <div className="lg:col-span-7">
           <PerformanceChart />
         </div>
@@ -233,7 +254,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* Shop-Floor Work Centers & Risk Monitor */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-5">
+      <div data-dash-section className="grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-5">
         <div className="lg:col-span-7">
           <ProductionLineStatus
             operations={operations}
