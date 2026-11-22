@@ -57,16 +57,6 @@ export interface AuditLogEntry {
   timestamp: string;
 }
 
-export interface PilotCheckItem {
-  id: string;
-  check: string;
-  measure: string;
-  target: string;
-  currentSim: string;
-  blockTested: string;
-  status: "pass" | "pending";
-}
-
 export interface RiskItem {
   id: string;
   type: "risk" | "opportunity";
@@ -161,8 +151,6 @@ export interface DelayRiskPrediction {
 }
 
 export type DeploymentMode = "saas" | "internal";
-
-export type PerformanceMetricKey = "output" | "oee" | "downtime";
 
 export interface ProductionLineItem {
   id: string;

@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { KpiItem } from "@/types";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface KpiCardsProps {
   kpis: KpiItem[];
@@ -19,6 +20,7 @@ const TONE = {
 /** Role KPIs as certificate measurement fields: one ruled grid, value, then deviation and context. */
 export const KpiCards: React.FC<KpiCardsProps> = ({ kpis }) => {
   const gridRef = useRef<HTMLDListElement>(null);
+  const t = useT();
 
   useGSAP(
     () => {
@@ -47,17 +49,17 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ kpis }) => {
         return (
           <div key={`${kpi.title}-${idx}`} data-kpi-card className="border-b border-r border-rule-strong px-5 py-4">
           <dt className="flex items-start justify-between gap-3 text-xs text-ink-2">
-            <span>{kpi.title}</span>
-            <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${tone.dot}`} title={tone.label} aria-label={tone.label} />
+            <span>{t(kpi.title)}</span>
+            <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${tone.dot}`} title={t(tone.label)} aria-label={t(tone.label)} />
           </dt>
           <dd className="mt-2 font-mono-numbers text-[30px] font-medium leading-none tracking-tight text-ink">{kpi.value}</dd>
           <dd className="mt-2.5 text-xs leading-snug">
             <span className={`inline-flex items-center gap-0.5 font-medium ${tone.text}`}>
               {isUp && <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.6} />}
               {isDown && <ArrowDownRight className="h-3.5 w-3.5" strokeWidth={1.6} />}
-              {kpi.trend.replace(/^[↑↓]\s*/, "")}
+              {t(kpi.trend).replace(/^[↑↓]\s*/, "")}
             </span>
-            {kpi.subtle && <span className="text-ink-3"> · {kpi.subtle}</span>}
+            {kpi.subtle && <span className="text-ink-3"> · {t(kpi.subtle)}</span>}
           </dd>
         </div>
       );

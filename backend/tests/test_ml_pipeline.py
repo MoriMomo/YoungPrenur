@@ -8,10 +8,10 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ml.build_real_dataset import _parse_dslib_duration_days, _parse_dslib_preds  # noqa: E402
-from ml.features import FEATURE_NAMES  # noqa: E402
+from ml.features import FEATURE_NAMES, infer_category, task_features  # noqa: E402
 from ml.predictor import analyze_schedule  # noqa: E402
 from ml.train import _split_real_projects  # noqa: E402
-from schedule_parser import parse_schedule_file  # noqa: E402
+from schedule_parser import parse_schedule_document, parse_schedule_file  # noqa: E402
 
 
 class TestMlPipeline(unittest.TestCase):
@@ -70,6 +70,102 @@ class TestMlPipeline(unittest.TestCase):
         self.assertLessEqual(shipping["conditional_slip_days"], 1.5)
         self.assertGreaterEqual(analysis["p80_slippage_days"], analysis["estimated_project_slippage_days"])
         self.assertGreaterEqual(analysis["estimated_project_slippage_days"], 3.0)
+
+    def test_wbs_summary_rows_stripped_and_dependencies_repointed(self):
+        csv_bytes = (
+            "WBS Code,Activity Name,Planned Duration,Predecessors\n"
+            "1.0,Phase 1 Tooling Summary,12,\n"
+            "1.1,Die Design,4,\n"
+            "1.2,Rough Milling,8,1.1\n"
+            "2.0,Final Quality Audit,3,1.0\n"
+        ).encode("utf-8")
+        tasks = parse_schedule_file(csv_bytes, "wbs_rollup.csv")
+        codes = [t["code"] for t in tasks]
+        self.assertEqual(codes, ["1.1", "1.2", "2.0"])
+        self.assertEqual(tasks[2]["predecessors"], ["1.2"])
+        self.assertEqual(tasks[2]["start_day"], 12)
+        analysis = analyze_schedule(tasks, "WBS Rollup")
+        self.assertEqual(analysis["baseline_duration_days"], 15.0)
+
+    def test_date_derived_durations_and_parallel_date_inference(self):
+        csv_bytes = (
+            "WBS Code,Activity Name,Planned Start,Planned Finish,Actual Finish\n"
+            "T-1,SMT Pick and Place,2026-01-01,2026-01-05,2026-01-06\n"
+            "T-2,Injection Molding Housing,2026-01-01,2026-01-04,2026-01-04\n"
+            "T-3,Final Box Build Assembly,2026-01-05,2026-01-08,2026-01-08\n"
+        ).encode("utf-8")
+        tasks = parse_schedule_file(csv_bytes, "dates_no_preds.csv")
+        self.assertAlmostEqual(tasks[0]["planned_days"], 4.0)
+        self.assertAlmostEqual(tasks[0]["actual_days"], 5.0)
+        self.assertAlmostEqual(tasks[1]["planned_days"], 3.0)
+        # Parallel branches T-1 and T-2 both start at day 0 (not fake-chained sequentially)
+        self.assertEqual(tasks[0]["start_day"], 0)
+        self.assertEqual(tasks[1]["start_day"], 0)
+        self.assertGreater(tasks[1]["float_days"], 0.0)
+        self.assertEqual(tasks[2]["predecessors"], ["T-1"])
+        self.assertEqual(tasks[2]["start_day"], 4)
+
+    def test_pdm_ss_and_fs_lag_cpm_and_simulation(self):
+        csv_bytes = (
+            "WBS Code,Activity Name,Planned Duration,Predecessors,Work Center\n"
+            "A,Reactor Batch Mixing,6,,Mixer-1\n"
+            "B,HPLC Assay Testing,4,A SS+2d,Lab-1\n"
+            "C,Cold Chain Packaging,2,B FS+1d,Pack-1\n"
+        ).encode("utf-8")
+        tasks = parse_schedule_file(csv_bytes, "pdm_pharma.csv")
+        self.assertEqual(tasks[1]["start_day"], 2)
+        self.assertEqual(tasks[2]["start_day"], 7)
+        analysis = analyze_schedule(tasks, "PDM Pharma")
+        self.assertEqual(analysis["baseline_duration_days"], 9.0)
+
+    def test_universal_archetypes_and_computed_wc_concurrency(self):
+        self.assertEqual(infer_category("SMT Reflow Soldering", "Line-A"), "machining")
+        self.assertEqual(infer_category("Injection Molding Enclosure", "Press-2"), "stamping")
+        self.assertEqual(infer_category("API Synthesis & Tablet Compression", "Batch"), "procurement")
+        self.assertEqual(infer_category("AOI & Burn-In Verification", "TestBay"), "quality")
+
+        csv_bytes = (
+            "WBS Code,Activity Name,Planned Duration,Work Center,Predecessors\n"
+            "P-1,SMT Line Job 1,4,SMT-Line-1,\n"
+            "P-2,SMT Line Job 2,4,SMT-Line-1,\n"
+        ).encode("utf-8")
+        tasks = parse_schedule_file(csv_bytes, "concurrent_smt.csv")
+        feats_1 = task_features(tasks[0])
+        self.assertGreater(tasks[0].get("computed_utilization", 0.0), 0.78)
+        self.assertAlmostEqual(feats_1["resource_utilization"], tasks[0]["computed_utilization"])
+
+    def test_native_xer_and_msp_xml_ingestion(self):
+        xer_bytes = (
+            "%T\tTASK\n"
+            "%F\ttask_id\ttask_code\ttask_type\ttarget_drtn_hr_cnt\ttask_name\tstatus_code\n"
+            "%R\t10\tWBS-1\tTT_WBS\t80\tSummary Phase\tTK_Active\n"
+            "%R\t11\tX-1\tTT_Task\t32\tWafer Slicing\tTK_Active\n"
+            "%R\t12\tX-2\tTT_Task\t24\tAOI Inspection\tTK_Active\n"
+            "%T\tTASKPRED\n"
+            "%F\ttask_id\tpred_task_id\tpred_type\tlag_hr_cnt\n"
+            "%R\t12\t11\tPR_FS\t8\n"
+        ).encode("utf-8")
+        xer_res = parse_schedule_document(xer_bytes, "fab.xer")
+        self.assertEqual(len(xer_res["tasks"]), 2)
+        self.assertAlmostEqual(xer_res["tasks"][0]["planned_days"], 4.0)
+        self.assertEqual(xer_res["tasks"][1]["start_day"], 5)
+
+        xml_bytes = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<Project xmlns="http://schemas.microsoft.com/project">'
+            "<Tasks>"
+            "<Task><UID>0</UID><Name>Root</Name><Summary>1</Summary></Task>"
+            "<Task><UID>1</UID><WBS>1</WBS><Name>Phase 1</Name><Summary>1</Summary><Duration>PT48H0M0S</Duration></Task>"
+            "<Task><UID>2</UID><WBS>1.1</WBS><Name>Cleanroom Assembly</Name><Summary>0</Summary><Duration>PT24H0M0S</Duration></Task>"
+            "<Task><UID>3</UID><WBS>1.2</WBS><Name>FAT Acceptance Test</Name><Summary>0</Summary><Duration>PT16H0M0S</Duration>"
+            "<PredecessorLink><PredecessorUID>2</PredecessorUID><Type>3</Type><LinkLag>4800</LinkLag></PredecessorLink>"
+            "</Task>"
+            "</Tasks></Project>"
+        ).encode("utf-8")
+        xml_res = parse_schedule_document(xml_bytes, "line.xml")
+        self.assertEqual(len(xml_res["tasks"]), 2)
+        self.assertAlmostEqual(xml_res["tasks"][0]["planned_days"], 3.0)
+        self.assertEqual(xml_res["tasks"][1]["start_day"], 1)  # SS+1d from UID 2
 
 
 if __name__ == "__main__":

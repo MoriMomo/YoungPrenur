@@ -16,7 +16,7 @@ import {
   AuditLogEntry,
   KnowledgeDoc,
 } from "@/types";
-import { INITIAL_ACTIONS, KNOWLEDGE_DOCS, ROLES } from "@/lib/mock-data";
+import { KNOWLEDGE_DOCS, ROLES } from "@/lib/mock-data";
 import {
   AuthUser,
   checkApiHealth,
@@ -24,6 +24,7 @@ import {
   setOnPremisesMode,
   fetchAuditLog,
   fetchCopilotStatus,
+  fetchDelayRiskPrediction,
   fetchKnowledgeDocs,
   flagDecisionAction,
   askManufacturingCopilot,
@@ -38,9 +39,11 @@ import {
   DEFAULT_COPILOT_STATUS,
   mergeKnowledgeDocs,
   readStoredCustomSops,
+  readStoredUserSchedule,
   SopPayload,
   writeStoredCustomSops,
 } from "@/features/workspace/dashboard-context";
+import { useT } from "@/lib/i18n";
 
 function SearchParamsSync({
   onRoleInit,
@@ -77,6 +80,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
+  const t = useT();
   const [selectedRole, setSelectedRole] = useState<ManufacturingRole>("Operations Manager");
   const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>("saas");
   const [isApiLive, setIsApiLive] = useState<boolean>(false);
@@ -84,7 +88,7 @@ export default function DashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [actions, setActions] = useState<DecisionAction[]>(INITIAL_ACTIONS);
+  const [actions, setActions] = useState<DecisionAction[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>(KNOWLEDGE_DOCS);
   const [reviewingAction, setReviewingAction] = useState<DecisionAction | null>(null);
@@ -94,13 +98,15 @@ export default function DashboardLayout({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const applyWorkspaceSnapshot = (
+    uid: string | null,
     live: boolean,
     loadedDocs?: KnowledgeDoc[],
     status?: CopilotStatus,
     remoteActions?: DecisionAction[] | null,
-    remoteAudit?: AuditLogEntry[] | null
+    remoteAudit?: AuditLogEntry[] | null,
+    hasUploadedSchedule = false
   ) => {
-    const stored = readStoredCustomSops();
+    const stored = readStoredCustomSops(uid);
     const mergedDocs = loadedDocs
       ? mergeKnowledgeDocs(loadedDocs, stored)
       : mergeKnowledgeDocs(stored, KNOWLEDGE_DOCS);
@@ -113,29 +119,32 @@ export default function DashboardLayout({
     } else {
       setCopilotStatus({ ...DEFAULT_COPILOT_STATUS, indexed_sops: mergedDocs.length });
     }
-    if (remoteActions && remoteActions.length > 0) setActions(remoteActions);
-    if (remoteAudit) setAuditLog(remoteAudit);
+    setActions(hasUploadedSchedule ? remoteActions ?? [] : []);
+    setAuditLog(remoteAudit ?? []);
   };
 
   const syncTelemetry = async (announce = false) => {
+    const uid = currentUser?.id || null;
     const live = await checkApiHealth();
     setIsApiLive(live);
     if (live) {
-      const [remoteActions, remoteAudit, status, loadedDocs] = await Promise.all([
+      const [remotePred, remoteActions, remoteAudit, status, loadedDocs] = await Promise.all([
+        fetchDelayRiskPrediction(),
         fetchDecisionActions(),
         fetchAuditLog(),
         fetchCopilotStatus(),
         fetchKnowledgeDocs(),
       ]);
-      applyWorkspaceSnapshot(true, loadedDocs, status, remoteActions, remoteAudit);
+      const hasUploaded = remotePred !== null || readStoredUserSchedule(uid) !== null;
+      applyWorkspaceSnapshot(uid, true, loadedDocs, status, remoteActions, remoteAudit, hasUploaded);
     } else {
-      applyWorkspaceSnapshot(false);
+      applyWorkspaceSnapshot(uid, false, undefined, undefined, [], [], readStoredUserSchedule(uid) !== null);
     }
     if (announce) {
       showToast(
         live
-          ? "Telemetry refreshed from live FastAPI backend."
-          : "Service offline: refreshed sample data."
+          ? t("Telemetry refreshed from live FastAPI backend.", "Telemetri dimuat ulang dari backend FastAPI langsung.")
+          : t("Service offline: loaded cached session data.", "Layanan offline: memuat data sesi tersimpan.")
       );
     }
   };
@@ -163,7 +172,16 @@ export default function DashboardLayout({
     const unsubscribe = subscribeAuth(
       async (authenticatedUser) => {
         if (!active) return;
-        setCurrentUser(authenticatedUser);
+        const uid = authenticatedUser.id;
+        setCurrentUser((prev) => {
+          if (prev && prev.id !== uid) {
+            setActions([]);
+            setAuditLog([]);
+            setChatMessages([]);
+            setReviewingAction(null);
+          }
+          return authenticatedUser;
+        });
         if (
           typeof window !== "undefined" &&
           !window.location.search.includes("role=") &&
@@ -176,14 +194,16 @@ export default function DashboardLayout({
         const live = await checkApiHealth();
         if (!active) return;
         setIsApiLive(live);
-        const [remoteActions, remoteAudit, status, loadedDocs] = await Promise.all([
+        const [remotePred, remoteActions, remoteAudit, status, loadedDocs] = await Promise.all([
+          fetchDelayRiskPrediction(),
           fetchDecisionActions(),
           fetchAuditLog(),
           live ? fetchCopilotStatus() : Promise.resolve(undefined),
           fetchKnowledgeDocs(),
         ]);
         if (!active) return;
-        applyWorkspaceSnapshot(live, loadedDocs, status, remoteActions, remoteAudit);
+        const hasUploaded = remotePred !== null || readStoredUserSchedule(uid) !== null;
+        applyWorkspaceSnapshot(uid, live, loadedDocs, status, remoteActions, remoteAudit, hasUploaded);
       },
       () => {
         if (!active) return;
@@ -199,6 +219,10 @@ export default function DashboardLayout({
   const handleSignOut = async () => {
     await logoutUser();
     setCurrentUser(null);
+    setActions([]);
+    setAuditLog([]);
+    setChatMessages([]);
+    setReviewingAction(null);
     router.push("/login");
   };
 
@@ -213,7 +237,7 @@ export default function DashboardLayout({
       url.searchParams.set("role", newRole);
       window.history.replaceState(null, "", url.pathname + url.search);
     }
-    showToast(`Context updated for ${newRole}`);
+    showToast(t(`Context updated for ${newRole}`, `Konteks diperbarui untuk ${t(newRole)}`));
   };
 
   const handleDeploymentModeChange = (mode: DeploymentMode) => {
@@ -221,8 +245,11 @@ export default function DashboardLayout({
     setOnPremisesMode(mode === "internal");
     showToast(
       mode === "internal"
-        ? "On-premises mode: documents and Copilot questions stay on the MDIP server"
-        : "Cloud mode allows AI document parsing and Copilot answers"
+        ? t(
+            "On-premises mode: documents and Copilot questions stay on the MDIP server",
+            "Mode on-premises: dokumen dan pertanyaan Copilot tetap di server MDIP"
+          )
+        : t("Cloud mode allows AI document parsing and Copilot answers", "Mode cloud mengizinkan AI membaca dokumen dan menjawab Copilot")
     );
   };
 
@@ -248,8 +275,8 @@ export default function DashboardLayout({
     setAuditLog((prev) => [entry, ...prev.filter((item) => item.id !== entry.id)]);
     showToast(
       decision === "OVERRIDDEN"
-        ? "Override recorded in your audit log."
-        : "Authorization recorded in your audit log."
+        ? t("Override recorded in your audit log.", "Pembatalan dicatat di log audit Anda.")
+        : t("Authorization recorded in your audit log.", "Persetujuan dicatat di log audit Anda.")
     );
   };
 
@@ -294,7 +321,7 @@ export default function DashboardLayout({
         id: `ai-${Date.now()}`,
         sender: "copilot",
         offline: true,
-        text: "Copilot is unavailable. Please send your question again.",
+        text: t("Copilot is unavailable. Please send your question again.", "Copilot tidak tersedia. Silakan kirim pertanyaan Anda lagi."),
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB",
       };
       setChatMessages((prev) => [...prev, fallbackMsg]);
@@ -305,13 +332,15 @@ export default function DashboardLayout({
 
   const saveSopClauses = async (rows: SopPayload[]): Promise<boolean> => {
     if (!(await ingestSopClauses(rows))) return false;
+    const uid = currentUser?.id || null;
     const [refreshedDocs, freshStatus] = await Promise.all([fetchKnowledgeDocs(), fetchCopilotStatus()]);
-    setKnowledgeDocs(mergeKnowledgeDocs(refreshedDocs, readStoredCustomSops()));
+    setKnowledgeDocs(mergeKnowledgeDocs(refreshedDocs, readStoredCustomSops(uid)));
     setCopilotStatus(freshStatus);
     return true;
   };
 
   const addKnowledgeDoc = async (payload: SopPayload): Promise<{ syncedToBackend: boolean }> => {
+    const uid = currentUser?.id || null;
     const code = payload.doc_code.trim().toUpperCase();
     const normalizedPayload: SopPayload = {
       ...payload,
@@ -322,8 +351,8 @@ export default function DashboardLayout({
     };
     const res = await ingestKnowledgeDoc(normalizedPayload);
     if (res?.success) {
-      const remainingStored = readStoredCustomSops().filter((d) => d.code.toUpperCase() !== code);
-      writeStoredCustomSops(remainingStored);
+      const remainingStored = readStoredCustomSops(uid).filter((d) => d.code.toUpperCase() !== code);
+      writeStoredCustomSops(remainingStored, uid);
       const [refreshedDocs, freshStatus] = await Promise.all([
         fetchKnowledgeDocs(),
         fetchCopilotStatus(),
@@ -361,8 +390,8 @@ export default function DashboardLayout({
           sections: [{ clause: normalizedPayload.clause, content: normalizedPayload.excerpt }],
         };
 
-    const nextStored = mergeKnowledgeDocs([localDoc], readStoredCustomSops());
-    writeStoredCustomSops(nextStored);
+    const nextStored = mergeKnowledgeDocs([localDoc], readStoredCustomSops(uid));
+    writeStoredCustomSops(nextStored, uid);
     const mergedDocs = mergeKnowledgeDocs([localDoc], knowledgeDocs);
     setKnowledgeDocs(mergedDocs);
     setCopilotStatus((prev) => ({ ...prev, indexed_sops: mergedDocs.length }));
@@ -384,7 +413,7 @@ export default function DashboardLayout({
   if (!isAuthReady) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center text-sm text-ink-2">
-        Checking your session…
+        {t("Checking your session…", "Memeriksa sesi Anda…")}
       </div>
     );
   }
@@ -392,6 +421,7 @@ export default function DashboardLayout({
   return (
     <DashboardContext.Provider
       value={{
+        userId: currentUser?.id || null,
         userName: currentUser?.name || null,
         selectedRole,
         setSelectedRole: handleRoleChange,

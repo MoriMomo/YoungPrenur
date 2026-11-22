@@ -9,14 +9,62 @@ from typing import Any, Dict, List
 
 # Work-center categories, checked in order (first keyword hit wins).
 CATEGORY_KEYWORDS = [
-    ("subcontract", ["subcontract", "heat treat", "hardening", "coating", "plating", "outsourc", "furnace"]),
-    ("procurement", ["procure", "raw material", "raw ingot", "ingot", "material", "purchase", "supply chain", "receiving", "vendor"]),
-    ("engineering", ["drawing", "cad", "cam", "design", "blueprint", "sign-off", "engineering review"]),
-    ("stamping", ["stamp", "press", "forming", "die"]),
-    ("machining", ["cnc", "milling", "lathe", "machin", "edm", "grind", "turning", "lapping", "wire cut", "laser", "setup", "round grinding", "flat grinding"]),
-    ("assembly", ["assembl", "cleanroom", "fitting"]),
-    ("quality", ["cmm", "metrology", "quality", "inspection", "qa ", "q.c.", "qc", "acceptance test"]),
-    ("logistics", ["logistic", "dispatch", "packag", "packing", "shipping", "dock"]),
+    (
+        "subcontract",
+        [
+            "subcontract", "heat treat", "hardening", "coating", "plating", "outsourc", "furnace",
+            "anodiz", "galvaniz", "passivat", "steriliz", "gamma irrad", "contract mfg", " cm ", " ems ", "external lab",
+        ],
+    ),
+    (
+        "procurement",
+        [
+            "procure", "raw material", "raw ingot", "ingot", "material", "purchase", "supply chain", "receiving", "vendor",
+            "bom ", "component", "wafer", "resin", "pellet", " api ", "excipient", "customs", "import", "lead time", "supplier", "sourcing",
+        ],
+    ),
+    (
+        "engineering",
+        [
+            "drawing", "cad", "cam", "design", "blueprint", "sign-off", "engineering review",
+            "gerber", "schematic", "layout", "recipe", "formulation", "validation protocol", "iq/oq", "dfm", "fmea", "plc", "firmware", "programming",
+        ],
+    ),
+    (
+        "stamping",
+        [
+            "stamp", "press", "forming", "die",
+            "molding", "injection", "extrusion", "thermoform", "casting", "forging", "tablet press", "compression", "punch", "blanking",
+        ],
+    ),
+    (
+        "machining",
+        [
+            "cnc", "milling", "lathe", "machin", "edm", "grind", "turning", "lapping", "wire cut", "laser", "setup", "round grinding", "flat grinding",
+            "smt", "reflow", "pick and place", "wave solder", "etch", "lithography", "coat", "dispens", "compound", "mixing", "granulat", "ferment", "reactor", "distill", "curing", "autoclave", "weld", "fabricat", " cut",
+        ],
+    ),
+    (
+        "assembly",
+        [
+            "assembl", "cleanroom", "fitting",
+            "integrat", "sub-assembl", "subassembl", "wiring", "harness", "panel build", "box build", "encapsulat", "filling", "bottling", "blister", "kitting", "splicing",
+        ],
+    ),
+    (
+        "quality",
+        [
+            "cmm", "metrology", "quality", "inspection", "qa ", " qa", "q.c.", "qc", "acceptance test",
+            " aoi", "aoi ", "x-ray", " ict", "ict ", "functional test", "burn-in", " fat", "fat ", " sat", "sat ", "hplc", "assay", "microbio", "stability", "sterility", "calibration", "audit", "verify", "validation",
+        ],
+    ),
+    (
+        "logistics",
+        [
+            "logistic", "dispatch", "packag", "packing", "shipping", "dock",
+            "cold chain", "pallet", "warehouse", "freight", "export", "release", "handover", "delivery",
+        ],
+    ),
 ]
 CATEGORIES = [name for name, _ in CATEGORY_KEYWORDS] + ["other"]
 
@@ -84,6 +132,8 @@ def task_features(task: Dict[str, Any]) -> Dict[str, float]:
     if external is None:
         external = category in EXTERNAL_CATEGORIES
     utilization = task.get("resource_utilization")
+    if utilization is None:
+        utilization = task.get("computed_utilization")
     if utilization is None:
         utilization = DEFAULT_UTILIZATION[category]
 

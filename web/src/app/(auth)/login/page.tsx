@@ -9,6 +9,7 @@ import { loginUser, loginWithGoogle, registerUser, subscribeAuth } from "@/lib/a
 import { MdipLogo } from "@/components/ui/MdipLogo";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Lock, Mail, ArrowRight, ArrowLeft, User, AlertCircle } from "lucide-react";
+import { LangSwitch, useT } from "@/lib/i18n";
 
 function AuthModeSync({
   onRegisterMode,
@@ -44,14 +45,36 @@ function AuthModeSync({
 }
 
 /** What a signed-in user gets, in the certificate's own verdict marks. */
-const COCKPIT_FEATURES: { mark: string; tone: VerdictTone; text: string }[] = [
-  { mark: "Hold", tone: "hold", text: "Tasks likely to slip, scored by the delay-risk model with the reasons behind each score." },
-  { mark: "Sign-off", tone: "info", text: "Recommended actions wait for a named reviewer before they enter the audit log." },
-  { mark: "Cited", tone: "neutral", text: "Copilot answers quote the SOP clause or schedule line they rely on." },
+const COCKPIT_FEATURES: { mark: [string, string]; tone: VerdictTone; text: [string, string] }[] = [
+  {
+    mark: ["Hold", "Tahan"],
+    tone: "hold",
+    text: [
+      "Tasks likely to slip, scored by the delay-risk model with the reasons behind each score.",
+      "Tugas yang berpotensi mundur, dinilai model risiko keterlambatan beserta alasan tiap nilainya.",
+    ],
+  },
+  {
+    mark: ["Sign-off", "Sahkan"],
+    tone: "info",
+    text: [
+      "Recommended actions wait for a named reviewer before they enter the audit log.",
+      "Tindakan yang disarankan menunggu peninjau bernama sebelum masuk ke log audit.",
+    ],
+  },
+  {
+    mark: ["Cited", "Dikutip"],
+    tone: "neutral",
+    text: [
+      "Copilot answers quote the SOP clause or schedule line they rely on.",
+      "Jawaban Copilot mengutip klausul SOP atau baris jadwal yang menjadi dasarnya.",
+    ],
+  },
 ];
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useT();
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -75,7 +98,7 @@ export default function LoginPage() {
     try {
       await loginWithGoogle(selectedDemoRole);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Google sign-in failed.");
+      setErrorMsg(err instanceof Error ? err.message : t("Google sign-in failed.", "Masuk dengan Google gagal."));
       setIsSubmitting(false);
     }
   };
@@ -87,15 +110,15 @@ export default function LoginPage() {
     const cleanEmail = email.trim();
     const cleanName = fullName.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
-      setErrorMsg("Enter a valid work email address (for example, name@plant.co.id).");
+      setErrorMsg(t("Enter a valid work email address (for example, name@plant.co.id).", "Masukkan email kerja yang valid (misalnya nama@pabrik.co.id)."));
       return;
     }
     if (password.length < 8) {
-      setErrorMsg("Password must be at least 8 characters.");
+      setErrorMsg(t("Password must be at least 8 characters.", "Kata sandi minimal 8 karakter."));
       return;
     }
     if (authMode === "register" && cleanName.length < 2) {
-      setErrorMsg("Enter your full name to register.");
+      setErrorMsg(t("Enter your full name to register.", "Masukkan nama lengkap untuk mendaftar."));
       return;
     }
 
@@ -106,13 +129,13 @@ export default function LoginPage() {
           ? await registerUser(cleanEmail, password, cleanName, selectedDemoRole)
           : await loginUser(cleanEmail, password);
       if (!session) {
-        setErrorMsg("Check your email to confirm your account before signing in.");
+        setErrorMsg(t("Check your email to confirm your account before signing in.", "Periksa email Anda untuk mengonfirmasi akun sebelum masuk."));
         setIsSubmitting(false);
         return;
       }
       router.push(`/dashboard?role=${encodeURIComponent(session.user.role)}`);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Authentication failed.");
+      setErrorMsg(err instanceof Error ? err.message : t("Authentication failed.", "Autentikasi gagal."));
       setIsSubmitting(false);
     }
   };
@@ -126,7 +149,7 @@ export default function LoginPage() {
             setPassword("");
             setIsSubmitting(false);
           }}
-          onSessionExpired={() => setErrorMsg("Your session expired. Please sign in again.")}
+          onSessionExpired={() => setErrorMsg(t("Your session expired. Please sign in again.", "Sesi Anda berakhir. Silakan masuk lagi."))}
           onOAuthError={(msg) => setErrorMsg(msg)}
         />
       </Suspense>
@@ -136,18 +159,21 @@ export default function LoginPage() {
           <MdipLogo variant="color" size={30} className="shrink-0" />
           <div>
             <div className="font-medium text-ink text-sm group-hover:text-stamp transition-colors">
-              MDIP Operations Gateway
+              {t("MDIP Operations Gateway", "Gerbang Operasional MDIP")}
             </div>
           </div>
         </Link>
 
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 text-xs text-ink-2 hover:text-ink font-medium transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
-          <span>Back to Overview</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <LangSwitch />
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-xs text-ink-2 hover:text-ink font-medium transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
+            <span className="hidden sm:inline">{t("Back to Overview", "Kembali ke Ringkasan")}</span>
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
@@ -158,20 +184,23 @@ export default function LoginPage() {
             <div>
 
               <h1 className="font-display text-[32px] font-extrabold uppercase leading-[0.98] text-ink mb-3">
-                Manufacturing Decision Intelligence Platform
+                {t("Manufacturing Decision Intelligence Platform", "Platform Intelijen Keputusan Manufaktur")}
               </h1>
               <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
-                Sign in with your Google or plant account to open your role-scoped cockpit and HITL approval queue.
+                {t(
+                  "Sign in with your Google or plant account to open your role-scoped cockpit and HITL approval queue.",
+                  "Masuk dengan akun Google atau akun pabrik untuk membuka kokpit sesuai peran dan antrean persetujuan HITL Anda."
+                )}
               </p>
             </div>
 
-            <ul aria-label="What the cockpit gives you" className="divide-y divide-rule border border-rule-strong bg-sheet">
+            <ul aria-label={t("What the cockpit gives you", "Yang diberikan kokpit")} className="divide-y divide-rule border border-rule-strong bg-sheet">
               {COCKPIT_FEATURES.map((item) => (
-                <li key={item.mark} className="flex items-start gap-3 px-4 py-3.5">
+                <li key={item.mark[0]} className="flex items-start gap-3 px-4 py-3.5">
                   <Verdict tone={item.tone} className="mt-0.5 w-[72px] justify-center">
-                    {item.mark}
+                    {t(...item.mark)}
                   </Verdict>
-                  <span className="text-sm leading-snug text-ink-2">{item.text}</span>
+                  <span className="text-sm leading-snug text-ink-2">{t(...item.text)}</span>
                 </li>
               ))}
             </ul>
@@ -183,12 +212,12 @@ export default function LoginPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="font-display text-[26px] font-bold leading-tight text-ink mb-1">
-                    {authMode === "register" ? "Create Operator Account" : "Sign In to Cockpit"}
+                    {authMode === "register" ? t("Create Operator Account", "Buat Akun Operator") : t("Sign In to Cockpit", "Masuk ke Kokpit")}
                   </h2>
                   <p className="text-xs text-ink-2">
                     {authMode === "register"
-                      ? "Create your plant account with email and password"
-                      : "Continue with Google or use your email and password"}
+                      ? t("Create your plant account with email and password", "Buat akun pabrik dengan email dan kata sandi")
+                      : t("Continue with Google or use your email and password", "Lanjut dengan Google atau gunakan email dan kata sandi")}
                   </p>
                 </div>
                 <div className="flex bg-sheet p-0.5 rounded-lg border border-rule-strong text-xs shrink-0">
@@ -203,7 +232,7 @@ export default function LoginPage() {
                       authMode === "login" ? "bg-stamp text-white" : "text-ink-2 hover:text-ink"
                     }`}
                   >
-                    Sign In
+                    {t("Sign In", "Masuk")}
                   </button>
                   <button
                     type="button"
@@ -217,7 +246,7 @@ export default function LoginPage() {
                       authMode === "register" ? "bg-stamp text-white" : "text-ink-2 hover:text-ink"
                     }`}
                   >
-                    Sign Up
+                    {t("Sign Up", "Daftar")}
                   </button>
                 </div>
               </div>
@@ -231,7 +260,7 @@ export default function LoginPage() {
 
               <div>
                 <label htmlFor="demo-role" className="block text-xs font-medium text-ink-2 mb-1.5">
-                  Plant Role
+                  {t("Plant Role", "Peran di Pabrik")}
                 </label>
                 <select
                   id="demo-role"
@@ -241,7 +270,7 @@ export default function LoginPage() {
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
-                      {r}
+                      {t(r)}
                     </option>
                   ))}
                 </select>
@@ -273,12 +302,12 @@ export default function LoginPage() {
                     />
                   </svg>
                   <span>
-                    {authMode === "register" ? "Sign up with Google" : "Continue with Google"}
+                    {authMode === "register" ? t("Sign up with Google", "Daftar dengan Google") : t("Continue with Google", "Lanjut dengan Google")}
                   </span>
                 </button>
                 <div className="flex items-center gap-3 text-xs text-ink-2">
                   <span className="h-px flex-1 bg-rule" />
-                  <span>or continue with work email</span>
+                  <span>{t("or continue with work email", "atau lanjut dengan email kerja")}</span>
                   <span className="h-px flex-1 bg-rule" />
                 </div>
               </div>
@@ -287,7 +316,7 @@ export default function LoginPage() {
                 {authMode === "register" && (
                   <div>
                     <label htmlFor="demo-name" className="block text-xs font-medium text-ink-2 mb-1.5">
-                      Full Name
+                      {t("Full Name", "Nama Lengkap")}
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 text-ink-2 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
@@ -300,7 +329,7 @@ export default function LoginPage() {
                         onChange={(e) => setFullName(e.target.value)}
                         required
                         className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-base sm:text-sm font-normal transition-colors"
-                        placeholder="e.g. Ahmad Fauzi"
+                        placeholder={t("e.g. Ahmad Fauzi", "mis. Ahmad Fauzi")}
                       />
                     </div>
                   </div>
@@ -308,7 +337,7 @@ export default function LoginPage() {
 
                 <div>
                   <label htmlFor="demo-email" className="block text-xs font-medium text-ink-2 mb-1.5">
-                    Corporate Email
+                    {t("Corporate Email", "Email Perusahaan")}
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-ink-2 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.5} />
@@ -323,7 +352,7 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-base sm:text-sm font-normal transition-colors"
-                      placeholder="you@company.com"
+                      placeholder={t("you@company.com", "anda@perusahaan.com")}
                     />
                   </div>
                 </div>
@@ -331,10 +360,10 @@ export default function LoginPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label htmlFor="demo-password" className="text-xs font-medium text-ink-2">
-                      Password
+                      {t("Password", "Kata Sandi")}
                     </label>
                     <span className="text-xs text-ink-2">
-                      {authMode === "register" ? "Min 6 chars" : "Enter your password"}
+                      {authMode === "register" ? t("Min 8 chars", "Min. 8 karakter") : t("Enter your password", "Masukkan kata sandi")}
                     </span>
                   </div>
                   <div className="relative">
@@ -348,7 +377,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={authMode === "register" ? 6 : 1}
+                      minLength={authMode === "register" ? 8 : 1}
                       className="w-full bg-sheet border border-rule-strong focus:outline-none focus:ring-2 focus:ring-stamp/50 text-ink rounded-lg pl-10 pr-4 h-10 text-base sm:text-sm font-normal transition-colors"
                     />
                   </div>
@@ -361,10 +390,10 @@ export default function LoginPage() {
                 >
                   <span>
                     {isSubmitting
-                      ? "Authenticating..."
+                      ? t("Authenticating...", "Memproses...")
                       : authMode === "register"
-                      ? "Create Account & Enter Cockpit"
-                      : "Sign in to Cockpit"}
+                      ? t("Create Account & Enter Cockpit", "Buat Akun & Masuk Kokpit")
+                      : t("Sign in to Cockpit", "Masuk ke Kokpit")}
                   </span>
                   <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </button>
@@ -372,7 +401,7 @@ export default function LoginPage() {
 
               <div className="p-3.5 rounded-lg bg-sheet border border-rule-strong text-xs text-ink-2 flex items-center justify-between">
                 <span>
-                  Selected role: <span className="text-ink font-medium">{selectedDemoRole}</span>
+                  {t("Selected role:", "Peran terpilih:")} <span className="text-ink font-medium">{t(selectedDemoRole)}</span>
                 </span>
               </div>
             </div>
@@ -381,7 +410,7 @@ export default function LoginPage() {
       </main>
 
       <footer className="h-12 border-t border-rule-strong px-6 sm:px-10 flex items-center justify-between text-xs text-ink-2">
-        <span>Manufacturing Decision Intelligence Platform (MDIP)</span>
+        <span>{t("Manufacturing Decision Intelligence Platform (MDIP)", "Platform Intelijen Keputusan Manufaktur (MDIP)")}</span>
       </footer>
     </div>
   );

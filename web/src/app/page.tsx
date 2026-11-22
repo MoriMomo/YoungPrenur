@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -20,125 +20,67 @@ import { MdipLogo } from "@/components/ui/MdipLogo";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
+import { InspectionRow, SAMPLE_ROWS, TONE_BAR, verdictFor } from "@/components/landing/inspection";
+import { InspectionDetail } from "@/components/landing/InspectionDetail";
+import { CockpitPreview } from "@/components/landing/CockpitPreview";
+import { PilotAndFaq } from "@/components/landing/PilotAndFaq";
+import { useT } from "@/lib/i18n";
 
-type InspectionRow = {
-  code: string;
-  task: string;
-  planned: number;
-  forecast: number;
-  float: number | null;
-  risk: number | null;
-  /** Band from the server (HIGH / MEDIUM / LOW), set with the model's tuned cut-off. */
-  level?: string;
-  driver?: string;
-  done?: boolean;
-};
+/** Plant License list price; null shows "quoted after the pilot" until a real price is set. */
+const PLANT_LICENSE_PRICE: { amount: string; unit: string; unitId: string } | null = { amount: "Rp 7 juta", unit: "per plant / month", unitId: "per pabrik / bulan" };
 
-/** Illustrative rows for the sample project, shown until a real schedule is inspected. */
-const SAMPLE_ROWS: InspectionRow[] = [
-  { code: "WBS-1.1", task: "Raw ingot delivery and intake", planned: 4, forecast: 4, float: 0, risk: null, done: true },
-  { code: "WBS-1.2", task: "CNC 5-axis rough machining", planned: 6, forecast: 8, float: 0, risk: 0.44, driver: "Forecast overrun vs. plan" },
-  { code: "WBS-1.3", task: "Heat treatment and stress relieving", planned: 3, forecast: 3, float: 0, risk: 0.8, driver: "Upstream predecessor slippage" },
-  { code: "WBS-1.4", task: "Final stamping and tooling FAT", planned: 5, forecast: 7, float: 0, risk: 0.8, driver: "Forecast overrun vs. plan" },
-  { code: "WBS-1.5", task: "CMM quality inspection", planned: 2, forecast: 2, float: 0, risk: 0.34, driver: "Thin schedule float buffer" },
-  { code: "WBS-1.6", task: "Packaging and logistics", planned: 1, forecast: 1, float: 0, risk: 0.33, driver: "Upstream predecessor slippage" },
-];
-
-const METHOD = [
+const METHOD: { title: [string, string]; body: [string, string] }[] = [
   {
-    title: "Ingest the schedule",
-    body: "CSV or Excel exports with planned and forecast durations. Column names in English or Indonesian are recognised and normalised into WBS work packages.",
+    title: ["Ingest the schedule", "Masukkan jadwal"],
+    body: [
+      "CSV or Excel exports with planned and forecast durations. Column names in English or Indonesian are recognised and normalised into WBS work packages.",
+      "Ekspor CSV atau Excel berisi durasi rencana dan prakiraan. Nama kolom berbahasa Inggris atau Indonesia dikenali dan dinormalkan menjadi paket kerja WBS.",
+    ],
   },
   {
-    title: "Trace the critical path",
-    body: "A forward and backward pass computes start days, float and the critical path, and carries slip from late predecessors to the tasks that depend on them.",
+    title: ["Trace the critical path", "Telusuri jalur kritis"],
+    body: [
+      "A forward and backward pass computes start days, float and the critical path, and carries slip from late predecessors to the tasks that depend on them.",
+      "Perhitungan maju dan mundur menghasilkan hari mulai, float, dan jalur kritis, lalu meneruskan keterlambatan pendahulu ke tugas yang bergantung padanya.",
+    ],
   },
   {
-    title: "Score and explain",
-    body: "An XGBoost model scores each task's chance of finishing beyond its float and names the drivers behind it. 2,000 Monte Carlo runs turn task risk into project risk.",
+    title: ["Score and explain", "Nilai dan jelaskan"],
+    body: [
+      "An XGBoost model scores each task's chance of finishing beyond its float and names the drivers behind it. 2,000 Monte Carlo runs turn task risk into project risk.",
+      "Model XGBoost menilai peluang tiap tugas selesai melewati float-nya dan menyebut pemicunya. 2.000 simulasi Monte Carlo mengubah risiko tugas menjadi risiko proyek.",
+    ],
   },
   {
-    title: "Sign off",
-    body: "Recommended actions cite the SOP clause they rely on. A named supervisor authorizes or overrides each one, and every decision lands in the audit log.",
+    title: ["Sign off", "Pengesahan"],
+    body: [
+      "Recommended actions cite the SOP clause they rely on. A named supervisor authorizes or overrides each one, and every decision lands in the audit log.",
+      "Tindakan yang disarankan mengutip klausul SOP yang menjadi dasarnya. Supervisor bernama menyetujui atau membatalkan tiap tindakan, dan semua keputusan tercatat di log audit.",
+    ],
   },
 ];
-
-const PLANS = [
-  {
-    eyebrow: "30-Day Plant Pilot",
-    title: "Guided Trial",
-    summary: "For one active manufacturing line or tooling build.",
-    features: [
-      "Up to 5 WBS schedules inspected",
-      "CPM + 2,000-run Monte Carlo forecast",
-      "6 role-scoped cockpit views",
-      "Supervisor sign-off & audit log",
-    ],
-    cta: "Start 30-day pilot",
-    recommended: false,
-  },
-  {
-    eyebrow: "Single Plant",
-    title: "Plant License",
-    summary: "Annual per-site license for continuous schedule control.",
-    features: [
-      "Unlimited WBS & CSV/Excel inspections",
-      "Custom plant SOP knowledge base",
-      "AI copilot with cited SOP clauses",
-      "Role-based access & exportable audit trail",
-    ],
-    cta: "Create plant workspace",
-    recommended: true,
-  },
-  {
-    eyebrow: "Enterprise",
-    title: "Custom Quote",
-    summary: "Multi-plant operations with strict IT/OT governance.",
-    features: [
-      "Multi-site portfolio & executive rollups",
-      "Dedicated deployment or VPC isolation",
-      "SAP PS / Primavera P6 / MS Project sync",
-      "SSO, custom retention & onboarding SLA",
-    ],
-    cta: "Request enterprise quote",
-    recommended: false,
-  },
-] as const;
 
 function RiskCell({ row, tone }: { row: InspectionRow; tone: VerdictTone }) {
+  const t = useT();
   if (row.risk === null) {
-    return <span className="text-xs text-ink-3">{row.done ? "Finished" : "Not scored"}</span>;
+    return <span className="text-xs text-ink-3">{row.done ? t("Finished", "Selesai") : t("Not scored", "Belum dinilai")}</span>;
   }
   const pct = Math.round(row.risk * 100);
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-24 bg-sheet-sunk" aria-hidden="true">
-        <div
-          className={`h-full ${tone === "hold" ? "bg-hold" : tone === "warn" ? "bg-warn" : "bg-pass"}`}
-          style={{ width: `${pct}%` }}
-        />
+        <div data-risk-fill className={`h-full origin-left ${TONE_BAR[tone]}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="font-mono-numbers text-xs text-ink">{pct}%</span>
     </div>
   );
 }
 
-function verdictFor(row: InspectionRow): { tone: VerdictTone; label: string } {
-  if (row.done) return { tone: "neutral", label: "Complete" };
-  if (row.risk === null) return { tone: "neutral", label: "Not scored" };
-  if (row.level === "HIGH") return { tone: "hold", label: "Hold" };
-  if (row.level === "MEDIUM") return { tone: "warn", label: "Watch" };
-  if (row.level === "LOW") return { tone: "pass", label: "Pass" };
-  if (row.risk >= 0.6) return { tone: "hold", label: "Hold" };
-  if (row.risk >= 0.35) return { tone: "warn", label: "Watch" };
-  return { tone: "pass", label: "Pass" };
-}
-
 export default function LandingPage() {
   const [rows, setRows] = useState<InspectionRow[]>(SAMPLE_ROWS);
   const [subject, setSubject] = useState("Sample project · precision stamping die set");
   const [isSample, setIsSample] = useState(true);
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{ prob: number; slip: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [stampKey, setStampKey] = useState(0);
@@ -146,7 +88,77 @@ export default function LandingPage() {
   const deskRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const rolePanelRef = useRef<HTMLDivElement>(null);
+  const tabIndicatorRef = useRef<HTMLSpanElement>(null);
+  const [openCode, setOpenCode] = useState<string | null>(null);
   const role = ROLE_PRESETS[activeRole];
+  const t = useT();
+
+  const toggleRow = (code: string) => setOpenCode((c) => (c === code ? null : code));
+  const selectFromCockpit = (code: string) => {
+    setOpenCode(code);
+    // The table (md+) and the stacked list (phones) both carry the row; scroll to whichever is shown.
+    const target = [document.getElementById(`row-${code}`), document.getElementById(`card-${code}`)].find(
+      (el) => el && el.offsetParent !== null
+    );
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // Sliding underline under the active role tab: measured, so it follows the two-column grid on phones too.
+  useLayoutEffect(() => {
+    const place = () => {
+      const bar = tabIndicatorRef.current;
+      const tab = bar?.parentElement?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (!bar || !tab) return;
+      bar.style.width = `${tab.offsetWidth}px`;
+      bar.style.transform = `translate(${tab.offsetLeft}px, ${tab.offsetTop + tab.offsetHeight - 2}px)`;
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [activeRole]);
+
+  // Risk and timeline bars fill from zero once they scroll into view, and again after each new inspection.
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from("[data-risk-fill]", {
+          scaleX: 0,
+          duration: 0.7,
+          ease: "power2.out",
+          stagger: 0.05,
+          scrollTrigger: { trigger: "#inspection-title", start: "top 85%", once: true },
+        });
+        gsap.from("[data-gantt-bar]", {
+          scaleX: 0,
+          duration: 0.6,
+          ease: "power2.out",
+          stagger: 0.06,
+          scrollTrigger: { trigger: "#cockpit-title", start: "top 80%", once: true },
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: deskRef, dependencies: [rows], revertOnUpdate: true }
+  );
+
+  // The validation stamp presses in like ink the first time the certificate comes into view.
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.utils.toArray<HTMLElement>("[data-stamp-press]").forEach((el) => {
+          gsap.fromTo(
+            el,
+            { scale: 1.08, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.32, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 85%", once: true } }
+          );
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: deskRef }
+  );
 
   useGSAP(
     () => {
@@ -230,33 +242,40 @@ export default function LandingPage() {
     try {
       const result = await inspectScheduleFile(blob, name);
       if (!result) {
-        setNotice("The inspection service is not reachable from this site, so the sample certificate stays in place.");
+        setNotice(
+          t(
+            "The inspection service is not reachable from this site, so the sample certificate stays in place.",
+            "Layanan inspeksi tidak dapat dijangkau dari situs ini, jadi sertifikat contoh tetap ditampilkan."
+          )
+        );
         return;
       }
       setRows(
         result.tasks.map((t) => ({
           code: t.code,
           task: t.task,
+          start: t.startDay,
           planned: t.plannedDays,
           forecast: t.actualDays,
           float: typeof t.floatDays === "number" ? t.floatDays : null,
           risk: /complete|done|selesai/i.test(t.status) ? null : t.delayRisk,
           level: t.riskLevel,
-          driver: t.drivers?.[0],
+          critical: t.critical,
+          drivers: t.drivers,
+          workCenter: t.workCenter,
           done: /complete|done|selesai/i.test(t.status),
         }))
       );
       setSubject(name.replace(/\.(csv|xlsx|xls)$/i, ""));
       setIsSample(false);
+      setOpenCode(null);
       if (typeof result.overall_delay_probability === "number") {
         const p50 = result.estimated_project_slippage_days ?? 0;
-        setSummary(
-          `${result.overall_delay_probability.toFixed(1)}% chance the project misses its due date · median slip +${p50.toFixed(1)} days`
-        );
+        setSummary({ prob: result.overall_delay_probability, slip: p50 });
       }
       setStampKey((k) => k + 1);
     } catch (err) {
-      setNotice(err instanceof ScheduleUploadError ? err.message : `Could not inspect ${name}.`);
+      setNotice(err instanceof ScheduleUploadError ? err.message : t(`Could not inspect ${name}.`, `Tidak dapat memeriksa ${name}.`));
     } finally {
       setBusy(false);
     }
@@ -266,7 +285,7 @@ export default function LandingPage() {
     const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
     const res = await fetch(`${base}/sample_master_schedule_wbs.csv`);
     if (!res.ok) {
-      setNotice("The sample schedule could not be loaded.");
+      setNotice(t("The sample schedule could not be loaded.", "Jadwal contoh tidak dapat dimuat."));
       return;
     }
     await inspect(new Blob([await res.text()], { type: "text/csv" }), "sample_master_schedule_wbs.csv");
@@ -412,21 +431,23 @@ export default function LandingPage() {
           </div>
           <div data-hero-item className="lg:col-span-7">
             <p className="font-mono text-xs uppercase tracking-[0.08em] text-ink-3">
-              Schedule Delay-Risk Inspection · B2B Manufacturing SaaS
+              {t("Schedule Delay-Risk Inspection · B2B Manufacturing SaaS", "Inspeksi Risiko Keterlambatan Jadwal · SaaS Manufaktur B2B")}
             </p>
             <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[72px]">
-              Know which tasks will slip before the work cell stalls
+              {t("Know which tasks will slip before the work cell stalls", "Ketahui tugas yang akan mundur sebelum sel kerja berhenti")}
             </h1>
             <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-ink-2">
-              MDIP inspects a project schedule the way your plant inspects a steel bar: every task&apos;s forecast measured
-              against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.
+              {t(
+                "MDIP inspects a project schedule the way your plant inspects a steel bar: every task's forecast measured against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.",
+                "MDIP memeriksa jadwal proyek seperti pabrik Anda memeriksa batang baja: prakiraan tiap tugas diukur terhadap rencananya, putusan risiko keterlambatan beserta alasannya, dan supervisor bernama yang mengesahkan perbaikannya."
+              )}
             </p>
             <div className="mt-6 flex flex-wrap gap-2.5">
               <LinkButton href="/login?mode=register" size="lg">
-                Start 30-day pilot
+                {t("Start 30-day pilot", "Mulai pilot 30 hari")}
               </LinkButton>
               <LinkButton href="/dashboard" variant="secondary" size="lg">
-                Open live cockpit
+                {t("Open live cockpit", "Buka kokpit langsung")}
               </LinkButton>
             </div>
           </div>
@@ -442,18 +463,21 @@ export default function LandingPage() {
             >
               {(open) => (
                 <>
-                  <h2 className="font-display text-xl font-bold text-ink">Submit a schedule for inspection</h2>
+                  <h2 className="font-display text-xl font-bold text-ink">{t("Submit a schedule for inspection", "Kirim jadwal untuk diinspeksi")}</h2>
                   <p className="mt-1 text-sm text-ink-2">
-                    Drop a CSV or Excel file here, or choose one: tasks, planned days and, if you have them, forecast days and dependencies.
+                    {t(
+                      "Drop a CSV or Excel file here, or choose one: tasks, planned days and, if you have them, forecast days and dependencies.",
+                      "Letakkan file CSV atau Excel di sini, atau pilih satu: tugas, hari rencana, dan jika ada, hari prakiraan serta ketergantungan."
+                    )}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button size="lg" onClick={open} disabled={busy}>
                       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
-                      {busy ? "Inspecting…" : "Choose schedule file"}
+                      {busy ? t("Inspecting…", "Memeriksa…") : t("Choose schedule file", "Pilih file jadwal")}
                     </Button>
                     <Button size="lg" variant="secondary" onClick={useSample} disabled={busy}>
                       <FileSpreadsheet className="h-4 w-4" strokeWidth={1.75} />
-                      Use the sample schedule
+                      {t("Use the sample schedule", "Pakai jadwal contoh")}
                     </Button>
                   </div>
                   {notice && (
@@ -469,16 +493,19 @@ export default function LandingPage() {
 
         {/* Compatibility & plant governance strip */}
         <section
-          aria-label="Supported exports and governance"
+          aria-label={t("Supported exports and governance", "Ekspor yang didukung dan tata kelola")}
           className="grid gap-3 border-b border-rule-strong bg-sheet-sunk px-5 py-3.5 text-xs text-ink-2 sm:px-8 lg:grid-cols-2 lg:items-center"
         >
           <p>
-            <span className="font-semibold text-ink">Schedule exports:</span>{" "}
-            SAP PS · MS Project · Primavera P6 · Excel / CSV (English &amp; Indonesian headers)
+            <span className="font-semibold text-ink">{t("Schedule exports:", "Ekspor jadwal:")}</span>{" "}
+            SAP PS · MS Project · Primavera P6 · Excel / CSV {t("(English & Indonesian headers)", "(header bahasa Inggris & Indonesia)")}
           </p>
           <p className="lg:text-right">
-            <span className="font-semibold text-ink">Plant controls:</span>{" "}
-            Isolated workspace · Zero public model training · Full HITL audit trail
+            <span className="font-semibold text-ink">{t("Plant controls:", "Kontrol pabrik:")}</span>{" "}
+            {t(
+              "Isolated workspace · Zero public model training · Full HITL audit trail",
+              "Workspace terisolasi · Tanpa pelatihan model publik · Jejak audit HITL lengkap"
+            )}
           </p>
         </section>
 
@@ -486,23 +513,25 @@ export default function LandingPage() {
         <section aria-labelledby="inspection-title" className="px-5 pb-8 pt-7 sm:px-8">
           <div>
             <h2 id="inspection-title" className="w-fit font-display text-2xl font-bold text-ink">
-              Inspection results
+              {t("Inspection results", "Hasil inspeksi")}
             </h2>
             <p className="mt-1 w-fit max-w-[calc(100%-140px)] text-sm text-ink-2">
-              Item inspected: <span className="font-medium text-ink">{subject}</span>
-              {isSample && <span className="ml-2 text-ink-3">(illustrative sample data)</span>}
+              {t("Item inspected:", "Objek inspeksi:")} <span className="font-medium text-ink">{t(subject)}</span>
+              {isSample && <span className="ml-2 text-ink-3">{t("(illustrative sample data)", "(data contoh ilustratif)")}</span>}
             </p>
           </div>
 
           <div className="relative mt-5">
-            <Stamp
-              key={stampKey}
-              top="Validated on real data"
-              center="AUC 0.78"
-              bottom="51 held-out projects"
-              size={100}
-              className="absolute -top-[84px] right-1.5 z-20 hidden xl:block"
-            />
+            <div data-stamp-press className="absolute -top-[84px] right-1.5 z-20 hidden xl:block">
+              <Stamp
+                key={stampKey}
+                top={t("Validated on real data", "Divalidasi data nyata")}
+                center="AUC 0.78"
+                bottom={t("51 held-out projects", "51 proyek uji")}
+                size={100}
+                animate={stampKey > 0}
+              />
+            </div>
 
             {/* Desktop and tablet: the ruled inspection table */}
             <div className="relative hidden overflow-x-auto border border-rule-strong md:block">
@@ -510,27 +539,52 @@ export default function LandingPage() {
                 <thead>
                   <tr className="bg-paper text-left text-xs text-ink-2">
                     <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">WBS</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Task</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Planned (d)</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Forecast (d)</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">Float (d)</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Delay risk</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">Main driver</th>
-                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium xl:pr-28">Verdict</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">{t("Task", "Tugas")}</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">{t("Planned (d)", "Rencana (h)")}</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">{t("Forecast (d)", "Prakiraan (h)")}</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 text-right font-medium">{t("Float (d)", "Float (h)")}</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">{t("Delay risk", "Risiko terlambat")}</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">{t("Main driver", "Pemicu utama")}</th>
+                    <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium xl:pr-28">{t("Verdict", "Putusan")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => {
                     const v = verdictFor(r);
                     const over = r.forecast > r.planned;
+                    const open = openCode === r.code;
                     return (
-                      <tr key={r.code} className="border-b border-rule last:border-b-0">
-                        <td className="whitespace-nowrap px-3 py-2.5 font-mono-numbers text-xs text-ink-2">{r.code}</td>
-                        <td className="px-3 py-2.5 text-ink">{r.task}</td>
+                      <React.Fragment key={r.code}>
+                      <tr
+                        id={`row-${r.code}`}
+                        onClick={() => toggleRow(r.code)}
+                        className={`group cursor-pointer border-b border-rule transition-colors ${open ? "bg-paper" : "hover:bg-paper/60"}`}
+                      >
+                        <td
+                          className={`whitespace-nowrap px-3 py-2.5 font-mono-numbers text-xs text-ink-2 ${
+                            open ? "shadow-[inset_2px_0_0_var(--color-stamp)]" : "group-hover:shadow-[inset_1px_0_0_var(--color-stamp)]"
+                          }`}
+                        >
+                          {r.code}
+                        </td>
+                        <td className="px-3 py-2.5 text-ink">
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            aria-controls={`detail-${r.code}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleRow(r.code);
+                            }}
+                            className="cursor-pointer text-left hover:text-stamp"
+                          >
+                            {t(r.task)}
+                          </button>
+                        </td>
                         <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">{r.planned}</td>
                         <td className={`px-3 py-2.5 text-right font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>
                           {r.forecast}
-                          {over && <span className="sr-only"> (over plan)</span>}
+                          {over && <span className="sr-only">{t(" (over plan)", " (melebihi rencana)")}</span>}
                         </td>
                         <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">
                           {r.float === null ? <span className="text-ink-3">n/a</span> : r.float}
@@ -539,12 +593,20 @@ export default function LandingPage() {
                           <RiskCell row={r} tone={v.tone} />
                         </td>
                         <td className="px-3 py-2.5 text-xs text-ink-2">
-                          {r.driver ?? <span className="text-ink-3">{r.done ? "—" : "None reported"}</span>}
+                          {r.drivers?.[0] ? t(r.drivers[0]) : <span className="text-ink-3">{r.done ? "—" : t("None reported", "Tidak ada")}</span>}
                         </td>
                         <td className="px-3 py-2.5">
-                          <Verdict tone={v.tone}>{v.label}</Verdict>
+                          <Verdict tone={v.tone}>{t(v.label)}</Verdict>
                         </td>
                       </tr>
+                      {open && (
+                        <tr className="border-b border-rule">
+                          <td colSpan={8} className="p-0">
+                            <InspectionDetail row={r} id={`detail-${r.code}`} />
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -556,28 +618,47 @@ export default function LandingPage() {
               {rows.map((r) => {
                 const v = verdictFor(r);
                 const over = r.forecast > r.planned;
+                const open = openCode === r.code;
                 return (
-                  <li key={r.code} className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-mono-numbers text-xs text-ink-2">{r.code}</p>
-                        <p className="text-sm font-medium text-ink">{r.task}</p>
-                      </div>
-                      <Verdict tone={v.tone}>{v.label}</Verdict>
-                    </div>
+                  <li key={r.code} id={`card-${r.code}`} className={open ? "bg-paper" : ""}>
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-controls={`detail-m-${r.code}`}
+                      onClick={() => toggleRow(r.code)}
+                      className="block w-full cursor-pointer px-4 pt-3 text-left"
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block font-mono-numbers text-xs text-ink-2">{r.code}</span>
+                          <span className="block text-sm font-medium text-ink">{t(r.task)}</span>
+                        </span>
+                        <Verdict tone={v.tone}>{t(v.label)}</Verdict>
+                      </span>
+                    </button>
+                    <div className="px-4 pb-3">
                     <p className="mt-1.5 text-xs text-ink-2">
-                      Planned <span className="font-mono-numbers text-ink">{r.planned} d</span> · Forecast{" "}
-                      <span className={`font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>{r.forecast} d</span>
+                      {t("Planned", "Rencana")} <span className="font-mono-numbers text-ink">{r.planned} {t("d", "h")}</span> · {t("Forecast", "Prakiraan")}{" "}
+                      <span className={`font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>{r.forecast} {t("d", "h")}</span>
                       {r.float !== null && (
                         <>
-                          {" "}· Float <span className="font-mono-numbers text-ink">{r.float} d</span>
+                          {" "}· Float <span className="font-mono-numbers text-ink">{r.float} {t("d", "h")}</span>
                         </>
                       )}
                     </p>
                     <div className="mt-2">
                       <RiskCell row={r} tone={v.tone} />
                     </div>
-                    {r.driver && <p className="mt-1 text-xs text-ink-2">Main driver: {r.driver}</p>}
+                    {r.drivers?.[0] && <p className="mt-1 text-xs text-ink-2">{t("Main driver:", "Pemicu utama:")} {t(r.drivers[0])}</p>}
+                    <button
+                      type="button"
+                      onClick={() => toggleRow(r.code)}
+                      className="mt-1 cursor-pointer py-2 text-xs font-medium text-stamp"
+                    >
+                      {open ? t("Hide the reasons", "Sembunyikan alasan") : t("Why this verdict", "Kenapa putusan ini")}
+                    </button>
+                    </div>
+                    {open && <InspectionDetail row={r} id={`detail-m-${r.code}`} />}
                   </li>
                 );
               })}
@@ -586,27 +667,38 @@ export default function LandingPage() {
 
           <div className="mt-5 grid gap-5 border-t border-rule pt-5 md:grid-cols-12">
             <div className="md:col-span-8">
-              <h3 className="text-sm font-semibold text-ink">Remarks</h3>
+              <h3 className="text-sm font-semibold text-ink">{t("Remarks", "Catatan")}</h3>
               <p className="mt-1 max-w-[36rem] text-sm leading-relaxed text-ink-2">
-                {summary ? `${summary}. ` : `${hold} of ${rows.length} tasks are on hold. `}
-                Delay risk is the probability a task finishes later than its float allows. Verdicts are recommendations:
-                every action they trigger is authorized or overridden by a named supervisor and logged.
+                {summary
+                  ? t(
+                      `${summary.prob.toFixed(1)}% chance the project misses its due date · median slip +${summary.slip.toFixed(1)} days. `,
+                      `${summary.prob.toFixed(1).replace(".", ",")}% peluang proyek melewati tenggat · median mundur +${summary.slip.toFixed(1).replace(".", ",")} hari. `
+                    )
+                  : t(`${hold} of ${rows.length} tasks are on hold. `, `${hold} dari ${rows.length} tugas ditahan. `)}
+                {t(
+                  "Delay risk is the probability a task finishes later than its float allows. Verdicts are recommendations: every action they trigger is authorized or overridden by a named supervisor and logged.",
+                  "Risiko keterlambatan adalah peluang tugas selesai melewati batas float-nya. Putusan adalah rekomendasi: setiap tindakan yang dipicunya disetujui atau dibatalkan oleh supervisor bernama dan dicatat."
+                )}
               </p>
             </div>
             <div className="md:col-span-4">
               <div className="h-12 border-b border-ink" />
-              <p className="mt-1 text-xs text-ink-3">Authorized by the responsible supervisor (name, role, date)</p>
-              <Stamp
-                key={`m-${stampKey}`}
-                top="Validated on real data"
-                center="AUC 0.78"
-                bottom="51 held-out projects"
-                size={116}
-                className="mt-3 xl:hidden"
-              />
+              <p className="mt-1 text-xs text-ink-3">{t("Authorized by the responsible supervisor (name, role, date)", "Disahkan oleh supervisor penanggung jawab (nama, peran, tanggal)")}</p>
+              <div data-stamp-press className="mt-3 w-fit xl:hidden">
+                <Stamp
+                  key={`m-${stampKey}`}
+                  top={t("Validated on real data", "Divalidasi data nyata")}
+                  center="AUC 0.78"
+                  bottom={t("51 held-out projects", "51 proyek uji")}
+                  size={116}
+                  animate={stampKey > 0}
+                />
+              </div>
             </div>
           </div>
         </section>
+
+        <CockpitPreview rows={rows} selected={openCode} onSelect={selectFromCockpit} />
 
         {/* Method: one axis, four stations */}
         <section id="method" aria-labelledby="method-title" className="relative isolate overflow-hidden border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
@@ -614,20 +706,22 @@ export default function LandingPage() {
             <Dither backgroundColor="#f3f5f1" waveColor="#c9d5cb" pixelSize={2} waveSpeed={0.04} dpr={1} />
           </div>
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-            How a verdict is reached
+            {t("How a verdict is reached", "Bagaimana putusan dibuat")}
           </h2>
           <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
-            Trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules.
-            On 51 held-out real projects, MDIP ranks late tasks at ROC-AUC 0.78 versus 0.53 for rule-based scoring, tuned for early-warning coverage before downstream work cells stall.
+            {t(
+              "Trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules. On 51 held-out real projects, MDIP ranks late tasks at ROC-AUC 0.78 versus 0.53 for rule-based scoring, tuned for early-warning coverage before downstream work cells stall.",
+              "Dilatih dengan 4.149 tugas nyata (rencana vs. aktual) dari 251 proyek publik ditambah jadwal sintetis. Pada 51 proyek nyata yang tidak dipakai saat pelatihan, MDIP mengurutkan tugas terlambat dengan ROC-AUC 0,78 dibanding 0,53 untuk penilaian berbasis aturan, diatur untuk peringatan dini sebelum sel kerja hilir berhenti."
+            )}
           </p>
           <ol className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
             {METHOD.map((step, index) => (
-              <li key={step.title} className="relative pl-12 before:absolute before:bottom-[-2rem] before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:right-[-1.5rem] md:before:border-l-0 md:before:border-t">
+              <li key={step.title[0]} className="relative pl-12 before:absolute before:bottom-[-2rem] before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:right-[-1.5rem] md:before:border-l-0 md:before:border-t">
                 <span aria-hidden="true" className="absolute left-0 top-0 grid size-8 place-items-center border border-ink bg-ink font-mono text-sm font-bold text-white md:relative">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <h3 className="min-h-8 content-center font-display text-xl font-bold text-ink md:mt-4">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{step.body}</p>
+                <h3 className="min-h-8 content-center font-display text-xl font-bold text-ink md:mt-4">{t(...step.title)}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{t(...step.body)}</p>
               </li>
             ))}
           </ol>
@@ -638,18 +732,21 @@ export default function LandingPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 id="roles-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-                One certificate, six readers
+                {t("One certificate, six readers", "Satu sertifikat, enam pembaca")}
               </h2>
               <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
-                Each role opens the same project and sees the measurements it is accountable for.
+                {t(
+                  "Each role opens the same project and sees the measurements it is accountable for.",
+                  "Setiap peran membuka proyek yang sama dan melihat ukuran yang menjadi tanggung jawabnya."
+                )}
               </p>
             </div>
             <LinkButton href="/login?mode=register" size="lg">
-              Sign up as {activeRole}
+              {t(`Sign up as ${activeRole}`, `Daftar sebagai ${t(activeRole)}`)}
             </LinkButton>
           </div>
 
-          <div role="tablist" aria-label="Roles" className="mt-6 grid grid-cols-2 border-b border-rule-strong sm:flex sm:flex-wrap">
+          <div role="tablist" aria-label={t("Roles", "Peran")} className="relative mt-6 grid grid-cols-2 border-b border-rule-strong sm:flex sm:flex-wrap">
             {ROLES.map((r) => (
               <button
                 key={r}
@@ -658,32 +755,39 @@ export default function LandingPage() {
                 aria-selected={activeRole === r}
                 onClick={() => setActiveRole(r)}
                 className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-left text-sm font-medium transition-colors sm:px-4 ${
-                  activeRole === r ? "border-stamp text-ink" : "border-transparent text-ink-2 hover:text-ink"
+                  activeRole === r ? "border-transparent text-ink" : "border-transparent text-ink-2 hover:text-ink"
                 }`}
               >
-                {r}
+                {t(r)}
               </button>
             ))}
+            <span
+              ref={tabIndicatorRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 h-0.5 bg-stamp transition-[transform,width] duration-200 ease-out motion-reduce:transition-none"
+            />
           </div>
 
           <div ref={rolePanelRef} role="tabpanel" className="mt-6 grid gap-6 md:grid-cols-12 md:items-center">
             <div className="md:col-span-5">
-              <h3 className="font-display text-2xl font-bold text-ink">{role.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{role.sub}</p>
+              <h3 className="font-display text-2xl font-bold text-ink">{t(role.title)}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{t(role.sub)}</p>
             </div>
             <div className="md:col-span-7">
-              <p className="text-sm font-medium text-ink">Measurements on this role&apos;s certificate</p>
+              <p className="text-sm font-medium text-ink">{t("Measurements on this role's certificate", "Ukuran pada sertifikat peran ini")}</p>
               <ul className="mt-2 divide-y divide-rule border-y border-rule">
                 {role.kpis.map((k) => (
                   <li key={k.title} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
-                    <span className="text-ink">{k.title}</span>
-                    <span className="text-right text-xs text-ink-3">{k.subtle}</span>
+                    <span className="text-ink">{t(k.title)}</span>
+                    <span className="text-right text-xs text-ink-3">{t(k.subtle)}</span>
                   </li>
                 ))}
               </ul>
             </div>
           </div>
         </section>
+
+        <PilotAndFaq />
 
         {/* Plans & Footer unified topographic backdrop */}
         <div className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
@@ -716,48 +820,91 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
-                  Pilot &amp; plant plans
+                  {t("Pilot & plant plans", "Paket pilot & pabrik")}
                 </h2>
                 <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
-                  Validate MDIP on one active tooling or production schedule before rolling out across your facility.
+                  {t(
+                    "Validate MDIP on one active tooling or production schedule before rolling out across your facility.",
+                    "Uji MDIP pada satu jadwal tooling atau produksi yang aktif sebelum diterapkan di seluruh fasilitas Anda."
+                  )}
                 </p>
               </div>
-              <p className="font-mono text-xs text-ink-3">Form MDIP-PL-03 · Cloud or VPC isolation</p>
+              <p className="font-mono text-xs text-ink-3">{t("Form MDIP-PL-03 · Cloud or VPC isolation", "Formulir MDIP-PL-03 · Cloud atau isolasi VPC")}</p>
             </div>
 
             <div className="mt-8 grid border border-rule-strong bg-sheet/80 backdrop-blur-[1px] divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
-              {PLANS.map((plan) => (
-                <article
-                  key={plan.eyebrow}
-                  className={`flex flex-col justify-between p-6 ${
-                    plan.recommended ? "bg-paper/80 border-t-2 border-t-stamp" : ""
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`font-mono text-xs uppercase tracking-[0.06em] ${plan.recommended ? "text-stamp" : "text-ink-3"}`}>
-                        {plan.eyebrow}
-                      </p>
-                      {plan.recommended && <Verdict tone="info">Recommended</Verdict>}
-                    </div>
-                    <h3 className="mt-2 font-display text-2xl font-bold text-ink">{plan.title}</h3>
-                    <p className="mt-1.5 text-sm text-ink-2">{plan.summary}</p>
-                    <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                      {plan.features.map((feat) => (
-                        <li key={feat}>{feat}</li>
-                      ))}
-                    </ul>
+              <article className="flex flex-col justify-between p-6">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">{t("30-Day Plant Pilot", "Pilot Pabrik 30 Hari")}</p>
+                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t("Guided Trial", "Uji Coba Terpandu")}</h3>
+                  <p className="mt-3 flex items-baseline gap-1.5">
+                    <span className="font-display text-3xl font-bold text-ink">Rp 3,5 juta</span>
+                    <span className="text-sm text-ink-3">{t("for the 30-day pilot", "untuk pilot 30 hari")}</span>
+                  </p>
+                  <p className="mt-1.5 text-sm text-ink-2">{t("For one active manufacturing line or tooling build.", "Untuk satu lini manufaktur atau pembuatan tooling yang aktif.")}</p>
+                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                    <li>{t("Up to 5 WBS schedules inspected", "Hingga 5 jadwal WBS diinspeksi")}</li>
+                    <li>{t("CPM + 2,000-run Monte Carlo forecast", "CPM + prakiraan 2.000 simulasi Monte Carlo")}</li>
+                    <li>{t("6 role-scoped cockpit views", "6 tampilan kokpit per peran")}</li>
+                    <li>{t("Supervisor sign-off & audit log", "Pengesahan supervisor & log audit")}</li>
+                  </ul>
+                </div>
+                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
+                  {t("Start 30-day pilot", "Mulai pilot 30 hari")}
+                </LinkButton>
+              </article>
+
+              <article className="flex flex-col justify-between bg-paper/80 p-6 border-t-2 border-t-stamp md:border-t-2 md:border-t-stamp">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-xs uppercase tracking-[0.06em] text-stamp">{t("Single Plant", "Satu Pabrik")}</p>
+                    <Verdict tone="info">{t("Recommended")}</Verdict>
                   </div>
-                  <LinkButton
-                    href="/login?mode=register"
-                    variant={plan.recommended ? "primary" : "secondary"}
-                    size="md"
-                    className="mt-6 w-full justify-center"
-                  >
-                    {plan.cta}
-                  </LinkButton>
-                </article>
-              ))}
+                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t("Plant License", "Lisensi Pabrik")}</h3>
+                  {PLANT_LICENSE_PRICE ? (
+                    <p className="mt-3 flex items-baseline gap-1.5">
+                      <span className="font-display text-3xl font-bold text-ink">{PLANT_LICENSE_PRICE.amount}</span>
+                      <span className="text-sm text-ink-3">{t(PLANT_LICENSE_PRICE.unit, PLANT_LICENSE_PRICE.unitId)}</span>
+                    </p>
+                  ) : (
+                    <p className="mt-3 flex items-baseline gap-1.5">
+                      <span className="font-display text-xl font-bold text-ink">{t("Per plant, per year", "Per pabrik, per tahun")}</span>
+                      <span className="text-sm text-ink-3">{t("quoted after the pilot", "ditawarkan setelah pilot")}</span>
+                    </p>
+                  )}
+                  <p className="mt-1.5 text-sm text-ink-2">{t("Per-site license for continuous schedule control.", "Lisensi per lokasi untuk kendali jadwal berkelanjutan.")}</p>
+                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                    <li>{t("Unlimited WBS & CSV/Excel inspections", "Inspeksi WBS & CSV/Excel tanpa batas")}</li>
+                    <li>{t("Custom plant SOP knowledge base", "Basis pengetahuan SOP khusus pabrik")}</li>
+                    <li>{t("AI copilot with cited SOP clauses", "Copilot AI dengan kutipan klausul SOP")}</li>
+                    <li>{t("Role-based access & exportable audit trail", "Akses per peran & jejak audit yang bisa diekspor")}</li>
+                  </ul>
+                </div>
+                <LinkButton href="/login?mode=register" variant="primary" size="md" className="mt-6 w-full justify-center">
+                  {t("Create plant workspace", "Buat workspace pabrik")}
+                </LinkButton>
+              </article>
+
+              <article className="flex flex-col justify-between p-6">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">{t("Enterprise", "Enterprise")}</p>
+                  <h3 className="mt-2 font-display text-2xl font-bold text-ink">{t("Custom Quote", "Penawaran Khusus")}</h3>
+                  <p className="mt-3 flex items-baseline gap-1.5">
+                    <span className="font-display text-xl font-bold text-ink">{t("Contact us", "Hubungi kami")}</span>
+                    <span className="text-sm text-ink-3">{t("for a quote sized to your sites", "untuk penawaran sesuai lokasi Anda")}</span>
+                  </p>
+                  <p className="mt-1.5 text-sm text-ink-2">{t("Multi-plant operations with strict IT/OT governance.", "Operasi multi-pabrik dengan tata kelola IT/OT yang ketat.")}</p>
+                  <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
+                    <li>{t("Multi-site portfolio & executive rollups", "Portofolio multi-lokasi & ringkasan eksekutif")}</li>
+                    <li>{t("Dedicated deployment or VPC isolation", "Deployment khusus atau isolasi VPC")}</li>
+                    <li>{t("SAP PS / Primavera P6 / MS Project sync", "Sinkronisasi SAP PS / Primavera P6 / MS Project")}</li>
+                    <li>{t("SSO, custom retention & onboarding SLA", "SSO, retensi khusus & SLA onboarding")}</li>
+                  </ul>
+                </div>
+                <LinkButton href="/login?mode=register" variant="secondary" size="md" className="mt-6 w-full justify-center">
+                  {t("Request enterprise quote", "Minta penawaran enterprise")}
+                </LinkButton>
+              </article>
             </div>
           </section>
 
@@ -770,69 +917,74 @@ export default function LandingPage() {
               <MdipLogo variant="color" size={26} />
               <div>
                 <p className="font-display text-base font-bold text-ink leading-none">
-                  MDIP · Certificate of Schedule Inspection
+                  {t("MDIP · Certificate of Schedule Inspection", "MDIP · Sertifikat Inspeksi Jadwal")}
                 </p>
                 <p className="mt-0.5 font-mono text-[11px] text-ink-3">
-                  Form MDIP-DR-0001 · Manufacturing Decision Intelligence Platform
+                  {t("Form MDIP-DR-0001 · Manufacturing Decision Intelligence Platform", "Formulir MDIP-DR-0001 · Platform Intelijen Keputusan Manufaktur")}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <LinkButton href="/login?mode=register" size="md">
-                Start 30-day pilot
+                {t("Start 30-day pilot", "Mulai pilot 30 hari")}
               </LinkButton>
               <LinkButton href="/dashboard" variant="secondary" size="md">
-                Open live cockpit
+                {t("Open live cockpit", "Buka kokpit langsung")}
               </LinkButton>
             </div>
           </div>
 
           <div className="relative z-10 grid grid-cols-1 border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs [&>*]:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:[&>*]:border-b-0 lg:[&>*:not(:last-child)]:border-r">
             <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Platform</p>
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Platform", "Platform")}</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><a href="#inspection-title" className="hover:text-ink hover:underline">Schedule Inspector</a></li>
-                <li><Link href="/dashboard" className="hover:text-ink hover:underline">Operations Cockpit</Link></li>
-                <li><Link href="/dashboard/scheduler" className="hover:text-ink hover:underline">Critical-Path Scheduler</Link></li>
-                <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">IRoom Streams</Link></li>
+                <li><a href="#inspection-title" className="hover:text-ink hover:underline">{t("Schedule Inspector", "Inspektur Jadwal")}</a></li>
+                <li><Link href="/dashboard" className="hover:text-ink hover:underline">{t("Operations Cockpit", "Kokpit Operasional")}</Link></li>
+                <li><Link href="/dashboard/scheduler" className="hover:text-ink hover:underline">{t("Critical-Path Scheduler", "Penjadwal Jalur Kritis")}</Link></li>
+                <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">{t("IRoom Streams", "Aliran IRoom")}</Link></li>
               </ul>
             </div>
 
             <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Intelligence &amp; Governance</p>
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Intelligence & Governance", "Intelijen & Tata Kelola")}</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">Cited SOP Copilot</Link></li>
-                <li><Link href="/dashboard/knowledge" className="hover:text-ink hover:underline">Plant Knowledge Base</Link></li>
-                <li><a href="#method" className="hover:text-ink hover:underline">Method &amp; Validation</a></li>
-                <li><a href="#roles" className="hover:text-ink hover:underline">Role Certificates</a></li>
+                <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">{t("Cited SOP Copilot", "Copilot dengan Kutipan SOP")}</Link></li>
+                <li><Link href="/dashboard/knowledge" className="hover:text-ink hover:underline">{t("Plant Knowledge Base", "Basis Pengetahuan Pabrik")}</Link></li>
+                <li><a href="#method" className="hover:text-ink hover:underline">{t("Method & Validation", "Metode & Validasi")}</a></li>
+                <li><a href="#roles" className="hover:text-ink hover:underline">{t("Role Certificates", "Sertifikat Peran")}</a></li>
               </ul>
             </div>
 
             <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Standards &amp; Exports</p>
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Standards & Exports", "Standar & Ekspor")}</p>
               <ul className="space-y-1.5 text-ink-2">
-                <li>ISO 9001 Cl. 7.5 Audit Trail</li>
-                <li>ROC-AUC 0.78 (51 Held-Out Projects)</li>
+                <li>{t("ISO 9001 Cl. 7.5 Audit Trail", "Jejak Audit ISO 9001 Kl. 7.5")}</li>
+                <li>{t("ROC-AUC 0.78 (51 Held-Out Projects)", "ROC-AUC 0,78 (51 Proyek Uji)")}</li>
                 <li>SAP PS · Primavera P6 · MS Project</li>
-                <li>CSV / Excel Headers (EN &amp; ID)</li>
+                <li>{t("CSV / Excel Headers (EN & ID)", "Header CSV / Excel (EN & ID)")}</li>
               </ul>
             </div>
 
             <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">Access &amp; Deployment</p>
+              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Access & Deployment", "Akses & Deployment")}</p>
               <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><a href="#plans" className="hover:text-ink hover:underline">Pilot &amp; Plant Plans</a></li>
-                <li><Link href="/login" className="hover:text-ink hover:underline">Operator Sign In</Link></li>
-                <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">Create Plant Account</Link></li>
-                <li className="py-0.5">Cloud SaaS &amp; On-Premises VPC</li>
+                <li><a href="#plans" className="hover:text-ink hover:underline">{t("Pilot & Plant Plans", "Paket Pilot & Pabrik")}</a></li>
+                <li><Link href="/login" className="hover:text-ink hover:underline">{t("Operator Sign In", "Masuk Operator")}</Link></li>
+                <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">{t("Create Plant Account", "Buat Akun Pabrik")}</Link></li>
+                <li className="py-0.5">{t("Cloud SaaS & On-Premises VPC", "SaaS Cloud & VPC On-Premises")}</li>
               </ul>
             </div>
           </div>
 
           <div className="relative z-10 bg-paper/55 px-5 py-3.5 sm:px-8 flex flex-col items-center justify-between gap-2 text-center sm:text-left text-xs text-ink-3 sm:flex-row">
-            <span>MDIP · Manufacturing Decision Intelligence Platform</span>
-            <span className="font-mono-numbers">
-              XGBoost + 2,000-run Monte Carlo · Human-in-the-loop sign-off required
+            <span>© 2026 MDIP · {t("Manufacturing Decision Intelligence Platform", "Platform Intelijen Keputusan Manufaktur")}</span>
+            <nav aria-label={t("Legal", "Hukum")} className="flex flex-wrap justify-center gap-x-4 [&>a]:py-2 sm:[&>a]:py-0">
+              <Link href="/security" className="hover:text-ink hover:underline">{t("Security & data", "Keamanan & data")}</Link>
+              <Link href="/privacy" className="hover:text-ink hover:underline">{t("Privacy", "Privasi")}</Link>
+              <Link href="/terms" className="hover:text-ink hover:underline">{t("Terms", "Ketentuan")}</Link>
+            </nav>
+            <span className="hidden font-mono-numbers xl:inline">
+              {t("XGBoost + 2,000-run Monte Carlo · Human-in-the-loop sign-off required", "XGBoost + 2.000 simulasi Monte Carlo · Wajib pengesahan manusia")}
             </span>
           </div>
         </footer>

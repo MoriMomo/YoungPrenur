@@ -28,8 +28,6 @@ export {
 } from "./decisions";
 export {
   downloadOperationalExport,
-  fetchPerformanceData,
-  fetchLiveOverviewKpis,
 } from "./dashboard";
 export {
   fetchCopilotStatus,

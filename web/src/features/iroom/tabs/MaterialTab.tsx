@@ -4,6 +4,7 @@ import React from "react";
 import { MessageSquareText } from "lucide-react";
 import { MaterialDeliveryItem } from "@/types";
 import { IRoomTable } from "../IRoomTable";
+import { useT } from "@/lib/i18n";
 
 export interface MaterialTabProps {
   searchQuery: string;
@@ -12,6 +13,7 @@ export interface MaterialTabProps {
 }
 
 export function MaterialTab({ searchQuery, handleInspectWithAI, materials }: MaterialTabProps) {
+  const t = useT();
   return (
     <IRoomTable
       headers={[
@@ -54,7 +56,7 @@ export function MaterialTab({ searchQuery, handleInspectWithAI, materials }: Mat
                         : "bg-pass-wash text-pass border-pass-line"
                     }`}
                   >
-                    {mat.status} ({(mat.riskScore * 100).toFixed(0)}%)
+                    {t(mat.status)} ({(mat.riskScore * 100).toFixed(0)}%)
                   </span>
                 </td>
                 <td className="py-3 px-3 font-mono-numbers text-stamp font-semibold">
@@ -72,7 +74,7 @@ export function MaterialTab({ searchQuery, handleInspectWithAI, materials }: Mat
                     className="inline-flex items-center gap-1.5 px-3 py-2 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <MessageSquareText className="w-3 h-3 text-stamp" />
-                    <span>Mitigate</span>
+                    <span>{t("Mitigate")}</span>
                   </button>
                 </td>
               </tr>

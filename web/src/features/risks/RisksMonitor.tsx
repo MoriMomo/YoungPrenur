@@ -2,6 +2,7 @@
 
 import React from "react";
 import { RiskItem } from "@/types";
+import { useT } from "@/lib/i18n";
 
 interface RisksMonitorProps {
   risks: RiskItem[];
@@ -9,6 +10,7 @@ interface RisksMonitorProps {
 }
 
 export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast }) => {
+  const t = useT();
   const getDotColor = (badgeClass: RiskItem["badgeClass"]) => {
     switch (badgeClass) {
       case "red":
@@ -39,53 +41,62 @@ export const RisksMonitor: React.FC<RisksMonitorProps> = ({ risks, onSeeAllToast
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
-            Early Warning Risks &amp; Opportunity Register
+            {t("Early Warning Risks & Opportunity Register", "Register Risiko Dini & Peluang")}
           </h2>
           <p className="text-xs text-ink-3">
-            Proactive signals detected across supplier lead times, machine telemetry, and milestone variance
+            {t(
+              "Proactive signals detected across supplier lead times, machine telemetry, and milestone variance",
+              "Sinyal dini dari lead time pemasok, telemetri mesin, dan selisih milestone"
+            )}
           </p>
         </div>
         <button
           onClick={onSeeAllToast}
           className="py-2 text-xs font-medium text-stamp hover:underline cursor-pointer shrink-0 sm:py-0"
         >
-          Inspect schedule →
+          {t("Inspect schedule →", "Periksa jadwal →")}
         </button>
       </div>
 
       {/* Rows */}
       <div className="space-y-3">
-        {risks.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-start gap-3 p-3 rounded-xl border border-rule hover:border-rule-strong bg-sheet hover:bg-white transition-[border-color,background-color] duration-150"
-          >
-            <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${getDotColor(item.badgeClass)}`} />
+        {risks.length === 0 ? (
+          <p className="py-4 text-xs text-ink-3">
+            {t("No elevated risk or variance tasks flagged in the uploaded schedule.", "Tidak ada tugas berisiko atau menyimpang yang ditandai di jadwal yang diunggah.")}
+          </p>
+        ) : (
+          risks.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-start gap-3 p-3 rounded-xl border border-rule hover:border-rule-strong bg-sheet hover:bg-white transition-[border-color,background-color] duration-150"
+            >
+              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${getDotColor(item.badgeClass)}`} />
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-medium text-ink truncate">
-                  {item.title}
-                </h3>
-                <span
-                  className={`text-xs font-mono-numbers font-medium shrink-0 ${getBadgeText(
-                    item.badgeClass
-                  )}`}
-                >
-                  {item.badge}
-                </span>
-              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-xs font-medium text-ink truncate">
+                    {item.title}
+                  </h3>
+                  <span
+                    className={`text-xs font-mono-numbers font-medium shrink-0 ${getBadgeText(
+                      item.badgeClass
+                    )}`}
+                  >
+                    {item.badge}
+                  </span>
+                </div>
 
-              <p className="text-xs text-ink-2 mt-0.5 mb-1.5 leading-snug">
-                {item.desc}
-              </p>
+                <p className="text-xs text-ink-2 mt-0.5 mb-1.5 leading-snug">
+                  {item.desc}
+                </p>
 
-              <div className="text-xs text-ink-3">
-                Department: {item.dept}
+                <div className="text-xs text-ink-3">
+                  {t("Owner / Cell:", "Pemilik / Sel:")} {item.dept}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

@@ -35,54 +35,96 @@ import { QuotationTab } from "./tabs/QuotationTab";
 import { OperationsTab } from "./tabs/OperationsTab";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { useT } from "@/lib/i18n";
 
 export type IRoomTab = "material" | "progress" | "drawing" | "quotation" | "operations";
 
-const STREAM_EXPLANATIONS: Record<IRoomTab, { title: string; what: string; feeds: string }> = {
+type Pair = [string, string];
+
+const STREAM_EXPLANATIONS: Record<IRoomTab, { title: Pair; what: Pair; feeds: Pair }> = {
   material: {
-    title: "Material Delivery",
-    what: "Tracks inbound raw alloys, fasteners, and sub-assemblies against remaining stock cover hours.",
-    feeds: "Flags stockout risks early so procurement can expedite POs before a work cell starves.",
+    title: ["Material Delivery", "Pengiriman Material"],
+    what: [
+      "Tracks inbound raw alloys, fasteners, and sub-assemblies against remaining stock cover hours.",
+      "Melacak paduan baku, pengencang, dan sub-rakitan yang masuk terhadap sisa jam ketahanan stok.",
+    ],
+    feeds: [
+      "Flags stockout risks early so procurement can expedite POs before a work cell starves.",
+      "Menandai risiko kehabisan stok lebih awal agar pengadaan bisa mempercepat PO sebelum sel kerja kekurangan bahan.",
+    ],
   },
   progress: {
-    title: "Project Progress",
-    what: "Monitors active manufacturing programs, milestone completion %, and schedule variance.",
-    feeds: "Surfaces slipping builds so project leads can reallocate capacity or escalate blockers.",
+    title: ["Project Progress", "Progres Proyek"],
+    what: [
+      "Monitors active manufacturing programs, milestone completion %, and schedule variance.",
+      "Memantau program manufaktur aktif, persentase penyelesaian milestone, dan selisih jadwal.",
+    ],
+    feeds: [
+      "Surfaces slipping builds so project leads can reallocate capacity or escalate blockers.",
+      "Menampilkan pekerjaan yang mundur agar pimpinan proyek bisa mengalihkan kapasitas atau mengeskalasi hambatan.",
+    ],
   },
   drawing: {
-    title: "Drawing Approval",
-    what: "Controls engineering CAD revisions, GD&T tolerance checks, and QA sign-off status.",
-    feeds: "Prevents machining from starting on unapproved or superseded print revisions.",
+    title: ["Drawing Approval", "Persetujuan Gambar"],
+    what: [
+      "Controls engineering CAD revisions, GD&T tolerance checks, and QA sign-off status.",
+      "Mengendalikan revisi CAD engineering, pemeriksaan toleransi GD&T, dan status pengesahan QA.",
+    ],
+    feeds: [
+      "Prevents machining from starting on unapproved or superseded print revisions.",
+      "Mencegah permesinan dimulai dengan revisi gambar yang belum disetujui atau sudah diganti.",
+    ],
   },
   quotation: {
-    title: "Quotation & PO",
-    what: "Tracks supplier RFQs, committed purchase orders, and unit price variance against target.",
-    feeds: "Catches cost overruns and stalled vendor approvals before spend hits the shop floor.",
+    title: ["Quotation & PO", "Penawaran & PO"],
+    what: [
+      "Tracks supplier RFQs, committed purchase orders, and unit price variance against target.",
+      "Melacak RFQ pemasok, purchase order yang sudah disepakati, dan selisih harga satuan terhadap target.",
+    ],
+    feeds: [
+      "Catches cost overruns and stalled vendor approvals before spend hits the shop floor.",
+      "Menangkap pembengkakan biaya dan persetujuan vendor yang tertahan sebelum pengeluaran sampai ke lantai produksi.",
+    ],
   },
   operations: {
-    title: "Operation Tracker",
-    what: "Monitors active shop-floor work centers, machine utilization, and run status.",
-    feeds: "Highlights overloaded cells and downtime constraints for shift rescheduling.",
+    title: ["Operation Tracker", "Pelacak Operasi"],
+    what: [
+      "Monitors active shop-floor work centers, machine utilization, and run status.",
+      "Memantau work center aktif di lantai produksi, utilisasi mesin, dan status operasinya.",
+    ],
+    feeds: [
+      "Highlights overloaded cells and downtime constraints for shift rescheduling.",
+      "Menyoroti sel yang kelebihan beban dan kendala downtime untuk penjadwalan ulang shift.",
+    ],
   },
 };
 
-const HOW_IROOM_WORKS = [
+const HOW_IROOM_WORKS: { step: string; title: Pair; body: Pair }[] = [
   {
     step: "01",
-    title: "Pick a stream",
-    body: "Switch tabs to check materials, project progress, drawings, POs, or machine status.",
+    title: ["Pick a stream", "Pilih aliran"],
+    body: [
+      "Switch tabs to check materials, project progress, drawings, POs, or machine status.",
+      "Ganti tab untuk memeriksa material, progres proyek, gambar, PO, atau status mesin.",
+    ],
   },
   {
     step: "02",
-    title: "Spot or log alerts",
-    body: "Red dots mark items needing attention. Search any table or click Add record to log a new entry.",
+    title: ["Spot or log alerts", "Temukan atau catat peringatan"],
+    body: [
+      "Red dots mark items needing attention. Search any table or click Add record to log a new entry.",
+      "Titik merah menandai item yang perlu perhatian. Cari di tabel mana pun atau klik Tambah catatan untuk mencatat entri baru.",
+    ],
   },
   {
     step: "03",
-    title: "Act with Copilot",
-    body: "Click a row action to open SOP-backed recommendations and route fixes for sign-off.",
+    title: ["Act with Copilot", "Bertindak dengan Copilot"],
+    body: [
+      "Click a row action to open SOP-backed recommendations and route fixes for sign-off.",
+      "Klik tindakan pada baris untuk membuka rekomendasi berbasis SOP dan mengirim perbaikan untuk disahkan.",
+    ],
   },
-] as const;
+];
 
 interface IRoomWorkspaceProps {
   initialTab?: IRoomTab;
@@ -97,6 +139,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   onAskCopilot,
   onToast,
 }) => {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<IRoomTab>(initialTab);
   const [materials, setMaterials] = useState<MaterialDeliveryItem[]>([]);
   const [projects, setProjects] = useState<ProjectProgressItem[]>([]);
@@ -145,31 +188,31 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   const tabs = [
     {
       id: "material" as const,
-      label: "Material Delivery",
+      label: t(...STREAM_EXPLANATIONS.material.title),
       icon: PackageCheck,
       alert: materials.some((m) => m.status === "Critical"),
     },
     {
       id: "progress" as const,
-      label: "Project Progress",
+      label: t(...STREAM_EXPLANATIONS.progress.title),
       icon: TrendingUp,
       alert: projects.some((p) => p.status === "Critical Risk"),
     },
     {
       id: "drawing" as const,
-      label: "Drawing Approval",
+      label: t(...STREAM_EXPLANATIONS.drawing.title),
       icon: FileText,
       alert: drawings.some((d) => d.status === "Pending Review"),
     },
     {
       id: "quotation" as const,
-      label: "Quotation & PO",
+      label: t(...STREAM_EXPLANATIONS.quotation.title),
       icon: CreditCard,
       alert: quotations.some((q) => q.status === "Pending Approval"),
     },
     {
       id: "operations" as const,
-      label: "Operation Tracker",
+      label: t(...STREAM_EXPLANATIONS.operations.title),
       icon: Cpu,
       alert: operations.some((o) => o.vibrationSensor === "ELEVATED"),
     },
@@ -190,9 +233,12 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     };
 
   const handleInspectWithAI = (entityName: string, detail: string) => {
-    const query = `Analyze IRoom ${activeTab.toUpperCase()} record ${entityName}: ${detail}. Provide recommended mitigation and SOP reference.`;
+    const query = t(
+      `Analyze IRoom ${activeTab.toUpperCase()} record ${entityName}: ${detail}. Provide recommended mitigation and SOP reference.`,
+      `Analisis catatan IRoom ${activeTab.toUpperCase()} ${entityName}: ${detail}. Berikan mitigasi yang disarankan dan referensi SOP-nya. Jawab dalam bahasa Indonesia.`
+    );
     onAskCopilot?.(query);
-    onToast?.(`Analyzing ${entityName} in Manufacturing Copilot.`);
+    onToast?.(t(`Analyzing ${entityName} in Manufacturing Copilot.`, `Menganalisis ${entityName} di Copilot Manufaktur.`));
   };
 
   const handleApproveSelectedDrawing = async () => {
@@ -203,8 +249,8 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     const saved = await ingestIRoomRecord("drawings", { ...updated });
     onToast?.(
       saved
-        ? `Drawing ${selectedDrawing.dwgNumber} approved and persisted to database.`
-        : `Drawing ${selectedDrawing.dwgNumber} approved in local preview.`
+        ? t(`Drawing ${selectedDrawing.dwgNumber} approved and persisted to database.`, `Gambar ${selectedDrawing.dwgNumber} disetujui dan disimpan ke basis data.`)
+        : t(`Drawing ${selectedDrawing.dwgNumber} approved in local preview.`, `Gambar ${selectedDrawing.dwgNumber} disetujui di pratinjau lokal.`)
     );
   };
 
@@ -214,7 +260,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     const cleanParty = draftParty.trim();
     const cleanMetric = draftMetric.trim();
     if (!cleanCode || !cleanParty) {
-      onToast?.("Enter both a record code and party/title before adding.");
+      onToast?.(t("Enter both a record code and party/title before adding.", "Isi kode catatan dan pihak/judul sebelum menambahkan."));
       return;
     }
     const id = `${activeTab}-${Date.now().toString().slice(-4)}`;
@@ -296,15 +342,20 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     setDraftParty("");
     setDraftMetric("");
     setShowAddForm(false);
-    onToast?.(`Ingested new ${activeTab} record into backend database.`);
+    onToast?.(t(`Ingested new ${activeTab} record into backend database.`, `Catatan ${activeTab} baru dimasukkan ke basis data backend.`));
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="IRoom streams"
-        description={`Material delivery, project progress, drawing approval, quotations and operations in one place, each feeding the decisions that need sign-off. ${
-          isApiLive ? "Live from the MDIP service." : "Sample data while the service is offline."
+        title={t("IRoom streams", "Aliran IRoom")}
+        description={`${t(
+          "Material delivery, project progress, drawing approval, quotations and operations in one place, each feeding the decisions that need sign-off.",
+          "Pengiriman material, progres proyek, persetujuan gambar, penawaran, dan operasi di satu tempat, masing-masing mengisi keputusan yang perlu disahkan."
+        )} ${
+          isApiLive
+            ? t("Live from the MDIP service.", "Langsung dari layanan MDIP.")
+            : t("Sample data while the service is offline.", "Data contoh selama layanan offline.")
         }`}
       />
 
@@ -315,22 +366,22 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       >
         <div className="border-b border-rule px-4 py-2">
           <h2 id="iroom-how-it-works-heading" className="text-xs font-semibold text-ink">
-            How IRoom works
+            {t("How IRoom works", "Cara kerja IRoom")}
           </h2>
         </div>
         <ol className="grid grid-cols-1 divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0">
           {HOW_IROOM_WORKS.map((item) => (
             <li key={item.step} className="px-4 py-3">
               <div className="flex items-baseline gap-2">
-                <span className="text-xs font-semibold text-ink">{item.title}</span>
+                <span className="text-xs font-semibold text-ink">{t(...item.title)}</span>
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-ink-2">{item.body}</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-2">{t(...item.body)}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      <div role="tablist" aria-label="IRoom streams" className="flex flex-wrap border-b border-rule-strong">
+      <div role="tablist" aria-label={t("IRoom streams", "Aliran IRoom")} className="flex flex-wrap border-b border-rule-strong">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -347,7 +398,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
             >
               <Icon className="h-4 w-4 shrink-0" strokeWidth={1.6} />
               {tab.label}
-              {tab.alert && <span className="h-2 w-2 shrink-0 rounded-full bg-hold" title="Needs attention" aria-label="needs attention" />}
+              {tab.alert && <span className="h-2 w-2 shrink-0 rounded-full bg-hold" title={t("Needs attention", "Perlu perhatian")} aria-label={t("needs attention", "perlu perhatian")} />}
             </button>
           );
         })}
@@ -357,10 +408,13 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       <div ref={panelRef} role="tabpanel" className="bg-sheet border border-rule-strong p-5 sm:p-6">
         <div className="mb-5 border border-rule bg-paper px-4 py-3">
           <p className="text-xs font-semibold text-ink">
-            What is {STREAM_EXPLANATIONS[activeTab].title}?
+            {t(
+              `What is ${STREAM_EXPLANATIONS[activeTab].title[0]}?`,
+              `Apa itu ${STREAM_EXPLANATIONS[activeTab].title[1]}?`
+            )}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-ink-2">
-            {STREAM_EXPLANATIONS[activeTab].what} {STREAM_EXPLANATIONS[activeTab].feeds}
+            {t(...STREAM_EXPLANATIONS[activeTab].what)} {t(...STREAM_EXPLANATIONS[activeTab].feeds)}
           </p>
         </div>
 
@@ -369,7 +423,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
             <Search className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder={`Search ${activeTab} records, codes, or suppliers`}
+              placeholder={t(`Search ${activeTab} records, codes, or suppliers`, `Cari catatan ${activeTab}, kode, atau pemasok`)}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full text-xs pl-9 pr-3 py-2 border border-rule-strong rounded-xl focus:outline-none focus:ring-2 focus:ring-stamp bg-paper"
@@ -378,7 +432,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
 
           <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
             {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showAddForm ? "Cancel" : "Add record"}
+            {showAddForm ? t("Cancel", "Batal") : t("Add record", "Tambah catatan")}
           </Button>
         </div>
 
@@ -394,14 +448,14 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
               onChange={(e) => setDraftCode(e.target.value)}
               placeholder={
                 activeTab === "material"
-                  ? "Part Number (e.g. AL7075-PLATE)"
+                  ? t("Part Number (e.g. AL7075-PLATE)", "Nomor Part (mis. AL7075-PLATE)")
                   : activeTab === "progress"
-                  ? "Project Code (e.g. PRJ-2026-11)"
+                  ? t("Project Code (e.g. PRJ-2026-11)", "Kode Proyek (mis. PRJ-2026-11)")
                   : activeTab === "drawing"
-                  ? "Drawing # (e.g. DWG-2026-09)"
+                  ? t("Drawing # (e.g. DWG-2026-09)", "No. Gambar (mis. DWG-2026-09)")
                   : activeTab === "quotation"
-                  ? "PO Number (e.g. PO-2026-991)"
-                  : "Work Center (e.g. CNC Cell B)"
+                  ? t("PO Number (e.g. PO-2026-991)", "Nomor PO (mis. PO-2026-991)")
+                  : t("Work Center (e.g. CNC Cell B)", "Work Center (mis. CNC Cell B)")
               }
               className="px-3 py-2 bg-white border border-rule-strong rounded-lg text-xs"
             />
@@ -411,12 +465,12 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
               onChange={(e) => setDraftParty(e.target.value)}
               placeholder={
                 activeTab === "material"
-                  ? "Supplier name"
+                  ? t("Supplier name", "Nama pemasok")
                   : activeTab === "drawing"
-                  ? "Drawing title"
+                  ? t("Drawing title", "Judul gambar")
                   : activeTab === "operations"
-                  ? "Machine ID"
-                  : "Project / Vendor name"
+                  ? t("Machine ID", "ID mesin")
+                  : t("Project / Vendor name", "Nama proyek / vendor")
               }
               className="px-3 py-2 bg-white border border-rule-strong rounded-lg text-xs"
             />
@@ -426,14 +480,14 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
               onChange={(e) => setDraftMetric(e.target.value)}
               placeholder={
                 activeTab === "material"
-                  ? "Stock cover hrs (e.g. 24)"
+                  ? t("Stock cover hrs (e.g. 24)", "Jam ketahanan stok (mis. 24)")
                   : activeTab === "progress"
-                  ? "Progress % (e.g. 72)"
+                  ? t("Progress % (e.g. 72)", "Progres % (mis. 72)")
                   : activeTab === "drawing"
-                  ? "Revision (e.g. Rev A.1)"
+                  ? t("Revision (e.g. Rev A.1)", "Revisi (mis. Rev A.1)")
                   : activeTab === "quotation"
-                  ? "Value IDR (e.g. Rp 55.000.000)"
-                  : "OEE % (e.g. 91.5)"
+                  ? t("Value IDR (e.g. Rp 55.000.000)", "Nilai IDR (mis. Rp 55.000.000)")
+                  : t("OEE % (e.g. 91.5)", "OEE % (mis. 91,5)")
               }
               className="px-3 py-2 bg-white border border-rule-strong rounded-lg text-xs"
             />
@@ -441,7 +495,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
               type="submit"
               className="px-3 py-2 bg-stamp hover:bg-stamp-deep text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
             >
-              Save to Stream
+              {t("Save to Stream", "Simpan ke Aliran")}
             </button>
           </form>
         )}

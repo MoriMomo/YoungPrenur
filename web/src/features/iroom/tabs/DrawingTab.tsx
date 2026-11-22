@@ -4,6 +4,7 @@ import React from "react";
 import { Eye, CheckCircle2, Check, MessageSquareText } from "lucide-react";
 import { DrawingApprovalItem } from "@/types";
 import { IRoomTable } from "../IRoomTable";
+import { useT } from "@/lib/i18n";
 
 export interface DrawingTabProps {
   searchQuery: string;
@@ -19,6 +20,7 @@ export interface DrawingTabProps {
 }
 
 export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selectedDrawing, setSelectedDwgId, activeRevision, setActiveRevision, showGdtOverlay, setShowGdtOverlay, handleApproveSelectedDrawing }: DrawingTabProps) {
+  const t = useT();
   return (
     <div className="space-y-5">
       <div className="bg-paper rounded-xl p-4 sm:p-5 border border-rule-strong text-ink overflow-hidden">
@@ -26,7 +28,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-stamp text-white font-mono-numbers">
-                CAD GD&amp;T Inspector
+                {t("CAD GD&T Inspector", "Inspektur CAD GD&T")}
               </span>
               <span className="text-xs text-stamp font-mono-numbers">
                 {selectedDrawing.dwgNumber} · {selectedDrawing.revision}
@@ -38,7 +40,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                     : "bg-warn text-white"
                 }`}
               >
-                {selectedDrawing.status}
+                {t(selectedDrawing.status)}
               </span>
             </div>
             <h3 className="text-sm sm:text-base font-medium text-ink">
@@ -57,7 +59,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                     : "text-ink-3 hover:text-ink"
                 }`}
               >
-                Rev 2.0 (Baseline)
+                {t("Rev 2.0 (Baseline)", "Rev 2.0 (Baseline)")}
               </button>
               <button
                 type="button"
@@ -68,7 +70,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                     : "text-ink-3 hover:text-ink"
                 }`}
               >
-                Rev 3.1 (Compensated)
+                {t("Rev 3.1 (Compensated)", "Rev 3.1 (Dikompensasi)")}
               </button>
             </div>
 
@@ -82,7 +84,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>GD&amp;T Overlay: {showGdtOverlay ? "ON" : "OFF"}</span>
+              <span>{t("GD&T Overlay:", "Lapisan GD&T:")} {showGdtOverlay ? t("ON", "AKTIF") : t("OFF", "MATI")}</span>
             </button>
           </div>
         </div>
@@ -92,7 +94,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
             viewBox="0 0 760 300"
             className="w-full h-auto block select-none"
             role="img"
-            aria-label={`CAD blueprint for ${selectedDrawing.dwgNumber}`}
+            aria-label={t(`CAD blueprint for ${selectedDrawing.dwgNumber}`, `Cetak biru CAD untuk ${selectedDrawing.dwgNumber}`)}
           >
             <rect width="760" height="300" fill="var(--color-paper)" />
 
@@ -315,7 +317,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
           <div className="text-xs text-ink-3 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-pass" />
             <span>
-              Owner: <strong className="text-ink">{selectedDrawing.engineer}</strong> (
+              {t("Owner:", "Pemilik:")} <strong className="text-ink">{selectedDrawing.engineer}</strong> (
               {selectedDrawing.department})
             </span>
           </div>
@@ -332,7 +334,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
               className="px-3 py-1.5 rounded-xl bg-stamp hover:bg-stamp-deep text-sheet text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <MessageSquareText className="w-3.5 h-3.5" />
-              <span>Verify in Copilot</span>
+              <span>{t("Verify in Copilot", "Verifikasi di Copilot")}</span>
             </button>
 
             <button
@@ -344,8 +346,8 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
               <Check className="w-3.5 h-3.5" />
               <span>
                 {selectedDrawing.status === "Approved"
-                  ? "Gate 3 Approved"
-                  : "Authorize Gate 3 Approval"}
+                  ? t("Gate 3 Approved", "Gerbang 3 Disetujui")
+                  : t("Authorize Gate 3 Approval", "Setujui Gerbang 3")}
               </span>
             </button>
           </div>
@@ -381,7 +383,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                       <span>{dwg.dwgNumber}</span>
                       {dwg.criticalDwg && (
                         <span className="px-1.5 py-0.5 bg-hold-wash text-hold font-medium text-xs rounded">
-                          Critical
+                          {t("Critical")}
                         </span>
                       )}
                     </div>
@@ -406,7 +408,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                           : "bg-hold-wash text-hold border-hold-line"
                       }`}
                     >
-                      {dwg.status}
+                      {t(dwg.status)}
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right">
@@ -423,7 +425,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-sheet rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                     >
                       <Eye className="w-3 h-3" />
-                      <span>Inspect with AI</span>
+                      <span>{t("Inspect with AI", "Periksa dengan AI")}</span>
                     </button>
                   </td>
                 </tr>

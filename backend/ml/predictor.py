@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 import numpy as np
 import xgboost as xgb
 
-from ml.features import FEATURE_NAMES, feature_label, feature_matrix
+from ml.features import EXTERNAL_CATEGORIES, FEATURE_NAMES, feature_label, feature_matrix, infer_category
 
 ART_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "artifacts")
 N_SIMULATIONS = 2000
@@ -78,6 +78,26 @@ def _risk_level(p: float) -> str:
     return "HIGH" if p >= HIGH_RISK else ("MEDIUM" if p >= watch_threshold() else "LOW")
 
 
+def _slip_caps(
+    tasks: List[Dict[str, Any]],
+    planned_arr: np.ndarray,
+    actual_arr: np.ndarray,
+) -> np.ndarray:
+    """Cap predicted conditional slip at 0.75 * planned for internal work, relaxing for overrunning external tasks."""
+    base_cap = np.where(planned_arr > 0.0, np.maximum(0.25, planned_arr * 0.75), 0.0)
+    is_ext = np.array(
+        [
+            bool(t.get("external_dependency"))
+            or (t.get("category") or infer_category(t.get("task", ""), t.get("work_center", ""))) in EXTERNAL_CATEGORIES
+            for t in tasks
+        ],
+        dtype=bool,
+    )
+    overrun = np.maximum(0.0, actual_arr - planned_arr)
+    ext_cap = np.maximum(base_cap, np.maximum(overrun * 1.25, np.minimum(10.0, planned_arr * 1.5)))
+    return np.where((planned_arr > 0.0) & is_ext & (overrun > 0.0), ext_cap, base_cap)
+
+
 def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Adds delay_risk, risk_level, expected_slip_days and drivers to each CPM-processed task."""
     if not tasks:
@@ -100,7 +120,8 @@ def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     dm = xgb.DMatrix(X_own, feature_names=FEATURE_NAMES)
     proba = clf.predict(dm)
     planned_arr = np.array([max(0.0, float(t["planned_days"])) for t in tasks], dtype=float)
-    max_prop_slip = np.where(planned_arr > 0.0, np.maximum(0.25, planned_arr * 0.75), 0.0)
+    actual_arr = np.array([max(0.0, float(t["actual_days"])) for t in tasks], dtype=float)
+    max_prop_slip = _slip_caps(tasks, planned_arr, actual_arr)
     cond_slip = np.where(
         planned_arr > 0.0,
         np.clip(reg.predict(dm), 0.25, max_prop_slip),
@@ -170,10 +191,15 @@ def _topo_order(tasks: List[Dict[str, Any]], index: Dict[str, int]) -> List[int]
     return order
 
 
-def simulate_project(tasks: List[Dict[str, Any]], buffer_days: float = None, seed: int = 7) -> Dict[str, float]:
+def simulate_project(
+    tasks: List[Dict[str, Any]],
+    buffer_days: float = None,
+    seed: int = 7,
+    buffer_ratio: float = DEFAULT_PROJECT_BUFFER_RATIO,
+) -> Dict[str, float]:
     """
-    Monte Carlo: sample correlated late events + conditional slips, re-run CPM forward pass.
-    Uses a shared gamma frailty shock across each run to model correlated plant/supplier disruptions.
+    Monte Carlo: sample correlated late events + conditional slips, re-run PDM forward pass.
+    Combines plant-wide and per-work-center/vendor gamma frailty shocks across each run.
     delay_probability = P(finish later than the committed due date = baseline + project buffer).
     """
     rng = np.random.default_rng(seed)
@@ -182,7 +208,7 @@ def simulate_project(tasks: List[Dict[str, Any]], buffer_days: float = None, see
     planned = np.array([max(0.0, float(t["planned_days"])) for t in tasks], dtype=float)
     actual = np.array([max(0.0, float(t["actual_days"])) for t in tasks], dtype=float)
     p = np.array([t["delay_risk"] for t in tasks], dtype=float)
-    max_prop_slip = np.where(planned > 0.0, np.maximum(0.25, planned * 0.75), 0.0)
+    max_prop_slip = _slip_caps(tasks, planned, actual)
     cond_mean = np.where(
         planned > 0.0,
         np.clip(np.array([
@@ -193,7 +219,19 @@ def simulate_project(tasks: List[Dict[str, Any]], buffer_days: float = None, see
         0.0,
     )
 
-    shock = rng.gamma(4.0, 0.25, size=(N_SIMULATIONS, 1))
+    group_keys = [
+        (t.get("work_center") or "").strip().lower()
+        or t.get("category")
+        or infer_category(t.get("task", ""), t.get("work_center", ""))
+        for t in tasks
+    ]
+    unique_groups = {k: idx for idx, k in enumerate(dict.fromkeys(group_keys))}
+    task_group_idx = np.array([unique_groups[k] for k in group_keys], dtype=int)
+
+    plant_shock = rng.gamma(6.0, 1.0 / 6.0, size=(N_SIMULATIONS, 1))
+    group_shocks = rng.gamma(6.0, 1.0 / 6.0, size=(N_SIMULATIONS, max(1, len(unique_groups))))
+    shock = 0.5 * plant_shock + 0.5 * group_shocks[:, task_group_idx]
+
     p_eff = np.clip(1.0 - np.power(np.clip(1.0 - p[None, :], 1e-6, 1.0), shock), 0.0, 0.99)
     late = rng.random((N_SIMULATIONS, len(tasks))) < p_eff
     scale = (cond_mean[None, :] * (0.75 + 0.25 * shock)) / 2.0
@@ -204,18 +242,39 @@ def simulate_project(tasks: List[Dict[str, Any]], buffer_days: float = None, see
         if t.get("completed") or planned[i] <= 0.0:
             durations[:, i] = actual[i]
 
+    task_links: List[List[tuple]] = []
+    for i, t in enumerate(tasks):
+        raw_links = t.get("pred_links") or [{"code": c, "rel": "FS", "lag_days": 0.0} for c in t.get("predecessors", [])]
+        task_links.append([
+            (index[l["code"]], str(l.get("rel", "FS")).upper(), float(l.get("lag_days", 0.0)))
+            for l in raw_links
+            if l["code"] in index and index[l["code"]] != i
+        ])
+
     def finish(dur: np.ndarray) -> np.ndarray:
+        es = np.zeros_like(dur)
         ef = np.zeros_like(dur)
         for i in order:
-            preds = [index[c] for c in tasks[i].get("predecessors", []) if c in index]
-            es = ef[:, preds].max(axis=1) if preds else 0.0
-            ef[:, i] = es + dur[:, i]
+            floor = float(tasks[i].get("date_es_floor", 0.0))
+            cur_es = np.full(dur.shape[0], floor, dtype=float)
+            for p_idx, rel, lag in task_links[i]:
+                if rel == "SS":
+                    cand = es[:, p_idx] + lag
+                elif rel == "FF":
+                    cand = ef[:, p_idx] - dur[:, i] + lag
+                elif rel == "SF":
+                    cand = es[:, p_idx] - dur[:, i] + lag
+                else:
+                    cand = ef[:, p_idx] + lag
+                cur_es = np.maximum(cur_es, cand)
+            es[:, i] = np.maximum(0.0, cur_es)
+            ef[:, i] = es[:, i] + dur[:, i]
         return ef.max(axis=1)
 
     baseline_end = float(finish(planned[None, :])[0])
     project_slip = finish(durations) - baseline_end
     if buffer_days is None:
-        buffer_days = round(baseline_end * DEFAULT_PROJECT_BUFFER_RATIO, 1)
+        buffer_days = round(baseline_end * buffer_ratio, 1)
     return {
         "baseline_duration_days": round(baseline_end, 1),
         "project_buffer_days": float(buffer_days),
@@ -260,10 +319,15 @@ def _validation_phrase(card: Dict[str, Any]) -> str:
     return f"test ROC-AUC {card['test_metrics']['roc_auc']:.2f}"
 
 
-def analyze_schedule(tasks: List[Dict[str, Any]], project_name: str, buffer_days: float = None) -> Dict[str, Any]:
+def analyze_schedule(
+    tasks: List[Dict[str, Any]],
+    project_name: str,
+    buffer_days: float = None,
+    buffer_ratio: float = DEFAULT_PROJECT_BUFFER_RATIO,
+) -> Dict[str, Any]:
     """Score CPM-processed tasks and build the /risks/prediction payload."""
     score_tasks(tasks)
-    sim = simulate_project(tasks, buffer_days)
+    sim = simulate_project(tasks, buffer_days, buffer_ratio=buffer_ratio)
     drivers = project_risk_drivers(tasks, sim["expected_slip_days"])
     card = model_card()
     out_tasks = []

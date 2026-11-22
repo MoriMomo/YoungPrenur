@@ -4,6 +4,7 @@ import React from "react";
 import { MessageSquareText } from "lucide-react";
 import { OperationTrackerItem } from "@/types";
 import { IRoomTable } from "../IRoomTable";
+import { useT } from "@/lib/i18n";
 
 export interface OperationsTabProps {
   searchQuery: string;
@@ -12,6 +13,7 @@ export interface OperationsTabProps {
 }
 
 export function OperationsTab({ searchQuery, handleInspectWithAI, operations }: OperationsTabProps) {
+  const t = useT();
   return (
     <IRoomTable
       headers={[
@@ -55,7 +57,7 @@ export function OperationsTab({ searchQuery, handleInspectWithAI, operations }: 
                         : "bg-pass-wash text-pass border-pass-line"
                     }`}
                   >
-                    {op.vibrationSensor}
+                    {t(op.vibrationSensor)}
                   </span>
                 </td>
                 <td className="py-3 px-3 font-mono-numbers text-ink-2 font-medium">
@@ -73,7 +75,7 @@ export function OperationsTab({ searchQuery, handleInspectWithAI, operations }: 
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <MessageSquareText className="w-3 h-3 text-stamp" />
-                    <span>Sensor RCA</span>
+                    <span>{t("Sensor RCA")}</span>
                   </button>
                 </td>
               </tr>

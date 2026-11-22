@@ -4,12 +4,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, CopilotStatus, ManufacturingRole } from "@/types";
 import { CitationBadge } from "./CitationBadge";
 import { Send, Loader2, RotateCcw, X, ArrowRight, AlertTriangle } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
-const STARTER_PROMPTS = [
-  "What needs attention first today?",
-  "Summarize current schedule risks and bottlenecks",
-  "Which SOP covers press vibration limits?",
-  "Explain the procurement rule for low stock cover",
+// Indonesian prompts make Copilot answer in Indonesian.
+const STARTER_PROMPTS: [string, string][] = [
+  ["What needs attention first today?", "Apa yang paling perlu diperhatikan hari ini?"],
+  ["Summarize current schedule risks and bottlenecks", "Ringkas risiko dan hambatan jadwal saat ini"],
+  ["Which SOP covers press vibration limits?", "SOP mana yang mengatur batas getaran mesin press?"],
+  ["Explain the procurement rule for low stock cover", "Jelaskan aturan pengadaan saat ketahanan stok rendah"],
 ];
 
 interface CopilotThreadProps {
@@ -110,6 +112,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
   headerTitle,
   onClose,
 }) => {
+  const t = useT();
   const [inputValue, setInputValue] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -129,10 +132,10 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
   const isCloudAiActive = isApiLive && copilotStatus.llm_configured;
   const providerName = copilotStatus.provider === "deepseek" ? "DeepSeek" : "Gemini";
   const statusText = isCloudAiActive
-    ? `${copilotStatus.model || providerName} · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
+    ? `${copilotStatus.model || providerName} · ${copilotStatus.indexed_sops} SOP · ${t(activeRole)}`
     : isApiLive
-      ? `SOP retrieval · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`
-      : `Offline SOP index · ${copilotStatus.indexed_sops} SOPs · ${activeRole}`;
+      ? `${t("SOP retrieval", "Pencarian SOP")} · ${copilotStatus.indexed_sops} SOP · ${t(activeRole)}`
+      : `${t("Offline SOP index", "Indeks SOP offline")} · ${copilotStatus.indexed_sops} SOP · ${t(activeRole)}`;
 
   const latestCopilotIdx = messages.reduce(
     (acc, m, idx) => (m.sender === "copilot" ? idx : acc),
@@ -167,7 +170,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
               className="inline-flex h-7 items-center gap-1.5 rounded-md border border-rule-strong bg-sheet px-2.5 text-xs font-medium text-ink-2 transition-colors hover:bg-sheet-sunk hover:text-ink disabled:opacity-50 cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.6} />
-              <span>New chat</span>
+              <span>{t("New chat", "Obrolan baru")}</span>
             </button>
           )}
           {onClose && (
@@ -175,7 +178,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
               type="button"
               onClick={onClose}
               className="rounded-md p-1.5 text-ink-2 transition-colors hover:bg-sheet-sunk hover:text-ink cursor-pointer"
-              aria-label="Close Copilot drawer"
+              aria-label={t("Close Copilot drawer", "Tutup panel Copilot")}
             >
               <X className="h-4 w-4" strokeWidth={1.6} />
             </button>
@@ -192,15 +195,15 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
           <div className="mx-auto flex h-full max-w-2xl flex-col justify-center py-6">
             <div className="space-y-1.5 mb-5">
               <h2 className="font-display text-2xl font-bold leading-tight text-ink">
-                Ask about schedules, streams, or SOP clauses
+                {t("Ask about schedules, streams, or SOP clauses", "Tanyakan jadwal, aliran, atau klausul SOP")}
               </h2>
               <p className="text-xs sm:text-sm text-ink-2">
-                Grounded in indexed SOP documents and live plant records
+                {t("Grounded in indexed SOP documents and live plant records", "Berdasarkan dokumen SOP terindeks dan catatan pabrik terkini")}
               </p>
             </div>
 
             <div className={`grid gap-2.5 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-              {STARTER_PROMPTS.map((prompt) => (
+              {STARTER_PROMPTS.map((pair) => t(...pair)).map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
@@ -243,7 +246,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
                     <span className="font-medium text-ink-2">
-                      MDIP Copilot · {msg.llmEnhanced ? msg.model || "Cloud AI" : msg.offline ? "Offline" : "SOP retrieval"}
+                      MDIP Copilot · {msg.llmEnhanced ? msg.model || "Cloud AI" : msg.offline ? "Offline" : t("SOP retrieval", "Pencarian SOP")}
                     </span>
                     <span className="font-mono-numbers">{msg.timestamp}</span>
                   </div>
@@ -251,7 +254,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                   {msg.llmError && (
                     <div className="flex items-center gap-2 rounded-md border border-warn-line bg-warn-wash px-3 py-2 text-xs text-warn">
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.6} />
-                      <span>Answered using SOP retrieval. {msg.llmError}</span>
+                      <span>{t("Answered using SOP retrieval.", "Dijawab dengan pencarian SOP.")} {msg.llmError}</span>
                     </div>
                   )}
 
@@ -259,7 +262,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
 
                   {msg.citations && msg.citations.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-xs font-medium text-ink-3">Citations</span>
+                      <span className="text-xs font-medium text-ink-3">{t("Citations", "Kutipan")}</span>
                       {msg.citations.map((cite, i) => (
                         <CitationBadge key={`${cite.doc_code}-${i}`} citation={cite} />
                       ))}
@@ -273,7 +276,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                         onClick={onReviewPendingAction}
                         className="inline-flex items-center gap-1.5 text-xs font-medium text-stamp transition-colors hover:text-stamp-deep hover:underline cursor-pointer"
                       >
-                        <span>Review pending action</span>
+                        <span>{t("Review pending action", "Tinjau tindakan tertunda")}</span>
                         <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.6} />
                       </button>
                     </div>
@@ -287,8 +290,8 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-stamp" strokeWidth={1.6} />
                 <span>
                   {isCloudAiActive
-                    ? `Synthesizing grounded answer with ${providerName}…`
-                    : "Searching indexed SOP clauses…"}
+                    ? t(`Synthesizing grounded answer with ${providerName}…`, `Menyusun jawaban berbasis sumber dengan ${providerName}…`)
+                    : t("Searching indexed SOP clauses…", "Mencari klausul SOP terindeks…")}
                 </span>
               </div>
             )}
@@ -303,7 +306,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about shop-floor risks, SOP clauses, or WBS slippage"
+            placeholder={t("Ask about shop-floor risks, SOP clauses, or WBS slippage", "Tanyakan risiko lantai produksi, klausul SOP, atau kemunduran WBS")}
             className="flex-1 bg-transparent py-1 text-sm text-ink placeholder:text-ink-3 focus:outline-none"
           />
           <button
@@ -311,7 +314,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
             disabled={!inputValue.trim() || isLoading}
             className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-stamp px-3 text-xs font-medium text-sheet transition-colors hover:bg-stamp-deep disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           >
-            <span>Send</span>
+            <span>{t("Send", "Kirim")}</span>
             <Send className="h-3.5 w-3.5" strokeWidth={1.6} />
           </button>
         </div>

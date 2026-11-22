@@ -5,6 +5,7 @@ import { FileSpreadsheet, Upload, Loader2, FileCheck, FileDown, MessageSquare } 
 import { ScheduleUploadError, uploadScheduleFile } from "@/lib/api";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { WbsTask } from "@/types";
+import { useT } from "@/lib/i18n";
 
 const CSV_TEMPLATE_HEADER =
   "WBS_Code,Activity_Name,Planned_Duration_Days,Actual_Forecast_Days,Critical_Path,Delay_Risk,Assigned_Work_Center,Owner,Predecessors,Status\n";
@@ -154,6 +155,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
   onAskCopilot,
   onToast,
 }) => {
+  const t = useT();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [parsedCount, setParsedCount] = useState<number>(0);
@@ -172,8 +174,8 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     const isDocument = /\.(pdf|docx|doc)$/i.test(file.name);
     onToast?.(
       isDocument
-        ? `Reading ${file.name} and extracting WBS schedule...`
-        : `Ingesting and parsing WBS schedule from ${file.name}...`
+        ? t(`Reading ${file.name} and extracting WBS schedule...`, `Membaca ${file.name} dan mengekstrak jadwal WBS...`)
+        : t(`Ingesting and parsing WBS schedule from ${file.name}...`, `Memasukkan dan mengurai jadwal WBS dari ${file.name}...`)
     );
 
     try {
@@ -195,13 +197,16 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
         onUploadComplete?.(result);
         onToast?.(
           result.message ||
-            `Normalized ${result.tasks_extracted} activities from ${name} and scored delay risk with XGBoost.`
+            t(
+              `Normalized ${result.tasks_extracted} activities from ${name} and scored delay risk with XGBoost.`,
+              `${result.tasks_extracted} aktivitas dari ${name} dinormalkan dan dinilai risiko terlambatnya dengan XGBoost.`
+            )
         );
         return;
       }
     } catch (err) {
       clearSelection();
-      onToast?.(err instanceof ScheduleUploadError ? err.message : `Could not ingest ${name}.`);
+      onToast?.(err instanceof ScheduleUploadError ? err.message : t(`Could not ingest ${name}.`, `Tidak dapat memasukkan ${name}.`));
       return;
     }
 
@@ -213,14 +218,17 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
         setLastMethod("table");
         setLastSummary(null);
         onUploadComplete?.({ tasks: parsed, tasks_extracted: parsed.length, filename: name });
-        onToast?.(`Backend offline: parsed ${parsed.length} WBS rows locally from ${name}.`);
+        onToast?.(t(`Backend offline: parsed ${parsed.length} WBS rows locally from ${name}.`, `Backend offline: ${parsed.length} baris WBS dari ${name} diurai secara lokal.`));
         return;
       }
     }
 
     clearSelection();
     onToast?.(
-      "Backend offline: upload a valid CSV matching the template headers, or connect the MDIP service for Excel, PDF, and Word files."
+      t(
+        "Backend offline: upload a valid CSV matching the template headers, or connect the MDIP service for Excel, PDF, and Word files.",
+        "Backend offline: unggah CSV valid sesuai header template, atau hubungkan layanan MDIP untuk file Excel, PDF, dan Word."
+      )
     );
   };
 
@@ -231,7 +239,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
       const res = await fetch(`${basePath}/sample_master_schedule_wbs.csv`);
       if (!res.ok) {
-        onToast?.("The sample schedule could not be loaded.");
+        onToast?.(t("The sample schedule could not be loaded.", "Jadwal contoh tidak dapat dimuat."));
         return;
       }
       const text = await res.text();
@@ -251,7 +259,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    onToast?.("Downloaded blank CSV schedule template.");
+    onToast?.(t("Downloaded blank CSV schedule template.", "Template jadwal CSV kosong diunduh."));
   };
 
   const displayFile = selectedFile || activeFilename || null;
@@ -275,10 +283,13 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
             <div>
               <h2 className="font-display text-[20px] font-bold leading-tight text-ink flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-stamp" strokeWidth={1.5} />
-                <span>Schedule Ingestion &amp; WBS Normalizer</span>
+                <span>{t("Schedule Ingestion & WBS Normalizer", "Pemasukan Jadwal & Normalisasi WBS")}</span>
               </h2>
               <p className="text-xs text-ink-2 mt-0.5">
-                Drop or upload a CSV, Excel, PDF, or Word (.docx) schedule (up to 4 MB) — AI reads PDF and Word files into WBS tasks and Copilot
+                {t(
+                  "Drop or upload a CSV, Excel, PDF, or Word (.docx) schedule (up to 4 MB) — AI reads PDF and Word files into WBS tasks and Copilot",
+                  "Letakkan atau unggah jadwal CSV, Excel, PDF, atau Word (.docx) (maks. 4 MB) — AI membaca file PDF dan Word menjadi tugas WBS dan Copilot"
+                )}
               </p>
             </div>
 
@@ -290,7 +301,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
                 className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
               >
                 <FileDown className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
-                <span>Download CSV Template</span>
+                <span>{t("Download CSV Template", "Unduh Template CSV")}</span>
               </button>
 
               <button
@@ -300,7 +311,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
                 className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
-                <span>Load sample schedule</span>
+                <span>{t("Load sample schedule", "Muat jadwal contoh")}</span>
               </button>
 
               <button
@@ -314,7 +325,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
                 ) : (
                   <Upload className="w-4 h-4" />
                 )}
-                <span>{isUploading ? "Normalizing..." : "Upload Schedule"}</span>
+                <span>{isUploading ? t("Normalizing...", "Menormalkan...") : t("Upload Schedule", "Unggah Jadwal")}</span>
               </button>
             </div>
           </div>
@@ -325,7 +336,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
                 <div className="flex items-center gap-2">
                   <FileCheck className="w-4 h-4 shrink-0 text-stamp" />
                   <span>
-                    Active Ingestion File: <strong>{displayFile}</strong> ({displayCount} tasks)
+                    {t("Active Ingestion File:", "File aktif:")} <strong>{displayFile}</strong> ({displayCount} {t("tasks", "tugas")})
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -334,17 +345,20 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
                       type="button"
                       onClick={() =>
                         onAskCopilot(
-                          `Review the uploaded schedule ${displayFile} and summarize the key tasks, bottlenecks, and SOP actions.`
+                          t(
+                            `Review the uploaded schedule ${displayFile} and summarize the key tasks, bottlenecks, and SOP actions.`,
+                            `Tinjau jadwal ${displayFile} yang diunggah dan ringkas tugas utama, hambatan, serta tindakan SOP-nya.`
+                          )
                         )
                       }
                       className="inline-flex items-center gap-1.5 rounded-lg border border-rule-strong bg-sheet px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-sheet-sunk cursor-pointer"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-stamp" strokeWidth={1.6} />
-                      <span>Ask Copilot</span>
+                      <span>{t("Ask Copilot", "Tanya Copilot")}</span>
                     </button>
                   )}
                   <span className="font-semibold text-pass bg-pass-wash px-2 py-0.5 rounded border border-pass-line">
-                    {isAiParsed ? "AI Read" : "Normalized"}
+                    {isAiParsed ? t("AI Read", "Dibaca AI") : t("Normalized", "Dinormalkan")}
                   </span>
                 </div>
               </div>

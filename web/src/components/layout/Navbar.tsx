@@ -5,12 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MdipLogo } from "@/components/ui/MdipLogo";
 import { LinkButton } from "@/components/ui/Button";
-
-const NAV_LINKS = [
-  { href: "#method", label: "Method" },
-  { href: "#roles", label: "Roles" },
-  { href: "#plans", label: "Plans" },
-];
+import { LangSwitch, useT } from "@/lib/i18n";
 
 const CERTIFICATE_NO = "MDIP-DR-0001";
 const noopSubscribe = () => () => {};
@@ -21,6 +16,12 @@ export const Navbar: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   // Issue date comes from the browser: a date read during prerender would freeze at build time.
   const issued = useSyncExternalStore(noopSubscribe, todayIso, () => "");
+  const t = useT();
+  const NAV_LINKS = [
+    { href: "#method", label: t("Method", "Metode") },
+    { href: "#roles", label: t("Roles", "Peran") },
+    { href: "#plans", label: t("Plans", "Paket") },
+  ];
 
   return (
     <header className="guilloche border-b border-rule-strong">
@@ -29,7 +30,7 @@ export const Navbar: React.FC = () => {
           <MdipLogo variant="color" size={30} />
           <span className="flex flex-col leading-none">
             <span className="font-display text-[22px] font-extrabold tracking-[0.02em] text-ink">MDIP</span>
-            <span className="hidden text-xs text-ink-2 sm:block">Manufacturing Decision Intelligence</span>
+            <span className="hidden text-xs text-ink-2 sm:block">{t("Manufacturing Decision Intelligence", "Intelijen Keputusan Manufaktur")}</span>
           </span>
         </Link>
 
@@ -47,30 +48,31 @@ export const Navbar: React.FC = () => {
 
         <dl className="hidden items-stretch border border-rule-strong bg-sheet text-left lg:flex">
           <div className="border-r border-rule px-3 py-1">
-            <dt className="text-xs text-ink-3">Certificate no.</dt>
+            <dt className="text-xs text-ink-3">{t("Certificate no.", "No. sertifikat")}</dt>
             <dd className="font-mono-numbers text-xs text-ink">{CERTIFICATE_NO}</dd>
           </div>
           <div className="px-3 py-1">
-            <dt className="text-xs text-ink-3">Issued</dt>
+            <dt className="text-xs text-ink-3">{t("Issued", "Terbit")}</dt>
             <dd className="font-mono-numbers text-xs text-ink">{issued || "—"}</dd>
           </div>
         </dl>
 
         <div className="flex shrink-0 items-center gap-2">
+          <LangSwitch />
           {/* The wrapper hides them: `hidden` on a button loses to its own inline-flex. */}
           <div className="hidden items-center gap-2 sm:flex">
             <LinkButton href="/login" variant="ghost" size="md">
-              Sign in
+              {t("Sign in", "Masuk")}
             </LinkButton>
             <LinkButton href="/login?mode=register" variant="primary" size="md">
-              Create account
+              {t("Create account", "Buat akun")}
             </LinkButton>
           </div>
           <button
             type="button"
             onClick={() => setMobileOpen((prev) => !prev)}
             className="cursor-pointer rounded-md p-2 text-ink hover:bg-sheet md:hidden"
-            aria-label="Toggle navigation menu"
+            aria-label={t("Toggle navigation menu", "Buka/tutup menu navigasi")}
             aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X className="h-5 w-5" strokeWidth={1.5} /> : <Menu className="h-5 w-5" strokeWidth={1.5} />}
@@ -92,10 +94,10 @@ export const Navbar: React.FC = () => {
           ))}
           <div className="flex gap-2 border-t border-rule pt-3">
             <LinkButton href="/login" variant="secondary" className="flex-1">
-              Sign in
+              {t("Sign in", "Masuk")}
             </LinkButton>
             <LinkButton href="/login?mode=register" className="flex-1">
-              Create account
+              {t("Create account", "Buat akun")}
             </LinkButton>
           </div>
         </div>

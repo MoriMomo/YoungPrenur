@@ -1,19 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
+import { useT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
-import { OperationTrackerItem, ProductionLineItem } from "@/types";
+import { ProductionLineItem, WbsTask } from "@/types";
 import {
   ChevronRight,
   MapPin,
   Table as TableIcon,
-  Cpu,
-  UserCheck,
   CalendarClock,
+  UserCheck,
+  ArrowUpRight,
 } from "lucide-react";
 
 interface ProductionLineStatusProps {
-  operations?: OperationTrackerItem[];
+  tasks?: WbsTask[];
+  projectName?: string | null;
   onSelectLine?: (line: ProductionLineItem) => void;
 }
 
@@ -25,10 +27,10 @@ interface WorkCenterTwin {
   wbsTask: string;
   wbsProject: string;
   utilization: number;
-  outputActual: number;
-  outputTarget: number;
+  actualDays: number;
+  plannedDays: number;
   operator: string;
-  status: "On track" | "Attention" | "Critical Constraint" | "Above target";
+  status: "On track" | "Attention" | "Critical Constraint" | "Ahead of plan";
   statusTone: "green" | "amber" | "red" | "cyan";
   x: number;
   y: number;
@@ -37,88 +39,67 @@ interface WorkCenterTwin {
   telemetryNote: string;
 }
 
-const WORK_CENTERS_TWIN: WorkCenterTwin[] = [
-  {
-    id: "bay-01",
-    name: "CNC Milling Cell A (5-Axis)",
-    machineModel: "5-Axis Vertical Mill",
-    wbsCode: "WBS-2.1",
-    wbsTask: "CNC 5-Axis Milling & Surface Profiling",
-    wbsProject: "Project Alpha (Aerospace Tooling)",
-    utilization: 92,
-    outputActual: 1240,
-    outputTarget: 1300,
-    operator: "Bambang S. (Lead Tech)",
-    status: "On track",
-    statusTone: "green",
-    x: 40,
-    y: 40,
-    w: 320,
-    h: 130,
-    telemetryNote: "Spindle load 92% · Nominal thermal drift compensation active",
-  },
-  {
-    id: "bay-02",
-    name: "Stamping Press Bay P-07",
-    machineModel: "600-Ton Hydraulic Press",
-    wbsCode: "WBS-2.2",
-    wbsTask: "Precision Stamping & Forming",
-    wbsProject: "Project Alpha (Aerospace Tooling)",
-    utilization: 68,
-    outputActual: 890,
-    outputTarget: 1000,
-    operator: "Agus H. (Press Master)",
-    status: "Critical Constraint",
-    statusTone: "red",
-    x: 400,
-    y: 40,
-    w: 360,
-    h: 130,
-    telemetryNote: "Vibration sensor +18% elevated (SOP-PRS-04 seal inspection required)",
-  },
-  {
-    id: "bay-03",
-    name: "Wire EDM Cell 03",
-    machineModel: "Precision Wire EDM",
-    wbsCode: "WBS-1.3",
-    wbsTask: "Tooling & Stamping Die Fabrication",
-    wbsProject: "EV Battery Enclosure Die",
-    utilization: 96,
-    outputActual: 1510,
-    outputTarget: 1480,
-    operator: "Rudi Hermawan (Cert L3)",
-    status: "Above target",
-    statusTone: "cyan",
-    x: 40,
-    y: 195,
-    w: 320,
-    h: 130,
-    telemetryNote: "Nominal telemetry · Die clearance verified within +/-0.02mm",
-  },
-  {
-    id: "bay-04",
-    name: "Assembly Cell 02 & CMM Lab",
-    machineModel: "3-Axis Bridge CMM + Cleanroom Cell",
-    wbsCode: "WBS-3.1",
-    wbsTask: "Cell 02 Sub-Assembly & Tolerancing",
-    wbsProject: "Project Alpha (Aerospace Tooling)",
-    utilization: 74,
-    outputActual: 890,
-    outputTarget: 1000,
-    operator: "Siti M. (Senior QC)",
-    status: "Attention",
-    statusTone: "amber",
-    x: 400,
-    y: 195,
-    w: 360,
-    h: 130,
-    telemetryNote: "11% below shift target (1 technician deficit on evening shift)",
-  },
-];
+const SLOTS = [
+  { x: 40, y: 40, w: 320, h: 130 },
+  { x: 400, y: 40, w: 360, h: 130 },
+  { x: 40, y: 195, w: 320, h: 130 },
+  { x: 400, y: 195, w: 360, h: 130 },
+] as const;
+
+function fromUploadedTasks(tasks: WbsTask[], projectName?: string | null): WorkCenterTwin[] {
+  const ordered = [...tasks].sort((a, b) => b.delayRisk - a.delayRisk);
+  return ordered.map((t, idx) => {
+    const slot = SLOTS[idx % SLOTS.length];
+    const isHigh = t.riskLevel === "HIGH" || t.delayRisk >= 0.6;
+    const isMed = !isHigh && (t.riskLevel === "MEDIUM" || t.delayRisk >= 0.25 || t.actualDays > t.plannedDays);
+    const isAhead = !isHigh && !isMed && t.actualDays < t.plannedDays;
+
+    const status: WorkCenterTwin["status"] = isHigh
+      ? "Critical Constraint"
+      : isMed
+      ? "Attention"
+      : isAhead
+      ? "Ahead of plan"
+      : "On track";
+
+    const statusTone: WorkCenterTwin["statusTone"] =
+      status === "Critical Constraint"
+        ? "red"
+        : status === "Attention"
+        ? "amber"
+        : status === "Ahead of plan"
+        ? "cyan"
+        : "green";
+
+    const riskPct = Math.round(t.delayRisk * 100);
+    return {
+      id: `${t.code}-${idx}`,
+      name: t.workCenter?.trim() || "Assigned Work Center",
+      machineModel: t.critical ? "Critical-Path Station" : "Standard WBS Cell",
+      wbsCode: t.code,
+      wbsTask: t.task,
+      wbsProject: projectName || "Uploaded Schedule",
+      utilization: Math.min(100, Math.max(5, riskPct)),
+      actualDays: t.actualDays,
+      plannedDays: t.plannedDays,
+      operator: t.owner?.trim() || "Unassigned",
+      status,
+      statusTone,
+      ...slot,
+      telemetryNote:
+        t.drivers?.[0] ||
+        `Float ${t.floatDays}d · Forecast ${t.actualDays}d vs ${t.plannedDays}d planned`,
+    };
+  });
+}
 
 function toLineItem(bay: WorkCenterTwin): ProductionLineItem {
   const mappedStatus: ProductionLineItem["status"] =
-    bay.status === "Critical Constraint" ? "Attention" : bay.status;
+    bay.status === "Critical Constraint"
+      ? "Attention"
+      : bay.status === "Ahead of plan"
+      ? "Above target"
+      : bay.status;
   const mappedColor: ProductionLineItem["statusColor"] =
     bay.statusTone === "red" || bay.statusTone === "amber"
       ? "warn"
@@ -130,71 +111,42 @@ function toLineItem(bay: WorkCenterTwin): ProductionLineItem {
     id: bay.id,
     name: bay.name,
     utilization: bay.utilization,
-    outputActual: bay.outputActual,
-    outputTarget: bay.outputTarget,
+    outputActual: bay.actualDays,
+    outputTarget: bay.plannedDays,
     status: mappedStatus,
     statusColor: mappedColor,
   };
 }
 
-function fromOperations(operations: OperationTrackerItem[]): WorkCenterTwin[] {
-  const slots = [
-    { x: 40, y: 40, w: 320, h: 130 },
-    { x: 400, y: 40, w: 360, h: 130 },
-    { x: 40, y: 195, w: 320, h: 130 },
-    { x: 400, y: 195, w: 360, h: 130 },
-  ];
-  return operations.slice(0, 4).map((op, idx) => {
-    const slot = slots[idx] ?? slots[0];
-    const status: WorkCenterTwin["status"] =
-      op.vibrationSensor === "CRITICAL"
-        ? "Critical Constraint"
-        : op.vibrationSensor === "ELEVATED"
-        ? "Attention"
-        : op.oeePercent >= 88
-        ? "Above target"
-        : "On track";
-    const statusTone: WorkCenterTwin["statusTone"] =
-      status === "Critical Constraint"
-        ? "red"
-        : status === "Attention"
-        ? "amber"
-        : status === "Above target"
-        ? "cyan"
-        : "green";
-    const target = 1000;
-    const actual = Math.round((op.oeePercent / 100) * target);
-    const wbsMatch = op.activeJob.match(/WBS-[\d.]+/i);
-    return {
-      id: op.id,
-      name: op.workCenter,
-      machineModel: op.machineId,
-      wbsCode: wbsMatch ? wbsMatch[0].toUpperCase() : op.machineId,
-      wbsTask: op.activeJob,
-      wbsProject: `Shift ${op.shift}`,
-      utilization: Math.min(100, Math.max(0, Math.round(op.spindleUtilization))),
-      outputActual: actual,
-      outputTarget: target,
-      operator: op.operator,
-      status,
-      statusTone,
-      ...slot,
-      telemetryNote: `OEE ${op.oeePercent}% · Vibration ${op.vibrationSensor} · Shift ${op.shift}`,
-    };
-  });
-}
-
 export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
-  operations,
+  tasks = [],
+  projectName,
   onSelectLine,
 }) => {
   const router = useRouter();
+  const t = useT();
   const [viewMode, setViewMode] = useState<"map" | "table">("map");
-  const workCenters = operations && operations.length > 0 ? fromOperations(operations) : WORK_CENTERS_TWIN;
-  const [selectedBayId, setSelectedBayId] = useState<string>(workCenters[1]?.id ?? workCenters[0]?.id ?? "bay-02");
+  const allWorkCenters = fromUploadedTasks(tasks, projectName);
+  const mapWorkCenters = allWorkCenters.slice(0, 4);
+  const [selectedBayId, setSelectedBayId] = useState<string>("");
+
+  if (allWorkCenters.length === 0) {
+    return (
+      <div className="bg-sheet border border-rule-strong p-5 sm:p-6">
+        <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
+          {t("Uploaded Schedule Work Centers", "Work Center dari Jadwal yang Diunggah")}
+        </h2>
+        <p className="text-xs text-ink-3 mt-1">
+          {t("Upload a schedule to map WBS activities to shop-floor work centers.", "Unggah jadwal untuk memetakan aktivitas WBS ke work center di lantai produksi.")}
+        </p>
+      </div>
+    );
+  }
 
   const activeBay =
-    workCenters.find((b) => b.id === selectedBayId) || workCenters[0];
+    mapWorkCenters.find((b) => b.id === selectedBayId) ||
+    allWorkCenters.find((b) => b.id === selectedBayId) ||
+    mapWorkCenters[0];
 
   const getStatusBadge = (status: WorkCenterTwin["status"]) => {
     switch (status) {
@@ -204,10 +156,8 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
         return "bg-hold-wash text-hold border-hold-line";
       case "Attention":
         return "bg-warn-wash text-warn border-warn-line";
-      case "Above target":
+      case "Ahead of plan":
         return "bg-stamp-wash text-stamp border-stamp-line";
-      default:
-        return "bg-sheet-sunk text-ink-2 border-rule";
     }
   };
 
@@ -226,19 +176,18 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
 
   const handleInspectBay = (bay: WorkCenterTwin) => {
     onSelectLine?.(toLineItem(bay));
-    router.push("/dashboard/iroom?tab=operations");
+    router.push("/dashboard/scheduler");
   };
 
   return (
     <div className="@container bg-sheet border border-rule-strong p-5 sm:p-6 space-y-4">
-      {/* Header & View Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rule-soft">
         <div>
           <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
-            Shop-Floor Work Centers &amp; WBS Binding
+            {t("Schedule Work Centers & WBS Binding", "Work Center Jadwal & Keterkaitan WBS")}
           </h2>
           <p className="text-xs text-ink-3 mt-0.5">
-            Both Spatial Map and Table View share identical work-center telemetry and WBS bindings
+            {t("Derived directly from your uploaded WBS tasks (ranked by XGBoost delay risk)", "Diturunkan langsung dari tugas WBS yang Anda unggah (diurutkan menurut risiko terlambat XGBoost)")}
           </p>
         </div>
 
@@ -246,204 +195,189 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
           <button
             type="button"
             onClick={() => setViewMode("map")}
-            className={`flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              viewMode === "map"
-                ? "bg-white text-ink"
-                : "text-ink-2 hover:text-ink"
+            className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              viewMode === "map" ? "bg-white text-ink" : "text-ink-2 hover:text-ink"
             }`}
           >
             <MapPin className="w-3.5 h-3.5" strokeWidth={1.5} />
-            <span>Floor Map</span>
+            <span>{t("Cell Grid", "Grid Sel")}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setViewMode("table")}
-            className={`flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              viewMode === "table"
-                ? "bg-white text-ink"
-                : "text-ink-2 hover:text-ink"
+            className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              viewMode === "table" ? "bg-white text-ink" : "text-ink-2 hover:text-ink"
             }`}
           >
             <TableIcon className="w-3.5 h-3.5" strokeWidth={1.5} />
-            <span>Table View</span>
+            <span>{t("All WBS", "Semua WBS")} ({allWorkCenters.length})</span>
           </button>
         </div>
       </div>
 
       {viewMode === "map" ? (
-        <div className="grid grid-cols-1 @3xl:grid-cols-12 gap-4">
-          {/* SVG Floor Grid */}
-          <div className="@3xl:col-span-8 bg-paper rounded-xl p-4 border border-rule overflow-hidden">
-            <div className="flex items-center justify-between text-xs font-mono-numbers text-ink-2 mb-2 pb-2 border-b border-rule">
-              <span className="text-stamp font-medium">
-                Shop A Work Center Matrix
-              </span>
-              <span>
-                {workCenters.length} cells monitored ({operations && operations.length > 0 ? "live IRoom stream" : "sample"})
-              </span>
-            </div>
+        <div className="grid grid-cols-1 @3xl:grid-cols-12 gap-5 items-stretch">
+          <div className="@3xl:col-span-8 bg-paper rounded-xl p-3 border border-rule relative overflow-x-auto">
+            <div className="min-w-[520px]">
+              <div className="flex items-center justify-between text-xs font-mono-numbers text-ink-3 mb-2 px-1">
+                <span className="text-stamp font-medium">
+                  {t(`Top ${mapWorkCenters.length} Highest-Risk Work Centers`, `${mapWorkCenters.length} Work Center Paling Berisiko`)}
+                </span>
+                <span>{t(`${allWorkCenters.length} uploaded WBS tasks total`, `Total ${allWorkCenters.length} tugas WBS diunggah`)}</span>
+              </div>
 
-            <div className="-mx-1 overflow-x-auto px-1">
-            <svg
-              viewBox="0 0 780 345"
-              className="block h-auto w-full min-w-[700px] @xl:min-w-0"
-              role="img"
-              aria-label="Shop-Floor Spatial Map"
-            >
-              <rect width="780" height="345" fill="var(--color-paper)" rx="10" />
+              <svg
+                viewBox="0 0 780 345"
+                className="w-full h-auto block"
+                role="img"
+                aria-label={t("Uploaded Schedule Work Center Matrix", "Matriks Work Center Jadwal")}
+              >
+                <rect width="780" height="345" fill="var(--color-paper)" rx="10" />
 
-              {workCenters.map((bay) => {
-                const isSelected = bay.id === activeBay.id;
-                const strokeColor =
-                  bay.statusTone === "red"
-                    ? "var(--color-hold)"
-                    : bay.statusTone === "amber"
-                    ? "var(--color-warn)"
-                    : bay.statusTone === "cyan"
-                    ? "var(--color-stamp)"
-                    : "var(--color-pass)";
+                {mapWorkCenters.map((bay) => {
+                  const isSelected = bay.id === activeBay.id;
+                  const strokeColor =
+                    bay.statusTone === "red"
+                      ? "var(--color-hold)"
+                      : bay.statusTone === "amber"
+                      ? "var(--color-warn)"
+                      : bay.statusTone === "cyan"
+                      ? "var(--color-stamp)"
+                      : "var(--color-pass)";
 
-                const fillColor = isSelected ? "var(--color-sheet)" : "var(--color-sheet)";
-
-                return (
-                  <g
-                    key={bay.id}
-                    onClick={() => setSelectedBayId(bay.id)}
-                    className="cursor-pointer"
-                  >
-                    <rect
-                      x={bay.x}
-                      y={bay.y}
-                      width={bay.w}
-                      height={bay.h}
-                      rx="10"
-                      fill={fillColor}
-                      stroke={strokeColor}
-                      strokeWidth={isSelected ? "2.5" : "1.2"}
-                    />
-                    <rect
-                      x={bay.x}
-                      y={bay.y}
-                      width={bay.w}
-                      height="28"
-                      rx="10"
-                      fill="var(--color-sheet-sunk)"
-                    />
-                    <circle
-                      cx={bay.x + 18}
-                      cy={bay.y + 14}
-                      r="3.5"
-                      fill={strokeColor}
-                    />
-                    <text
-                      x={bay.x + 30}
-                      y={bay.y + 18}
-                      fill="var(--color-ink)"
-                      fontSize="11"
-                      fontWeight="600"
+                  return (
+                    <g
+                      key={bay.id}
+                      onClick={() => setSelectedBayId(bay.id)}
+                      className="cursor-pointer"
                     >
-                      {bay.name}
-                    </text>
+                      <rect
+                        x={bay.x}
+                        y={bay.y}
+                        width={bay.w}
+                        height={bay.h}
+                        rx="10"
+                        fill="var(--color-sheet)"
+                        stroke={strokeColor}
+                        strokeWidth={isSelected ? "2.5" : "1.2"}
+                      />
+                      <rect
+                        x={bay.x}
+                        y={bay.y}
+                        width={bay.w}
+                        height="28"
+                        rx="10"
+                        fill="var(--color-sheet-sunk)"
+                      />
+                      <circle cx={bay.x + 18} cy={bay.y + 14} r="3.5" fill={strokeColor} />
+                      <text
+                        x={bay.x + 30}
+                        y={bay.y + 18}
+                        fill="var(--color-ink)"
+                        fontSize="11"
+                        fontWeight="600"
+                      >
+                        {bay.name.slice(0, 26)}
+                      </text>
 
-                    <rect
-                      x={bay.x + bay.w - 72}
-                      y={bay.y + 6}
-                      width="64"
-                      height="16"
-                      rx="4"
-                      fill="var(--color-stamp)"
-                    />
-                    <text
-                      x={bay.x + bay.w - 40}
-                      y={bay.y + 17}
-                      fill="var(--color-sheet)"
-                      fontSize="9"
-                      fontWeight="600"
-                      textAnchor="middle"
-                      fontFamily="monospace"
-                    >
-                      {bay.wbsCode}
-                    </text>
+                      <rect
+                        x={bay.x + bay.w - 72}
+                        y={bay.y + 6}
+                        width="64"
+                        height="16"
+                        rx="4"
+                        fill="var(--color-stamp)"
+                      />
+                      <text
+                        x={bay.x + bay.w - 40}
+                        y={bay.y + 17}
+                        fill="var(--color-sheet)"
+                        fontSize="9"
+                        fontWeight="600"
+                        textAnchor="middle"
+                        fontFamily="monospace"
+                      >
+                        {bay.wbsCode}
+                      </text>
 
-                    <text x={bay.x + 14} y={bay.y + 48} fill="var(--color-ink-3)" fontSize="10">
-                      Tool: <tspan fill="var(--color-ink-2)">{bay.machineModel}</tspan>
-                    </text>
+                      <text x={bay.x + 14} y={bay.y + 48} fill="var(--color-ink-3)" fontSize="10">
+                        Owner: <tspan fill="var(--color-ink-2)">{bay.operator.slice(0, 28)}</tspan>
+                      </text>
 
-                    <text x={bay.x + 14} y={bay.y + 66} fill="var(--color-ink-3)" fontSize="10">
-                      WBS: <tspan fill="var(--color-ink)" fontWeight="600">{bay.wbsTask}</tspan>
-                    </text>
+                      <text x={bay.x + 14} y={bay.y + 66} fill="var(--color-ink-3)" fontSize="10">
+                        Task: <tspan fill="var(--color-ink)" fontWeight="600">{bay.wbsTask.slice(0, 34)}</tspan>
+                      </text>
 
-                    <rect
-                      x={bay.x + 14}
-                      y={bay.y + 80}
-                      width={bay.w - 28}
-                      height="7"
-                      rx="3.5"
-                      fill="var(--color-sheet-sunk)"
-                    />
-                    <rect
-                      x={bay.x + 14}
-                      y={bay.y + 80}
-                      width={((bay.w - 28) * bay.utilization) / 100}
-                      height="7"
-                      rx="3.5"
-                      fill={strokeColor}
-                    />
+                      <rect
+                        x={bay.x + 14}
+                        y={bay.y + 80}
+                        width={bay.w - 28}
+                        height="7"
+                        rx="3.5"
+                        fill="var(--color-sheet-sunk)"
+                      />
+                      <rect
+                        x={bay.x + 14}
+                        y={bay.y + 80}
+                        width={((bay.w - 28) * bay.utilization) / 100}
+                        height="7"
+                        rx="3.5"
+                        fill={strokeColor}
+                      />
 
-                    <text
-                      x={bay.x + 14}
-                      y={bay.y + 105}
-                      fill="var(--color-ink-2)"
-                      fontSize="10"
-                      fontWeight="600"
-                      fontFamily="monospace"
-                    >
-                      Util: {bay.utilization}% · {bay.outputActual.toLocaleString("en-US")}u
-                    </text>
+                      <text
+                        x={bay.x + 14}
+                        y={bay.y + 105}
+                        fill="var(--color-ink-2)"
+                        fontSize="10"
+                        fontWeight="600"
+                        fontFamily="monospace"
+                      >
+                        Risk: {bay.utilization}% · {bay.actualDays}d / {bay.plannedDays}d
+                      </text>
 
-                    <text
-                      x={bay.x + bay.w - 14}
-                      y={bay.y + 105}
-                      fill={strokeColor}
-                      fontSize="10"
-                      fontWeight="600"
-                      textAnchor="end"
-                    >
-                      {bay.status}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+                      <text
+                        x={bay.x + bay.w - 14}
+                        y={bay.y + 105}
+                        fill={strokeColor}
+                        fontSize="10"
+                        fontWeight="600"
+                        textAnchor="end"
+                      >
+                        {t(bay.status)}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
             </div>
           </div>
 
-          {/* Inspector Card */}
-          <div className="@3xl:col-span-4 bg-sheet rounded-xl p-5 border border-rule flex flex-col justify-between space-y-4">
+          <div className="@3xl:col-span-4 bg-paper rounded-xl p-5 border border-rule flex flex-col justify-between space-y-4">
             <div>
               <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-rule">
                 <span className="font-mono-numbers text-xs font-medium text-ink-3">
-                  Cell Inspector
+                  {t("WBS Cell Inspector", "Inspektur Sel WBS")}
                 </span>
                 <span
                   className={`font-mono-numbers px-2 py-0.5 rounded text-xs font-medium border ${getStatusBadge(
                     activeBay.status
                   )}`}
                 >
-                  {activeBay.status}
+                  {t(activeBay.status)}
                 </span>
               </div>
 
               <div className="mt-3 space-y-1">
-                <h3 className="text-sm font-medium text-ink">{activeBay.name}</h3>
-                <p className="text-xs text-ink-3">{activeBay.machineModel}</p>
+                <h3 className="text-sm font-medium text-ink">{t(activeBay.name)}</h3>
+                <p className="text-xs text-ink-3">{t(activeBay.machineModel)}</p>
               </div>
 
               <div className="mt-3 p-3 rounded-xl bg-white border border-rule space-y-1.5">
                 <div className="text-xs font-medium text-stamp flex items-center gap-1.5">
                   <CalendarClock className="w-3.5 h-3.5" strokeWidth={1.5} />
-                  <span>Bound WBS Package</span>
+                  <span>{t("Bound WBS Package", "Paket WBS Terkait")}</span>
                 </div>
                 <div className="text-xs font-medium text-ink flex items-center justify-between gap-2">
                   <span className="truncate">{activeBay.wbsTask}</span>
@@ -451,20 +385,20 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                     {activeBay.wbsCode}
                   </span>
                 </div>
-                <div className="text-xs text-ink-3">
-                  Project: <span className="font-medium text-ink-2">{activeBay.wbsProject}</span>
+                <div className="text-xs text-ink-3 truncate">
+                  {t("Schedule:", "Jadwal:")} <span className="font-medium text-ink-2">{t(activeBay.wbsProject)}</span>
                 </div>
               </div>
 
               <div className="mt-3 grid grid-cols-1 @md:grid-cols-2 gap-2 text-xs font-mono-numbers">
                 <div className="p-2 rounded-lg bg-white border border-rule">
-                  <span className="text-xs text-ink-3 block">Utilization</span>
+                  <span className="text-xs text-ink-3 block">{t("Delay Risk", "Risiko Terlambat")}</span>
                   <span className="text-sm font-medium text-ink">{activeBay.utilization}%</span>
                 </div>
                 <div className="p-2 rounded-lg bg-white border border-rule">
-                  <span className="text-xs text-ink-3 block">Units</span>
+                  <span className="text-xs text-ink-3 block">{t("Forecast vs Plan", "Prakiraan vs Rencana")}</span>
                   <span className="text-sm font-medium text-ink">
-                    {activeBay.outputActual} / {activeBay.outputTarget}
+                    {activeBay.actualDays}{t("d", "h")} / {activeBay.plannedDays}{t("d", "h")}
                   </span>
                 </div>
               </div>
@@ -472,13 +406,12 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
               <div className="mt-3 flex items-center gap-2 text-xs text-ink-2">
                 <UserCheck className="w-4 h-4 text-ink-3" strokeWidth={1.5} />
                 <span>
-                  Operator: <span className="font-medium text-ink">{activeBay.operator}</span>
+                  {t("Owner:", "Pemilik:")} <span className="font-medium text-ink">{t(activeBay.operator)}</span>
                 </span>
               </div>
 
               <div className="mt-3 p-2.5 rounded-lg bg-white border border-rule text-xs text-ink-2 leading-relaxed">
-                <span className="font-medium text-ink">Telemetry Notice:</span>{" "}
-                {activeBay.telemetryNote}
+                <span className="font-medium text-ink">{t("Driver:", "Pemicu:")}</span> {t(activeBay.telemetryNote)}
               </div>
             </div>
 
@@ -488,8 +421,8 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                 onClick={() => handleInspectBay(activeBay)}
                 className="w-full h-9 bg-stamp hover:bg-stamp-deep text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Cpu className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
-                <span>Inspect Sensor Stream in IRoom</span>
+                <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span>{t("Open Full Schedule", "Buka Jadwal Lengkap")}</span>
               </button>
             </div>
           </div>
@@ -500,22 +433,22 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
             <thead>
               <tr className="border-b border-rule text-ink-3 text-xs font-medium">
                 <th className="py-2.5 px-3 font-medium">Work Center</th>
-                <th className="py-2.5 px-3 font-medium">Bound WBS Task</th>
-                <th className="py-2.5 px-3 font-medium">Utilization</th>
-                <th className="py-2.5 px-3 font-medium">Actual vs Target</th>
+                <th className="py-2.5 px-3 font-medium">{t("Bound WBS Task", "Tugas WBS Terkait")}</th>
+                <th className="py-2.5 px-3 font-medium">{t("Delay Risk", "Risiko Terlambat")}</th>
+                <th className="py-2.5 px-3 font-medium">{t("Forecast vs Planned", "Prakiraan vs Rencana")}</th>
                 <th className="py-2.5 px-3 font-medium">Status</th>
-                <th className="py-2.5 px-3 text-right font-medium">Action</th>
+                <th className="py-2.5 px-3 text-right font-medium">{t("Action", "Tindakan")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-rule-soft">
-              {workCenters.map((bay) => (
-                <tr key={bay.id} className="hover:bg-sheet transition-colors">
+              {allWorkCenters.map((bay) => (
+                <tr key={bay.id} className="hover:bg-paper transition-colors">
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2.5">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${getProgressColor(bay.statusTone)}`} />
                       <div>
-                        <div className="font-medium text-ink">{bay.name}</div>
-                        <div className="text-xs text-ink-3">{bay.machineModel}</div>
+                        <div className="font-medium text-ink">{t(bay.name)}</div>
+                        <div className="text-xs text-ink-3">{t(bay.operator)}</div>
                       </div>
                     </div>
                   </td>
@@ -541,8 +474,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                   </td>
 
                   <td className="py-3 px-3 font-mono-numbers text-ink-2">
-                    <span className="font-medium text-ink">{bay.outputActual.toLocaleString("en-US")}</span> /{" "}
-                    {bay.outputTarget.toLocaleString("en-US")} units
+                    <span className="font-medium text-ink">{bay.actualDays}{t("d", "h")}</span> / {bay.plannedDays}{t("d", "h")}
                   </td>
 
                   <td className="py-3 px-3">
@@ -551,7 +483,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                         bay.status
                       )}`}
                     >
-                      {bay.status}
+                      {t(bay.status)}
                     </span>
                   </td>
 
@@ -559,10 +491,10 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
                     <button
                       type="button"
                       onClick={() => handleInspectBay(bay)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-stamp hover:underline cursor-pointer"
                     >
-                      <span>Open in IRoom</span>
-                      <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      <span>{t("Schedule", "Jadwal")}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>

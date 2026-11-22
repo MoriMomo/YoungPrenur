@@ -1,6 +1,5 @@
 /** Decision briefs, sign-offs and the audit log. */
 
-import { INITIAL_ACTIONS } from "@/lib/mock-data";
 import { DecisionAction, AuditLogEntry } from "@/types";
 import { API_BASE, apiFetch } from "./client";
 
@@ -38,7 +37,7 @@ function normalizeUrgencyBadge(badge: string): DecisionAction["urgencyBadge"] {
  * Fetches prioritized decision briefs.
  */
 export async function fetchDecisionActions(): Promise<DecisionAction[]> {
-  let base: DecisionAction[] = INITIAL_ACTIONS;
+  let base: DecisionAction[] = [];
   try {
     const res = await apiFetch(`${API_BASE}/risks/decisions`, {
       signal: AbortSignal.timeout(2000),

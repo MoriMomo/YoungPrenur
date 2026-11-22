@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { WbsTask } from "@/types";
 import { AlertTriangle, Zap } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface GanttTimelineProps {
   tasks: WbsTask[];
@@ -13,6 +14,7 @@ interface GanttTimelineProps {
 }
 
 export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 0, baseSlipDays = 0 }) => {
+  const t = useT();
   const [simulatedSlipDays, setSimulatedSlipDays] = useState<number>(0);
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
 
@@ -45,25 +47,28 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-rule-soft">
         <div>
           <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
-            Time-Phased Gantt Schedule &amp; What-If Slippage Simulator
+            {t("Time-Phased Gantt Schedule & What-If Slippage Simulator", "Jadwal Gantt Berbasis Waktu & Simulator Kemunduran")}
           </h2>
           <p className="text-xs text-ink-2">
-            Tasks are staggered by start day across the active schedule horizon with float buffers and critical-path cascades
+            {t(
+              "Tasks are staggered by start day across the active schedule horizon with float buffers and critical-path cascades",
+              "Tugas diurutkan menurut hari mulai sepanjang horizon jadwal aktif, lengkap dengan cadangan float dan rambatan jalur kritis"
+            )}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-ink-3 shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-2 rounded-xs bg-rule-strong" />
-            <span>Planned</span>
+            <span>{t("Planned", "Rencana")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-2 rounded-xs bg-stamp" />
-            <span>On Track</span>
+            <span>{t("On Track", "Sesuai Jalur")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-2 rounded-xs bg-hold" />
-            <span>Critical Slip</span>
+            <span>{t("Critical Slip", "Mundur Kritis")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span
@@ -73,14 +78,17 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
                   "repeating-linear-gradient(45deg, var(--color-rule-strong), var(--color-rule-strong) 2px, transparent 2px, transparent 4px)",
               }}
             />
-            <span>Float / Sim Buffer</span>
+            <span>{t("Float / Sim Buffer", "Float / Cadangan Simulasi")}</span>
           </div>
         </div>
       </div>
 
       {tasks.length === 0 ? (
         <div className="rounded-lg border border-dashed border-rule-strong bg-paper px-4 py-8 text-center text-xs text-ink-2">
-          No WBS tasks loaded. Upload a CSV or Excel schedule above to inspect the critical path and simulate slippage.
+          {t(
+            "No WBS tasks loaded. Upload a CSV or Excel schedule above to inspect the critical path and simulate slippage.",
+            "Belum ada tugas WBS. Unggah jadwal CSV atau Excel di atas untuk memeriksa jalur kritis dan menyimulasikan kemunduran."
+          )}
         </div>
       ) : (
         <>
@@ -94,16 +102,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
                     className="text-xs font-medium text-stamp flex items-center gap-2"
                   >
                     <Zap className="w-3.5 h-3.5 text-stamp" strokeWidth={1.5} />
-                    <span>Simulate Critical-Path Delay</span>
+                    <span>{t("Simulate Critical-Path Delay", "Simulasikan Keterlambatan Jalur Kritis")}</span>
                   </label>
                   <span className="font-mono-numbers text-xs font-medium px-2.5 py-0.5 rounded bg-stamp text-white">
-                    +{simulatedSlipDays} Days Slip
+                    +{simulatedSlipDays} {t("Days Slip", "Hari Mundur")}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-ink-3 font-mono-numbers font-medium">
-                    0d (Baseline)
+                    {t("0d (Baseline)", "0 h (Baseline)")}
                   </span>
                   <input
                     id="slippage-slider"
@@ -116,14 +124,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
                     className="flex-1 h-2 bg-sheet-sunk rounded-lg appearance-none cursor-pointer accent-stamp"
                   />
                   <span className="text-xs text-hold font-mono-numbers font-medium">
-                    +7d (Severe)
+                    {t("+7d (Severe)", "+7 h (Berat)")}
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                  <span className="text-ink-3">Scenarios:</span>
+                  <span className="text-ink-3">{t("Scenarios:", "Skenario:")}</span>
                   {[
-                    { label: "0d Baseline", val: 0 },
+                    { label: t("0d Baseline", "0 h Baseline"), val: 0 },
                     { label: "+2d", val: 2 },
                     { label: "+4d", val: 4 },
                     { label: "+7d", val: 7 },
@@ -147,25 +155,25 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
               <div className="grid grid-cols-2 gap-2.5 sm:w-72 shrink-0 border-t md:border-t-0 md:border-l border-rule-strong pt-3 md:pt-0 md:pl-4">
                 <div className="p-2.5 rounded-lg bg-paper border border-rule-strong">
                   <div className="text-xs text-ink-3 font-medium">
-                    Cumulative Slippage
+                    {t("Cumulative Slippage", "Kemunduran Kumulatif")}
                   </div>
                   <div className="text-base sm:text-lg font-mono-numbers font-semibold text-hold">
                     +{totalSlippageDays}d
                   </div>
                   <div className="text-xs text-ink-3 font-mono-numbers">
-                    What-if Risk: {delayRiskProbability}%
+                    {t("What-if Risk:", "Risiko Simulasi:")} {delayRiskProbability}%
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-paper border border-rule-strong">
                   <div className="text-xs text-ink-3 font-medium">
-                    Critical Path Tasks
+                    {t("Critical Path Tasks", "Tugas Jalur Kritis")}
                   </div>
                   <div className="text-base sm:text-lg font-mono-numbers font-semibold text-ink">
                     {criticalCount} / {tasks.length}
                   </div>
                   <div className="text-xs text-ink-3 font-mono-numbers">
-                    Horizon: {horizonDays}d
+                    {t("Horizon:", "Horizon:")} {horizonDays}{t("d", " h")}
                   </div>
                 </div>
               </div>
@@ -175,7 +183,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
           {/* Time-Phased Gantt Grid */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-2 text-xs font-semibold text-ink-3 px-1 pt-1 border-b border-rule pb-1.5">
-              <span className="md:w-64 shrink-0 text-left">WBS Work Package</span>
+              <span className="md:w-64 shrink-0 text-left">{t("WBS Work Package", "Paket Kerja WBS")}</span>
               <div className="hidden md:grid flex-1 grid-cols-4 text-center font-mono-numbers">
                 {[0, 1, 2, 3].map((qIdx) => {
                   const start = Math.round((qIdx * horizonDays) / 4) + 1;
@@ -189,7 +197,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
                   );
                 })}
               </div>
-              <span className="md:w-36 shrink-0 text-right">Duration / Slip</span>
+              <span className="md:w-36 shrink-0 text-right">{t("Duration / Slip", "Durasi / Mundur")}</span>
             </div>
 
             <div className="relative space-y-2">
@@ -293,7 +301,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
                           D{startDay + 1}-D{startDay + task.effectiveActual}
                         </span>
                         <span>·</span>
-                        <span>Risk {(task.delayRisk * 100).toFixed(0)}%</span>
+                        <span>{t("Risk", "Risiko")} {(task.delayRisk * 100).toFixed(0)}%</span>
                       </div>
                     )}
                   </div>

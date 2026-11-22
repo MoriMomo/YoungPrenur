@@ -4,6 +4,7 @@ import React from "react";
 import { MessageSquareText } from "lucide-react";
 import { ProjectProgressItem } from "@/types";
 import { IRoomTable } from "../IRoomTable";
+import { useT } from "@/lib/i18n";
 
 export interface ProgressTabProps {
   searchQuery: string;
@@ -12,6 +13,7 @@ export interface ProgressTabProps {
 }
 
 export function ProgressTab({ searchQuery, handleInspectWithAI, projects }: ProgressTabProps) {
+  const t = useT();
   return (
     <IRoomTable
       headers={[
@@ -59,7 +61,7 @@ export function ProgressTab({ searchQuery, handleInspectWithAI, projects }: Prog
                       prj.delayVarianceDays > 0 ? "text-hold" : "text-pass"
                     }`}
                   >
-                    {prj.delayVarianceDays > 0 ? `+${prj.delayVarianceDays}d` : "On Time"}
+                    {prj.delayVarianceDays > 0 ? `+${prj.delayVarianceDays}${t("d", " h")}` : t("On Time")}
                   </span>
                 </td>
                 <td className="py-3 px-3">
@@ -72,7 +74,7 @@ export function ProgressTab({ searchQuery, handleInspectWithAI, projects }: Prog
                         : "bg-pass-wash text-pass border-pass-line"
                     }`}
                   >
-                    {prj.status}
+                    {t(prj.status)}
                   </span>
                 </td>
                 <td className="py-3 px-3 text-right">
@@ -87,7 +89,7 @@ export function ProgressTab({ searchQuery, handleInspectWithAI, projects }: Prog
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <MessageSquareText className="w-3 h-3 text-stamp" />
-                    <span>Audit WBS</span>
+                    <span>{t("Audit WBS")}</span>
                   </button>
                 </td>
               </tr>

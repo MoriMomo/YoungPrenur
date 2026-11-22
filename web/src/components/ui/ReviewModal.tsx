@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { DecisionAction } from "@/types";
 import { X, CheckCircle2, ShieldAlert, UserCheck, Calendar, BookOpen, XCircle } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface ReviewModalProps {
   action: DecisionAction | null;
@@ -20,6 +21,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onClose,
   onSubmitDecision,
 }) => {
+  const t = useT();
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,14 +40,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   if (!action) return null;
 
   const checklist = action.checklist || [
-    "Confirm telemetry and physical inventory match source records",
-    `Verify compliance with ${action.sourceDoc}`,
+    t("Confirm telemetry and physical inventory match source records", "Pastikan telemetri dan stok fisik cocok dengan catatan sumber"),
+    t(`Verify compliance with ${action.sourceDoc}`, `Verifikasi kepatuhan terhadap ${action.sourceDoc}`),
   ];
 
   const submit = async (decision: "AUTHORIZED" | "OVERRIDDEN") => {
     if (saving) return;
     if (decision === "OVERRIDDEN" && !notes.trim()) {
-      setErrorMsg("Enter an override reason.");
+      setErrorMsg(t("Enter an override reason.", "Masukkan alasan pembatalan."));
       return;
     }
     setErrorMsg(null);
@@ -55,7 +57,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       setNotes("");
       setCheckedItems({});
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "Could not confirm that the review was saved.");
+      setErrorMsg(error instanceof Error ? error.message : t("Could not confirm that the review was saved.", "Tidak dapat memastikan tinjauan tersimpan."));
     } finally {
       setSaving(false);
     }
@@ -85,7 +87,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 {action.title}
               </h2>
               <span className="text-xs text-ink-3">
-                Human-in-the-Loop Decision Gate (Accept or Override)
+                {t("Human-in-the-Loop Decision Gate (Accept or Override)", "Gerbang Keputusan Human-in-the-Loop (Setujui atau Batalkan)")}
               </span>
             </div>
           </div>
@@ -93,7 +95,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             type="button"
             onClick={onClose}
             className="p-1.5 text-ink-3 hover:text-ink hover:bg-rule rounded-lg transition-colors cursor-pointer"
-            aria-label="Close review dialog"
+            aria-label={t("Close review dialog", "Tutup dialog tinjauan")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -103,7 +105,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         <div className="p-5 overflow-y-auto space-y-4 text-xs">
           <div>
             <div className="text-xs font-semibold text-stamp mb-1">
-              Operational Rationale
+              {t("Operational Rationale", "Alasan Operasional")}
             </div>
             <p className="text-sm text-ink leading-relaxed bg-paper p-3 rounded-xl border border-rule">
               {action.description}
@@ -112,7 +114,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
           <div>
             <div className="text-xs font-semibold text-pass mb-1">
-              Predicted Milestone Impact
+              {t("Predicted Milestone Impact", "Perkiraan Dampak Milestone")}
             </div>
             <p className="text-xs font-semibold text-pass bg-pass-wash p-3 rounded-xl border border-pass-line">
               {action.impact}
@@ -123,17 +125,17 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <div className="p-3 bg-paper rounded-xl border border-rule">
               <div className="text-xs font-medium text-ink-3 mb-0.5 flex items-center gap-1">
                 <UserCheck className="w-3 h-3 text-stamp" />
-                <span>Action Owner</span>
+                <span>{t("Action Owner", "Pemilik Tindakan")}</span>
               </div>
-              <div className="font-semibold text-ink">{action.owner}</div>
+              <div className="font-semibold text-ink">{t(action.owner)}</div>
             </div>
 
             <div className="p-3 bg-paper rounded-xl border border-rule">
               <div className="text-xs font-medium text-ink-3 mb-0.5 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-warn" />
-                <span>Due Window</span>
+                <span>{t("Due Window", "Batas Waktu")}</span>
               </div>
-              <div className="font-semibold text-ink">{action.due}</div>
+              <div className="font-semibold text-ink">{t(action.due)}</div>
             </div>
           </div>
 
@@ -142,7 +144,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-stamp" />
               <span className="text-xs font-medium text-ink-2">
-                Traceable SOP Reference:
+                {t("Traceable SOP Reference:", "Referensi SOP yang Dapat Ditelusuri:")}
               </span>
             </div>
             <Link
@@ -150,14 +152,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               onClick={onClose}
               className="font-mono-numbers font-medium text-stamp hover:underline text-xs"
             >
-              Inspect {action.sourceDoc} →
+              {t("Inspect", "Periksa")} {action.sourceDoc} →
             </Link>
           </div>
 
           {/* Verification Checklist */}
           <div className="space-y-2">
             <div className="text-xs font-semibold text-ink-3">
-              Pre-Execution Verification Checklist
+              {t("Pre-Execution Verification Checklist", "Daftar Periksa Sebelum Eksekusi")}
             </div>
             <div className="space-y-1.5">
               {checklist.map((item, idx) => (
@@ -185,7 +187,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               htmlFor="hitl-notes"
               className="block text-xs font-semibold text-ink-3 mb-1"
             >
-              Supervisor Note / Override Reason
+              {t("Supervisor Note / Override Reason", "Catatan Supervisor / Alasan Pembatalan")}
             </label>
             <textarea
               id="hitl-notes"
@@ -193,7 +195,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               maxLength={1000}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional when authorizing; required when overriding the AI recommendation..."
+              placeholder={t(
+                "Optional when authorizing; required when overriding the AI recommendation...",
+                "Opsional saat menyetujui; wajib saat membatalkan rekomendasi AI..."
+              )}
               className="w-full px-3 py-2 text-xs bg-paper border border-rule-strong rounded-xl focus:outline-none focus:ring-2 focus:ring-stamp/20"
             />
             {errorMsg && (
@@ -206,8 +211,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         <div className="p-4 bg-paper border-t border-rule flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs text-ink-3">
             {action.flagged
-              ? `Recorded as ${(action.status || "authorized").toUpperCase()}`
-              : saving ? "Saving review…" : "Awaiting human supervisor sign-off"}
+              ? t(`Recorded as ${(action.status || "authorized").toUpperCase()}`, `Tercatat sebagai ${t(action.status || "authorized").toUpperCase()}`)
+              : saving
+                ? t("Saving review…", "Menyimpan tinjauan…")
+                : t("Awaiting human supervisor sign-off", "Menunggu pengesahan supervisor")}
           </span>
 
           <div className="flex items-center gap-2">
@@ -218,7 +225,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-warn bg-warn-wash hover:bg-warn hover:text-sheet border border-warn-line rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <XCircle className="w-3.5 h-3.5" />
-              <span>Override</span>
+              <span>{t("Override", "Batalkan")}</span>
             </button>
 
             <button
@@ -235,9 +242,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               <span>
                 {action.flagged
                   ? action.status === "overridden"
-                    ? "Overridden"
-                    : "Authorized"
-                  : "Authorize Action"}
+                    ? t("Overridden", "Dibatalkan")
+                    : t("Authorized", "Disetujui")
+                  : t("Authorize Action", "Setujui Tindakan")}
               </span>
             </button>
           </div>

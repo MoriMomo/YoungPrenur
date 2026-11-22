@@ -4,6 +4,7 @@ import React from "react";
 import { MessageSquareText } from "lucide-react";
 import { QuotationPoItem } from "@/types";
 import { IRoomTable } from "../IRoomTable";
+import { useT } from "@/lib/i18n";
 
 export interface QuotationTabProps {
   searchQuery: string;
@@ -12,6 +13,7 @@ export interface QuotationTabProps {
 }
 
 export function QuotationTab({ searchQuery, handleInspectWithAI, quotations }: QuotationTabProps) {
+  const t = useT();
   return (
     <IRoomTable
       headers={[
@@ -36,7 +38,7 @@ export function QuotationTab({ searchQuery, handleInspectWithAI, quotations }: Q
                     <span className="font-mono-numbers">{po.poNumber}</span>
                     {po.expedited && (
                       <span className="px-1.5 py-0.5 bg-warn-wash text-warn font-medium text-xs rounded">
-                        Expedite
+                        {t("Expedite")}
                       </span>
                     )}
                   </div>
@@ -57,7 +59,7 @@ export function QuotationTab({ searchQuery, handleInspectWithAI, quotations }: Q
                         : "bg-warn-wash text-warn border-warn-line"
                     }`}
                   >
-                    {po.status}
+                    {t(po.status)}
                   </span>
                 </td>
                 <td className="py-3 px-3 text-right">
@@ -72,7 +74,7 @@ export function QuotationTab({ searchQuery, handleInspectWithAI, quotations }: Q
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stamp hover:bg-stamp-deep text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <MessageSquareText className="w-3 h-3 text-stamp" />
-                    <span>Assess PO</span>
+                    <span>{t("Assess PO")}</span>
                   </button>
                 </td>
               </tr>

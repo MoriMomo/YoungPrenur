@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useT } from "@/lib/i18n";
 
 /** Shared table shell used by every IRoom tab. */
 export function IRoomTable({
@@ -10,6 +11,7 @@ export function IRoomTable({
   headers: string[];
   children: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="relative overflow-x-auto">
       <table className="w-full min-w-[760px] text-left text-xs">
@@ -20,7 +22,7 @@ export function IRoomTable({
                 key={header}
                 className={`py-2.5 px-3${idx === headers.length - 1 ? " text-right" : ""}`}
               >
-                {header}
+                {t(header)}
               </th>
             ))}
           </tr>

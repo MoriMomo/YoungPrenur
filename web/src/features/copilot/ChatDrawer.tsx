@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { ChatMessage, CopilotStatus, ManufacturingRole } from "@/types";
 import { CopilotThread } from "./CopilotThread";
+import { useT } from "@/lib/i18n";
 
 interface ChatDrawerProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   onClearChat,
   onReviewPendingAction,
 }) => {
+  const t = useT();
   useEffect(() => {
     if (!isOpen) return;
     const handleEsc = (e: KeyboardEvent) => {
@@ -50,7 +52,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="MDIP Copilot Drawer"
+      aria-label={t("MDIP Copilot Drawer", "Panel Copilot MDIP")}
     >
       <div className="bg-sheet w-full max-w-lg h-full shadow-2xl border-l border-rule-strong flex flex-col overflow-hidden">
         <CopilotThread

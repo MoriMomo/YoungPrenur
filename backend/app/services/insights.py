@@ -101,96 +101,97 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
             ],
         })
 
-    # 2. Live IRoom telemetry anomalies not yet covered directly
-    for mat in materials:
-        cover = float(mat.get("stockCoverHours", 999))
-        if cover <= 48:
-            action_id = f"act-iroom-{_slug(str(mat.get('id', mat.get('partNumber', 'mat'))))}"
-            persisted = statuses.get(action_id, {})
-            decisions.append({
-                "id": action_id,
-                "title": f"Expedite Stock Cover for {mat.get('partNumber', 'Material')}",
-                "urgency": "Urgent" if cover <= 36 else "High",
-                "urgency_badge": "red" if cover <= 36 else "warn",
-                "department": "Supply Chain",
-                "confidence": round(max(0.75, float(mat.get("riskScore", 0.85))) * 100),
-                "description": (
-                    f"{mat.get('description', mat.get('partNumber'))} has {int(cover)}h buffer remaining vs "
-                    f"{mat.get('supplierLeadDays', 3)}-day vendor lead time ({mat.get('supplier', 'Supplier')})."
-                ),
-                "impact": f"Safeguards open purchase order {mat.get('openPo', 'PO-ACTIVE')} against line stoppage",
-                "owner": "Supply Chain Lead",
-                "due": "Within 4 hours",
-                "source_doc": "SOP-SCM-12",
-                "flagged": bool(persisted.get("flagged", False)),
-                "status": persisted.get("status", "pending"),
-                "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
-                "checklist": [
-                    f"Verify physical warehouse stock for {mat.get('partNumber')} ({int(cover)}h remaining)",
-                    f"Confirm expedited freight clearance against {mat.get('openPo', 'open PO')}",
-                    "Log supplier ETA confirmation under SOP-SCM-12",
-                ],
-            })
+    # 2. Live IRoom telemetry anomalies (baseline workspace only; uploaded user schedules stay isolated)
+    if analysis.get("source") != "upload":
+        for mat in materials:
+            cover = float(mat.get("stockCoverHours", 999))
+            if cover <= 48:
+                action_id = f"act-iroom-{_slug(str(mat.get('id', mat.get('partNumber', 'mat'))))}"
+                persisted = statuses.get(action_id, {})
+                decisions.append({
+                    "id": action_id,
+                    "title": f"Expedite Stock Cover for {mat.get('partNumber', 'Material')}",
+                    "urgency": "Urgent" if cover <= 36 else "High",
+                    "urgency_badge": "red" if cover <= 36 else "warn",
+                    "department": "Supply Chain",
+                    "confidence": round(max(0.75, float(mat.get("riskScore", 0.85))) * 100),
+                    "description": (
+                        f"{mat.get('description', mat.get('partNumber'))} has {int(cover)}h buffer remaining vs "
+                        f"{mat.get('supplierLeadDays', 3)}-day vendor lead time ({mat.get('supplier', 'Supplier')})."
+                    ),
+                    "impact": f"Safeguards open purchase order {mat.get('openPo', 'PO-ACTIVE')} against line stoppage",
+                    "owner": "Supply Chain Lead",
+                    "due": "Within 4 hours",
+                    "source_doc": "SOP-SCM-12",
+                    "flagged": bool(persisted.get("flagged", False)),
+                    "status": persisted.get("status", "pending"),
+                    "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
+                    "checklist": [
+                        f"Verify physical warehouse stock for {mat.get('partNumber')} ({int(cover)}h remaining)",
+                        f"Confirm expedited freight clearance against {mat.get('openPo', 'open PO')}",
+                        "Log supplier ETA confirmation under SOP-SCM-12",
+                    ],
+                })
 
-    for op in operations:
-        vib = str(op.get("vibrationSensor", "NORMAL")).upper()
-        oee = float(op.get("oeePercent", 100))
-        if vib == "ELEVATED" or oee < 75.0:
-            action_id = f"act-iroom-{_slug(str(op.get('id', op.get('machineId', 'op'))))}"
-            persisted = statuses.get(action_id, {})
-            decisions.append({
-                "id": action_id,
-                "title": f"Inspect {op.get('machineId', op.get('workCenter', 'Work Center'))} Anomaly",
-                "urgency": "High" if vib == "ELEVATED" else "Medium",
-                "urgency_badge": "warn",
-                "department": "Maintenance",
-                "confidence": 86 if vib == "ELEVATED" else 80,
-                "description": (
-                    f"{op.get('workCenter', 'Work center')} telemetry reports vibrationSensor={vib} "
-                    f"and OEE={oee:.1f}% on active job {op.get('activeJob', 'scheduled run')}."
-                ),
-                "impact": "Prevents unplanned mechanical downtime and tool collision on stamping/machining bay",
-                "owner": op.get("operator") or "Maintenance Lead",
-                "due": "Before next batch changeover",
-                "source_doc": "SOP-PRS-04" if "press" in str(op.get("workCenter", "")).lower() else "SOP-LINE2-OPT",
-                "flagged": bool(persisted.get("flagged", False)),
-                "status": persisted.get("status", "pending"),
-                "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
-                "checklist": [
-                    f"Inspect transducer & mechanical clearances on {op.get('machineId', 'machine')}",
-                    f"Verify operator load & cycle speed ({oee:.1f}% OEE)",
-                    "Record preventive sign-off per ISO 9001 Cl. 7.5",
-                ],
-            })
+        for op in operations:
+            vib = str(op.get("vibrationSensor", "NORMAL")).upper()
+            oee = float(op.get("oeePercent", 100))
+            if vib == "ELEVATED" or oee < 75.0:
+                action_id = f"act-iroom-{_slug(str(op.get('id', op.get('machineId', 'op'))))}"
+                persisted = statuses.get(action_id, {})
+                decisions.append({
+                    "id": action_id,
+                    "title": f"Inspect {op.get('machineId', op.get('workCenter', 'Work Center'))} Anomaly",
+                    "urgency": "High" if vib == "ELEVATED" else "Medium",
+                    "urgency_badge": "warn",
+                    "department": "Maintenance",
+                    "confidence": 86 if vib == "ELEVATED" else 80,
+                    "description": (
+                        f"{op.get('workCenter', 'Work center')} telemetry reports vibrationSensor={vib} "
+                        f"and OEE={oee:.1f}% on active job {op.get('activeJob', 'scheduled run')}."
+                    ),
+                    "impact": "Prevents unplanned mechanical downtime and tool collision on stamping/machining bay",
+                    "owner": op.get("operator") or "Maintenance Lead",
+                    "due": "Before next batch changeover",
+                    "source_doc": "SOP-PRS-04" if "press" in str(op.get("workCenter", "")).lower() else "SOP-LINE2-OPT",
+                    "flagged": bool(persisted.get("flagged", False)),
+                    "status": persisted.get("status", "pending"),
+                    "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
+                    "checklist": [
+                        f"Inspect transducer & mechanical clearances on {op.get('machineId', 'machine')}",
+                        f"Verify operator load & cycle speed ({oee:.1f}% OEE)",
+                        "Record preventive sign-off per ISO 9001 Cl. 7.5",
+                    ],
+                })
 
-    for dwg in drawings:
-        if dwg.get("criticalDwg") and "approved" not in str(dwg.get("status", "")).lower():
-            action_id = f"act-iroom-{_slug(str(dwg.get('id', dwg.get('dwgNumber', 'dwg'))))}"
-            persisted = statuses.get(action_id, {})
-            decisions.append({
-                "id": action_id,
-                "title": f"Expedite Critical Sign-off: {dwg.get('dwgNumber', 'Drawing')}",
-                "urgency": "Urgent",
-                "urgency_badge": "red",
-                "department": "Engineering & R&D",
-                "confidence": 89,
-                "description": (
-                    f"{dwg.get('title', 'Engineering drawing')} ({dwg.get('revision', 'Rev')}) submitted "
-                    f"{dwg.get('submittedDate', '')} remains '{dwg.get('status', 'Pending')}'."
-                ),
-                "impact": "Unblocks critical-path CAM toolpath release and machining prep",
-                "owner": dwg.get("engineer") or "Engineering Lead",
-                "due": "Within 4 working hours",
-                "source_doc": "SOP-ENG-02",
-                "flagged": bool(persisted.get("flagged", False)),
-                "status": persisted.get("status", "pending"),
-                "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
-                "checklist": [
-                    f"Validate GD&T tolerances on {dwg.get('dwgNumber')} ({dwg.get('revision', '')})",
-                    "Execute 4-working-hour SLA sign-off under SOP-ENG-02 Cl. 2.3",
-                    "Release approved drawing to shop floor",
-                ],
-            })
+        for dwg in drawings:
+            if dwg.get("criticalDwg") and "approved" not in str(dwg.get("status", "")).lower():
+                action_id = f"act-iroom-{_slug(str(dwg.get('id', dwg.get('dwgNumber', 'dwg'))))}"
+                persisted = statuses.get(action_id, {})
+                decisions.append({
+                    "id": action_id,
+                    "title": f"Expedite Critical Sign-off: {dwg.get('dwgNumber', 'Drawing')}",
+                    "urgency": "Urgent",
+                    "urgency_badge": "red",
+                    "department": "Engineering & R&D",
+                    "confidence": 89,
+                    "description": (
+                        f"{dwg.get('title', 'Engineering drawing')} ({dwg.get('revision', 'Rev')}) submitted "
+                        f"{dwg.get('submittedDate', '')} remains '{dwg.get('status', 'Pending')}'."
+                    ),
+                    "impact": "Unblocks critical-path CAM toolpath release and machining prep",
+                    "owner": dwg.get("engineer") or "Engineering Lead",
+                    "due": "Within 4 working hours",
+                    "source_doc": "SOP-ENG-02",
+                    "flagged": bool(persisted.get("flagged", False)),
+                    "status": persisted.get("status", "pending"),
+                    "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
+                    "checklist": [
+                        f"Validate GD&T tolerances on {dwg.get('dwgNumber')} ({dwg.get('revision', '')})",
+                        "Execute 4-working-hour SLA sign-off under SOP-ENG-02 Cl. 2.3",
+                        "Release approved drawing to shop floor",
+                    ],
+                })
 
     urgency_rank = {"Urgent": 0, "High": 1, "Medium": 2}
     decisions.sort(key=lambda d: (bool(d["flagged"]), urgency_rank.get(d["urgency"], 9), -int(d["confidence"])))

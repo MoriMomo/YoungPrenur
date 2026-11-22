@@ -8,6 +8,7 @@ import { ChevronRight, X, Bookmark, Plus, MessageSquareText } from "lucide-react
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { SopUpload } from "@/features/knowledge/SopUpload";
+import { useT } from "@/lib/i18n";
 
 function findMatchingDoc(docs: KnowledgeDoc[], docCode: string | null): KnowledgeDoc | null {
   if (!docCode) return null;
@@ -21,6 +22,7 @@ function findMatchingDoc(docs: KnowledgeDoc[], docCode: string | null): Knowledg
 
 function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null }) {
   const { knowledgeDocs, addKnowledgeDoc, askCopilotWithPrompt, showToast } = useDashboard();
+  const t = useT();
   const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(null);
   const [dismissedUrlCode, setDismissedUrlCode] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -55,14 +57,17 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
 
   const handleOpenDoc = (doc: KnowledgeDoc) => {
     setSelectedDoc(doc);
-    showToast(`Loaded indexed clauses for ${doc.code}`);
+    showToast(t(`Loaded indexed clauses for ${doc.code}`, `Klausul terindeks untuk ${doc.code} dimuat`));
   };
 
   const handleAskCopilot = (doc: KnowledgeDoc) => {
     setSelectedDoc(null);
     setDismissedUrlCode(initialDocCode);
     void askCopilotWithPrompt(
-      `Summarize ${doc.code} (${doc.title}) and its required compliance checks`
+      t(
+        `Summarize ${doc.code} (${doc.title}) and its required compliance checks`,
+        `Ringkas ${doc.code} (${doc.title}) dan pemeriksaan kepatuhan yang diwajibkannya. Jawab dalam bahasa Indonesia.`
+      )
     );
   };
 
@@ -90,20 +95,23 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
     setShowAddForm(false);
     showToast(
       syncedToBackend
-        ? `Indexed ${code} into live Copilot RAG knowledge base`
-        : `Indexed ${code} into local Copilot SOP index (backend offline)`
+        ? t(`Indexed ${code} into live Copilot RAG knowledge base`, `${code} diindeks ke basis pengetahuan RAG Copilot`)
+        : t(`Indexed ${code} into local Copilot SOP index (backend offline)`, `${code} diindeks ke indeks SOP lokal Copilot (backend offline)`)
     );
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="SOP knowledge"
-        description="Standard operating procedures the copilot cites, clause by clause, and supervisors check before they sign off"
+        title={t("SOP knowledge", "Pengetahuan SOP")}
+        description={t(
+          "Standard operating procedures the copilot cites, clause by clause, and supervisors check before they sign off",
+          "Prosedur operasi standar yang dikutip copilot klausul demi klausul, dan diperiksa supervisor sebelum mengesahkan"
+        )}
         actions={
           <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
             {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showAddForm ? "Cancel" : "Add SOP clause"}
+            {showAddForm ? t("Cancel", "Batal") : t("Add SOP clause", "Tambah klausul SOP")}
           </Button>
         }
       />
@@ -116,7 +124,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
           className="bg-white rounded-xl border border-rule p-5 space-y-3"
         >
           <div className="text-xs font-semibold text-ink">
-            Index New SOP Document (Live Copilot RAG)
+            {t("Index New SOP Document (Live Copilot RAG)", "Indeks Dokumen SOP Baru (RAG Copilot)")}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input
@@ -124,7 +132,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
               required
               value={docCode}
               onChange={(e) => setDocCode(e.target.value)}
-              placeholder="SOP Code (e.g. SOP-QA-15)"
+              placeholder={t("SOP Code (e.g. SOP-QA-15)", "Kode SOP (mis. SOP-QA-15)")}
               className="px-3 py-2 border border-rule-strong rounded-lg text-xs"
             />
             <input
@@ -132,14 +140,14 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
               required
               value={docTitle}
               onChange={(e) => setDocTitle(e.target.value)}
-              placeholder="Title (e.g. NDT Inspection Protocol)"
+              placeholder={t("Title (e.g. NDT Inspection Protocol)", "Judul (mis. Protokol Inspeksi NDT)")}
               className="px-3 py-2 border border-rule-strong rounded-lg text-xs"
             />
             <input
               type="text"
               value={docClause}
               onChange={(e) => setDocClause(e.target.value)}
-              placeholder="Clause (e.g. Clause 2.1: Rejection)"
+              placeholder={t("Clause (e.g. Clause 2.1: Rejection)", "Klausul (mis. Klausul 2.1: Penolakan)")}
               className="px-3 py-2 border border-rule-strong rounded-lg text-xs"
             />
           </div>
@@ -147,7 +155,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
             type="text"
             value={docKeywords}
             onChange={(e) => setDocKeywords(e.target.value)}
-            placeholder="Keywords (comma-separated, e.g. ultrasonic, porosity, casting)"
+            placeholder={t("Keywords (comma-separated, e.g. ultrasonic, porosity, casting)", "Kata kunci (pisahkan dengan koma, mis. ultrasonik, porositas, cor)")}
             className="w-full px-3 py-2 border border-rule-strong rounded-lg text-xs"
           />
           <textarea
@@ -155,14 +163,14 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
             rows={2}
             value={docExcerpt}
             onChange={(e) => setDocExcerpt(e.target.value)}
-            placeholder="Procedure text cited by Copilot..."
+            placeholder={t("Procedure text cited by Copilot...", "Teks prosedur yang dikutip Copilot...")}
             className="w-full px-3 py-2 border border-rule-strong rounded-lg text-xs"
           />
           <button
             type="submit"
             className="px-4 py-2 bg-stamp hover:bg-stamp-deep text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
           >
-            Save &amp; Index SOP
+            {t("Save & Index SOP", "Simpan & Indeks SOP")}
           </button>
         </form>
       )}
@@ -177,7 +185,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
             <div>
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-stamp-wash text-stamp border border-stamp-line">
-                  {doc.category}
+                  {t(doc.category)}
                 </span>
                 <span className="font-mono-numbers text-xs font-medium text-ink-3">
                   {doc.code}
@@ -193,7 +201,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
 
             <div className="pt-3 border-t border-rule-soft flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <span className="text-xs text-ink-3">
-                {doc.sections.length} indexed clauses
+                {t(`${doc.sections.length} indexed clauses`, `${doc.sections.length} klausul terindeks`)}
               </span>
               <div className="flex items-center gap-3">
                 <button
@@ -202,14 +210,14 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
                   className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-medium text-ink-2 hover:text-stamp cursor-pointer"
                 >
                   <MessageSquareText className="w-3.5 h-3.5" strokeWidth={1.6} />
-                  <span>Ask Copilot</span>
+                  <span>{t("Ask Copilot", "Tanya Copilot")}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleOpenDoc(doc)}
                   className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-semibold text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
                 >
-                  <span>Inspect Clauses</span>
+                  <span>{t("Inspect Clauses", "Periksa Klausul")}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -242,7 +250,7 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
                 type="button"
                 onClick={handleCloseModal}
                 className="p-1.5 text-ink-3 hover:text-ink hover:bg-rule rounded-lg transition-colors cursor-pointer"
-                aria-label="Close SOP modal"
+                aria-label={t("Close SOP modal", "Tutup jendela SOP")}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -268,14 +276,14 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
             </div>
 
             <div className="p-4 bg-paper border-t border-rule flex flex-wrap items-center justify-between gap-3 text-xs text-ink-3">
-              <span>Indexed for Grounded RAG Traceability</span>
+              <span>{t("Indexed for Grounded RAG Traceability", "Diindeks untuk penelusuran RAG berbasis sumber")}</span>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" onClick={() => handleAskCopilot(activeDoc)}>
                   <MessageSquareText className="h-3.5 w-3.5" strokeWidth={1.6} />
-                  Ask Copilot
+                  {t("Ask Copilot", "Tanya Copilot")}
                 </Button>
                 <Button onClick={handleCloseModal}>
-                  Close Inspection
+                  {t("Close Inspection", "Tutup Inspeksi")}
                 </Button>
               </div>
             </div>

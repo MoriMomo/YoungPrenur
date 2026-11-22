@@ -42,7 +42,7 @@ def parse_schedule_document(content: bytes, filename: str, allow_external_ai: bo
     selectable text are read locally.
     """
     low = filename.lower()
-    if low.endswith((".csv", ".txt", ".xlsx", ".xlsm", ".xls")):
+    if low.endswith((".csv", ".txt", ".xlsx", ".xlsm", ".xls", ".xer", ".xml")):
         return _doc_result(normalize_rows(read_table(content, filename)), "table")
 
     if low.endswith((".docx", ".doc")):

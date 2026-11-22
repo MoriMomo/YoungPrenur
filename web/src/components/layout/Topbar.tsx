@@ -6,6 +6,7 @@ import { Menu, RotateCcw, ChevronDown, MessageSquareText, Shield, LogOut } from 
 import { ManufacturingRole, DeploymentMode } from "@/types";
 import { ROLES } from "@/lib/mock-data";
 import { buttonClass } from "@/components/ui/Button";
+import { LangSwitch, useT } from "@/lib/i18n";
 
 interface TopbarProps {
   selectedRole: ManufacturingRole;
@@ -20,12 +21,12 @@ interface TopbarProps {
   onSignOut?: () => void;
 }
 
-const ROUTE_TITLES: Record<string, string> = {
-  "/dashboard": "Overview",
-  "/dashboard/iroom": "IRoom streams",
-  "/dashboard/scheduler": "Scheduler",
-  "/dashboard/knowledge": "SOP knowledge",
-  "/dashboard/copilot": "Copilot",
+const ROUTE_TITLES: Record<string, [string, string]> = {
+  "/dashboard": ["Overview", "Ringkasan"],
+  "/dashboard/iroom": ["IRoom streams", "Aliran IRoom"],
+  "/dashboard/scheduler": ["Scheduler", "Penjadwal"],
+  "/dashboard/knowledge": ["SOP knowledge", "Pengetahuan SOP"],
+  "/dashboard/copilot": ["Copilot", "Copilot"],
 };
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -41,7 +42,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   onSignOut,
 }) => {
   const pathname = usePathname();
-  const currentTitle = ROUTE_TITLES[pathname] || "Workspace";
+  const t = useT();
+  const currentTitle = t(...(ROUTE_TITLES[pathname] ?? ["Workspace", "Workspace"]));
 
   const handleRefreshClick = () => {
     onRefresh();
@@ -54,25 +56,32 @@ export const Topbar: React.FC<TopbarProps> = ({
           type="button"
           onClick={onOpenMobileMenu}
           className="-ml-2 cursor-pointer rounded-md p-2.5 text-ink-2 hover:bg-sheet-sunk hover:text-ink lg:hidden"
-          aria-label="Open navigation menu"
+          aria-label={t("Open navigation menu", "Buka menu navigasi")}
         >
           <Menu className="h-4 w-4" strokeWidth={1.6} />
         </button>
         <span className="truncate whitespace-nowrap text-sm font-medium text-ink">{currentTitle}</span>
         <span
           className="hidden items-center gap-1.5 whitespace-nowrap text-xs text-ink-3 xl:flex"
-          title={isApiLive ? "The MDIP service is responding" : "The MDIP service is offline; showing sample data"}
+          title={
+            isApiLive
+              ? t("The MDIP service is responding", "Layanan MDIP merespons")
+              : t("The MDIP service is offline; showing sample data", "Layanan MDIP offline; menampilkan data contoh")
+          }
         >
           <span className={`h-1.5 w-1.5 rounded-full ${isApiLive ? "bg-pass" : "bg-warn"}`} aria-hidden="true" />
-          {isApiLive ? "Live" : "Sample data"}
+          {isApiLive ? t("Live", "Langsung") : t("Sample data", "Data contoh")}
         </span>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="hidden sm:block">
+          <LangSwitch />
+        </div>
         <div
           className="hidden h-8 items-center rounded-md border border-rule-strong bg-sheet-sunk p-0.5 text-xs xl:flex"
           role="group"
-          aria-label="Deployment mode"
+          aria-label={t("Deployment mode", "Mode deployment")}
         >
           {(["saas", "internal"] as const).map((mode) => (
             <button
@@ -83,8 +92,11 @@ export const Topbar: React.FC<TopbarProps> = ({
               onClick={() => onChangeDeploymentMode(mode)}
               title={
                 mode === "internal"
-                  ? "The MDIP server handles documents and Copilot questions locally."
-                  : "Google Gemini may process PDF and Word schedules. DeepSeek or Gemini may process Copilot questions and retrieved context."
+                  ? t("The MDIP server handles documents and Copilot questions locally.", "Server MDIP menangani dokumen dan pertanyaan Copilot secara lokal.")
+                  : t(
+                      "Google Gemini may process PDF and Word schedules. DeepSeek or Gemini may process Copilot questions and retrieved context.",
+                      "Google Gemini dapat memproses jadwal PDF dan Word. DeepSeek atau Gemini dapat memproses pertanyaan Copilot dan konteks yang diambil."
+                    )
               }
               className={`flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded-sm px-2.5 font-medium transition-colors ${
                 deploymentMode === mode ? "bg-sheet text-ink shadow-sm" : "text-ink-2 hover:text-ink"
@@ -101,11 +113,11 @@ export const Topbar: React.FC<TopbarProps> = ({
             value={selectedRole}
             onChange={(e) => onSelectRole(e.target.value as ManufacturingRole)}
             className="h-8 max-w-36 sm:max-w-none cursor-pointer appearance-none truncate rounded-md border border-rule-strong bg-sheet pl-3 pr-8 text-xs font-medium text-ink hover:bg-sheet-sunk"
-            aria-label="Viewing as role"
+            aria-label={t("Viewing as role", "Melihat sebagai peran")}
           >
             {ROLES.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {t(role)}
               </option>
             ))}
           </select>
@@ -119,16 +131,16 @@ export const Topbar: React.FC<TopbarProps> = ({
           type="button"
           onClick={handleRefreshClick}
           className={buttonClass("secondary", "sm")}
-          title="Check the service and refresh data"
-          aria-label="Refresh data"
+          title={t("Check the service and refresh data", "Periksa layanan dan muat ulang data")}
+          aria-label={t("Refresh data", "Muat ulang data")}
         >
           <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.6} />
-          <span className="hidden sm:inline">Refresh</span>
+          <span className="hidden sm:inline">{t("Refresh", "Muat ulang")}</span>
         </button>
 
-        <button type="button" onClick={onOpenCopilot} className={buttonClass("primary", "sm")} aria-label="Open the copilot">
+        <button type="button" onClick={onOpenCopilot} className={buttonClass("primary", "sm")} aria-label={t("Open the copilot", "Buka copilot")}>
           <MessageSquareText className="h-3.5 w-3.5" strokeWidth={1.6} />
-          <span className="hidden sm:inline">Ask copilot</span>
+          <span className="hidden sm:inline">{t("Ask copilot", "Tanya copilot")}</span>
         </button>
 
         {userName && onSignOut && (
@@ -136,8 +148,8 @@ export const Topbar: React.FC<TopbarProps> = ({
             type="button"
             onClick={onSignOut}
             className={buttonClass("ghost", "sm")}
-            title={`Signed in as ${userName}. Sign out`}
-            aria-label="Sign out"
+            title={t(`Signed in as ${userName}. Sign out`, `Masuk sebagai ${userName}. Keluar`)}
+            aria-label={t("Sign out", "Keluar")}
           >
             <span className="hidden max-w-[110px] truncate 2xl:inline">{userName}</span>
             <LogOut className="h-3.5 w-3.5" strokeWidth={1.6} />

@@ -3,6 +3,7 @@
 import React from "react";
 import { DecisionAction } from "@/types";
 import { ArrowRight } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface DecisionBriefProps {
   actions: DecisionAction[];
@@ -15,6 +16,7 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
   priorityDepartment,
   onReviewAction,
 }) => {
+  const t = useT();
   const getUrgencyDot = (urgency: string) => {
     switch (urgency) {
       case "Urgent":
@@ -44,19 +46,23 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-[20px] font-bold leading-tight text-ink">
-            Decision Brief &amp; Priorities
+            {t("Decision Brief & Priorities", "Ringkasan Keputusan & Prioritas")}
           </h2>
           <p className="text-xs text-ink-3">
-            Prioritized interventions requiring human-in-the-loop sign-off
+            {t("Prioritized interventions requiring human-in-the-loop sign-off", "Intervensi prioritas yang perlu pengesahan manusia")}
           </p>
         </div>
         <span className="text-xs font-mono-numbers text-ink-3 shrink-0">
-          {actions.length} items
+          {t(`${actions.length} items`, `${actions.length} item`)}
         </span>
       </div>
 
       <div className="space-y-2.5 max-h-[390px] overflow-y-auto pr-1">
-        {actions.map((act) => {
+        {actions.length === 0 ? (
+          <p className="py-4 text-xs text-ink-3">
+            {t("No risk mitigation interventions required on the active schedule.", "Tidak ada intervensi mitigasi risiko yang diperlukan pada jadwal aktif.")}
+          </p>
+        ) : actions.map((act) => {
           const isRoleMatch = priorityDepartment && act.department === priorityDepartment;
           return (
             <div
@@ -71,7 +77,7 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
                 <div className="min-w-0">
                   {isRoleMatch && (
                     <div className="text-[11px] font-mono-numbers text-stamp font-medium mb-0.5">
-                      Role Focus
+                      {t("Role Focus", "Fokus Peran")}
                     </div>
                   )}
                   <h3 className="text-sm font-medium text-ink leading-snug">
@@ -84,7 +90,7 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
                   )}`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${getUrgencyDot(act.urgency)}`} />
-                  <span>{act.urgency}</span>
+                  <span>{t(act.urgency)}</span>
                 </span>
               </div>
 
@@ -92,10 +98,10 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-rule-soft text-xs">
                 <div className="flex items-center gap-2 text-ink-3">
-                  <span className="font-medium text-ink-2">{act.department}</span>
+                  <span className="font-medium text-ink-2">{t(act.department)}</span>
                   <span>·</span>
                   <span className="text-pass font-medium font-mono-numbers">
-                    Confidence {act.confidence}%
+                    {t("Confidence", "Keyakinan")} {act.confidence}%
                   </span>
                 </div>
 
@@ -107,9 +113,9 @@ export const DecisionBrief: React.FC<DecisionBriefProps> = ({
                   <span>
                     {act.flagged
                       ? act.status === "overridden"
-                        ? "Overridden (Logged)"
-                        : "Authorized (Logged)"
-                      : "Review & Decide"}
+                        ? t("Overridden (Logged)", "Dibatalkan (Tercatat)")
+                        : t("Authorized (Logged)", "Disetujui (Tercatat)")
+                      : t("Review & Decide", "Tinjau & Putuskan")}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
                 </button>

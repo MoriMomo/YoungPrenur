@@ -13,6 +13,7 @@ import {
   MessageSquareText,
   Layers,
 } from "lucide-react";
+import { LangSwitch, useT } from "@/lib/i18n";
 
 interface SidebarProps {
   isOpenMobile: boolean;
@@ -21,21 +22,22 @@ interface SidebarProps {
   isApiLive: boolean;
 }
 
-const NAV = [
-  { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { name: "IRoom streams", href: "/dashboard/iroom", icon: Layers },
-  { name: "Scheduler", href: "/dashboard/scheduler", icon: CalendarClock },
-  { name: "SOP knowledge", href: "/dashboard/knowledge", icon: BookOpen },
-  { name: "Copilot", href: "/dashboard/copilot", icon: MessageSquareText },
+const NAV: { name: [string, string]; href: string; icon: typeof Layers }[] = [
+  { name: ["Overview", "Ringkasan"], href: "/dashboard", icon: LayoutDashboard },
+  { name: ["IRoom streams", "Aliran IRoom"], href: "/dashboard/iroom", icon: Layers },
+  { name: ["Scheduler", "Penjadwal"], href: "/dashboard/scheduler", icon: CalendarClock },
+  { name: ["SOP knowledge", "Pengetahuan SOP"], href: "/dashboard/knowledge", icon: BookOpen },
+  { name: ["Copilot", "Copilot"], href: "/dashboard/copilot", icon: MessageSquareText },
 ];
 
-const WATCHLIST = [
-  { label: "INGOT-AL7075-T6 cover", value: "36h left", href: "/dashboard/iroom?tab=material", tone: "text-hold" },
-  { label: "Press P-07 vibration", value: "+18%", href: "/dashboard/iroom?tab=operations", tone: "text-warn" },
+const WATCHLIST: { label: [string, string]; value: [string, string]; href: string; tone: string }[] = [
+  { label: ["INGOT-AL7075-T6 cover", "Stok INGOT-AL7075-T6"], value: ["36h left", "sisa 36 jam"], href: "/dashboard/iroom?tab=material", tone: "text-hold" },
+  { label: ["Press P-07 vibration", "Getaran Press P-07"], value: ["+18%", "+18%"], href: "/dashboard/iroom?tab=operations", tone: "text-warn" },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, pendingActionsCount, isApiLive }) => {
   const pathname = usePathname();
+  const t = useT();
   const isActive = (href: string) => (href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href));
 
   return (
@@ -54,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, p
           <span className="font-display text-[22px] font-extrabold tracking-[0.02em]">MDIP</span>
         </Link>
 
-        <nav aria-label="Dashboard" className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4">
+        <nav aria-label={t("Dashboard", "Dasbor")} className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -72,10 +74,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, p
               >
                 <span className="flex min-w-0 items-center gap-2.5">
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={1.6} />
-                  <span className="truncate">{item.name}</span>
+                  <span className="truncate">{t(...item.name)}</span>
                 </span>
                 {item.href === "/dashboard" && pendingActionsCount > 0 && (
-                  <span className="font-mono-numbers text-xs text-warn" aria-label={`${pendingActionsCount} decisions awaiting sign-off`}>
+                  <span className="font-mono-numbers text-xs text-warn" aria-label={t(`${pendingActionsCount} decisions awaiting sign-off`, `${pendingActionsCount} keputusan menunggu pengesahan`)}>
                     {pendingActionsCount}
                   </span>
                 )}
@@ -84,41 +86,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, p
           })}
 
           <div className="mt-6 border-t border-rule-strong pt-4">
-            <p className="px-3 text-xs font-medium text-ink-2">Awaiting sign-off</p>
+            <p className="px-3 text-xs font-medium text-ink-2">{t("Awaiting sign-off", "Menunggu pengesahan")}</p>
             <Link
               href="/dashboard"
               onClick={onCloseMobile}
               className="mt-1.5 flex h-9 items-center justify-between rounded-md px-3 text-sm text-ink hover:bg-sheet-sunk"
             >
-              <span>Decisions</span>
+              <span>{t("Decisions", "Keputusan")}</span>
               <span className="font-mono-numbers text-warn">{pendingActionsCount}</span>
             </Link>
             {WATCHLIST.map((w) => (
               <Link
-                key={w.label}
+                key={w.href}
                 href={w.href}
                 onClick={onCloseMobile}
                 className="flex h-9 items-center justify-between gap-2 rounded-md px-3 text-sm text-ink-2 hover:bg-sheet-sunk hover:text-ink"
               >
-                <span className="truncate">{w.label}</span>
-                <span className={`shrink-0 font-mono-numbers text-xs ${w.tone}`}>{w.value}</span>
+                <span className="truncate">{t(...w.label)}</span>
+                <span className={`shrink-0 font-mono-numbers text-xs ${w.tone}`}>{t(...w.value)}</span>
               </Link>
             ))}
           </div>
         </nav>
 
         <div className="space-y-0.5 border-t border-rule-strong px-2.5 py-3 text-sm">
+          {/* Phones: the top bar has no room for the language switch, so it lives here. */}
+          <div className="px-3 pb-2 sm:hidden">
+            <LangSwitch className="w-fit" />
+          </div>
           <p className="flex items-center gap-2 px-3 pb-2 text-xs text-ink-2">
             <span className={`h-1.5 w-1.5 rounded-full ${isApiLive ? "bg-pass" : "bg-warn"}`} aria-hidden="true" />
-            {isApiLive ? "Live data from the MDIP service" : "Sample data (service offline)"}
+            {isApiLive ? t("Live data from the MDIP service", "Data langsung dari layanan MDIP") : t("Sample data (service offline)", "Data contoh (layanan offline)")}
           </p>
           <Link href="/" className="flex h-9 items-center gap-2.5 rounded-md px-3 text-ink-2 hover:bg-sheet-sunk hover:text-ink">
             <ArrowLeft className="h-4 w-4" strokeWidth={1.6} />
-            <span>Public site</span>
+            <span>{t("Public site", "Situs publik")}</span>
           </Link>
           <Link href="/login" className="flex h-9 items-center gap-2.5 rounded-md px-3 text-ink-2 hover:bg-sheet-sunk hover:text-ink">
             <LogOut className="h-4 w-4" strokeWidth={1.6} />
-            <span>Switch role or sign out</span>
+            <span>{t("Switch role or sign out", "Ganti peran atau keluar")}</span>
           </Link>
         </div>
       </aside>
