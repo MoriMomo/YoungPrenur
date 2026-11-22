@@ -58,7 +58,7 @@ def _seed_supabase_if_empty() -> None:
                 _sb_request(
                     "POST",
                     "sop_documents",
-                    query="on_conflict=doc_code",
+                    query="on_conflict=doc_code,clause",
                     body=sop_rows,
                     prefer="resolution=merge-duplicates,return=minimal",
                 )
@@ -240,15 +240,35 @@ def init_db() -> None:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS sop_documents (
-                doc_code TEXT PRIMARY KEY,
+                doc_code TEXT NOT NULL,
                 title TEXT NOT NULL,
                 clause TEXT NOT NULL,
                 keywords_json TEXT NOT NULL,
                 excerpt TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (doc_code, clause)
             )
             """
         )
+        # Older databases keyed SOPs by doc_code alone, one clause per document; rebuild with the composite key.
+        sop_pk = [r[1] for r in conn.execute("PRAGMA table_info(sop_documents)").fetchall() if r[5]]
+        if sop_pk == ["doc_code"]:
+            conn.executescript(
+                """
+                ALTER TABLE sop_documents RENAME TO sop_documents_old;
+                CREATE TABLE sop_documents (
+                    doc_code TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    clause TEXT NOT NULL,
+                    keywords_json TEXT NOT NULL,
+                    excerpt TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (doc_code, clause)
+                );
+                INSERT INTO sop_documents SELECT doc_code, title, clause, keywords_json, excerpt, updated_at FROM sop_documents_old;
+                DROP TABLE sop_documents_old;
+                """
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS decision_status (

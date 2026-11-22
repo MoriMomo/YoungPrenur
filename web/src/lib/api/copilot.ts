@@ -133,38 +133,31 @@ export async function fetchKnowledgeDocs(): Promise<KnowledgeDoc[]> {
         keywords: string[];
         excerpt: string;
       }> = await res.json();
-      const extraByCode = new Map(KNOWLEDGE_DOCS.map((d) => [d.code.toUpperCase(), d]));
-      base = rows.map((row) => {
-        const local = extraByCode.get(row.doc_code.toUpperCase());
-        if (local) {
-          const hasClause = local.sections.some(
-            (s) => s.clause.toLowerCase() === row.clause.toLowerCase()
-          );
-          const updatedSections = hasClause
-            ? local.sections.map((s) =>
-                s.clause.toLowerCase() === row.clause.toLowerCase()
-                  ? { clause: row.clause, content: row.excerpt }
-                  : s
-              )
-            : [{ clause: row.clause, content: row.excerpt }, ...local.sections];
-          return {
-            ...local,
-            title: row.title || local.title,
-            keywords: row.keywords.length > 0 ? row.keywords : local.keywords,
-            summary: row.excerpt || local.summary,
-            sections: updatedSections,
-          };
-        }
-        return {
-          id: `sop-${row.doc_code.toLowerCase()}`,
-          title: row.title,
-          code: row.doc_code,
-          category: "Plant SOP",
-          keywords: row.keywords,
-          summary: row.excerpt,
-          sections: [{ clause: row.clause, content: row.excerpt }],
+      const localByCode = new Map(KNOWLEDGE_DOCS.map((d) => [d.code.toUpperCase(), d]));
+      // The backend stores one row per clause; fold them back into one document per SOP code.
+      const docs = new Map<string, KnowledgeDoc>();
+      for (const row of rows) {
+        const key = row.doc_code.toUpperCase();
+        const local = localByCode.get(key);
+        const doc = docs.get(key) ?? {
+          ...(local ?? {
+            id: `sop-${row.doc_code.toLowerCase()}`,
+            code: row.doc_code,
+            category: "Plant SOP",
+            summary: row.excerpt,
+            keywords: [],
+          }),
+          title: row.title || local?.title || row.doc_code,
+          keywords: row.keywords.length > 0 ? row.keywords : local?.keywords ?? [],
+          sections: [...(local?.sections ?? [])],
         };
-      });
+        const clause = { clause: row.clause, content: row.excerpt };
+        const at = doc.sections.findIndex((s) => s.clause.toLowerCase() === row.clause.toLowerCase());
+        if (at >= 0) doc.sections[at] = clause;
+        else doc.sections.push(clause);
+        docs.set(key, doc);
+      }
+      base = [...docs.values()];
     }
   } catch {
     // Offline fallback
@@ -172,6 +165,48 @@ export async function fetchKnowledgeDocs(): Promise<KnowledgeDoc[]> {
 
   return base;
 }
+
+export interface SopDraft {
+  doc_code: string;
+  title: string;
+  keywords: string[];
+  sections: { clause: string; content: string }[];
+  filename: string;
+  kind: string;
+}
+
+/** Reads an SOP file into a draft on the server; nothing is saved until the clauses are confirmed. */
+export async function extractSopFile(file: File): Promise<SopDraft> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  const res = await apiFetch(`${API_BASE}/files/extract?purpose=sop`, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(30_000),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : `Could not read ${file.name}.`);
+  return body as SopDraft;
+}
+
+/** Saves the confirmed clauses, one row per clause. */
+export async function ingestSopClauses(rows: SopRow[]): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}/knowledge/ingest-batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rows),
+    signal: AbortSignal.timeout(15_000),
+  });
+  return res.ok;
+}
+
+type SopRow = {
+  doc_code: string;
+  title: string;
+  clause: string;
+  keywords: string[];
+  excerpt: string;
+};
 
 export async function ingestKnowledgeDoc(payload: {
   doc_code: string;

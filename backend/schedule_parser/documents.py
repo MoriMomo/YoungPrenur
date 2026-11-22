@@ -48,6 +48,8 @@ def _extract_docx(content: bytes, filename: str) -> Tuple[List[List[List[str]]],
 
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            if zf.getinfo("word/document.xml").file_size > 40 * 1024 * 1024:
+                raise ScheduleParseError(f"{filename} expands to more than 40 MB when unpacked.")
             xml_bytes = zf.read("word/document.xml")
         root = ET.fromstring(xml_bytes)
     except (zipfile.BadZipFile, KeyError, ET.ParseError, OSError) as exc:

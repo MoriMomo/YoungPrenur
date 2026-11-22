@@ -47,6 +47,7 @@ export interface DashboardContextType {
   ) => Promise<void>;
   knowledgeDocs: KnowledgeDoc[];
   addKnowledgeDoc: (payload: SopPayload) => Promise<{ syncedToBackend: boolean }>;
+  saveSopClauses: (rows: SopPayload[]) => Promise<boolean>;
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
   sendChatQuery: (query: string) => Promise<void>;

@@ -40,11 +40,11 @@ class FlagActionPayload(BaseModel):
 
 
 class SopDocumentPayload(BaseModel):
-    doc_code: str
-    title: str
-    clause: str
-    keywords: List[str] = []
-    excerpt: str
+    doc_code: str = Field(min_length=1, max_length=64)
+    title: str = Field(min_length=1, max_length=200)
+    clause: str = Field(min_length=1, max_length=200)
+    keywords: List[str] = Field(default=[], max_length=20)
+    excerpt: str = Field(min_length=1, max_length=4000)
 
 
 class RegisterPayload(BaseModel):

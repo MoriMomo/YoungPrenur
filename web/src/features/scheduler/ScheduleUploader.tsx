@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { FileSpreadsheet, Upload, Loader2, FileCheck, FileDown, MessageSquare } from "lucide-react";
 import { ScheduleUploadError, uploadScheduleFile } from "@/lib/api";
+import { FileDrop } from "@/components/ui/FileDrop";
 import { WbsTask } from "@/types";
 
 const CSV_TEMPLATE_HEADER =
@@ -158,7 +159,6 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
   const [parsedCount, setParsedCount] = useState<number>(0);
   const [lastMethod, setLastMethod] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const clearSelection = () => {
     setSelectedFile(null);
@@ -167,10 +167,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     setLastSummary(null);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFile = async (file: File) => {
     setIsUploading(true);
     const isDocument = /\.(pdf|docx|doc)$/i.test(file.name);
     onToast?.(
@@ -183,7 +180,6 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
       await ingest(file, file.name, () => file.text());
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -265,99 +261,102 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
   const isAiParsed = Boolean(displayMethod?.startsWith("gemini"));
 
   return (
-    <div className="bg-white rounded-xl border border-rule p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-display text-[20px] font-bold leading-tight text-ink flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-stamp" strokeWidth={1.5} />
-            <span>Schedule Ingestion &amp; WBS Normalizer</span>
-          </h2>
-          <p className="text-xs text-ink-2 mt-0.5">
-            Upload a CSV, Excel, PDF, or Word (.docx) schedule — AI reads PDF and Word files into WBS tasks and Copilot
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls,.pdf,.docx,.doc"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          <button
-            type="button"
-            onClick={handleDownloadTemplate}
-            disabled={isUploading}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
-          >
-            <FileDown className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
-            <span>Download CSV Template</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLoadSample}
-            disabled={isUploading}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
-            <span>Load sample schedule</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="flex items-center gap-2 px-4 py-2 bg-stamp hover:bg-stamp-deep text-white text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
-          >
-            {isUploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4" />
-            )}
-            <span>{isUploading ? "Normalizing..." : "Upload Schedule"}</span>
-          </button>
-        </div>
-      </div>
-
-      {displayFile && (
-        <div className="mt-3.5 p-3 rounded-xl bg-stamp-wash border border-stamp-line space-y-2 text-xs text-stamp-deep">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <FileCheck className="w-4 h-4 shrink-0 text-stamp" />
-              <span>
-                Active Ingestion File: <strong>{displayFile}</strong> ({displayCount} tasks)
-              </span>
+    <FileDrop
+      accept=".csv,.xlsx,.xls,.pdf,.docx,.doc"
+      maxBytes={4 * 1024 * 1024}
+      disabled={isUploading}
+      onFile={(file) => void handleFile(file)}
+      onReject={(message) => onToast?.(message)}
+      className="bg-white rounded-xl border border-rule p-5"
+    >
+      {(open) => (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-[20px] font-bold leading-tight text-ink flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-stamp" strokeWidth={1.5} />
+                <span>Schedule Ingestion &amp; WBS Normalizer</span>
+              </h2>
+              <p className="text-xs text-ink-2 mt-0.5">
+                Drop or upload a CSV, Excel, PDF, or Word (.docx) schedule (up to 4 MB) — AI reads PDF and Word files into WBS tasks and Copilot
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              {onAskCopilot && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onAskCopilot(
-                      `Review the uploaded schedule ${displayFile} and summarize the key tasks, bottlenecks, and SOP actions.`
-                    )
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-rule-strong bg-sheet px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-sheet-sunk cursor-pointer"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-stamp" strokeWidth={1.6} />
-                  <span>Ask Copilot</span>
-                </button>
-              )}
-              <span className="font-semibold text-pass bg-pass-wash px-2 py-0.5 rounded border border-pass-line">
-                {isAiParsed ? "AI Read" : "Normalized"}
-              </span>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                disabled={isUploading}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+              >
+                <FileDown className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
+                <span>Download CSV Template</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLoadSample}
+                disabled={isUploading}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-sheet hover:bg-sheet-sunk text-ink border border-rule-strong text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
+                <span>Load sample schedule</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={open}
+                disabled={isUploading}
+                className="flex items-center gap-2 px-4 py-2 bg-stamp hover:bg-stamp-deep text-white text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                <span>{isUploading ? "Normalizing..." : "Upload Schedule"}</span>
+              </button>
             </div>
           </div>
-          {displaySummary && (
-            <p className="text-xs leading-relaxed text-ink-2 border-t border-stamp-line/60 pt-2">
-              {displaySummary}
-            </p>
+
+          {displayFile && (
+            <div className="mt-3.5 p-3 rounded-xl bg-stamp-wash border border-stamp-line space-y-2 text-xs text-stamp-deep">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 shrink-0 text-stamp" />
+                  <span>
+                    Active Ingestion File: <strong>{displayFile}</strong> ({displayCount} tasks)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {onAskCopilot && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onAskCopilot(
+                          `Review the uploaded schedule ${displayFile} and summarize the key tasks, bottlenecks, and SOP actions.`
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-rule-strong bg-sheet px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-sheet-sunk cursor-pointer"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-stamp" strokeWidth={1.6} />
+                      <span>Ask Copilot</span>
+                    </button>
+                  )}
+                  <span className="font-semibold text-pass bg-pass-wash px-2 py-0.5 rounded border border-pass-line">
+                    {isAiParsed ? "AI Read" : "Normalized"}
+                  </span>
+                </div>
+              </div>
+              {displaySummary && (
+                <p className="text-xs leading-relaxed text-ink-2 border-t border-stamp-line/60 pt-2">
+                  {displaySummary}
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </FileDrop>
   );
 };

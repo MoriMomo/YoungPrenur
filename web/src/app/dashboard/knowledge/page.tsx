@@ -7,6 +7,7 @@ import { KnowledgeDoc } from "@/types";
 import { ChevronRight, X, Bookmark, Plus, MessageSquareText } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { SopUpload } from "@/features/knowledge/SopUpload";
 
 function findMatchingDoc(docs: KnowledgeDoc[], docCode: string | null): KnowledgeDoc | null {
   if (!docCode) return null;
@@ -106,6 +107,8 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
           </Button>
         }
       />
+
+      <SopUpload />
 
       {showAddForm && (
         <form

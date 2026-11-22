@@ -36,6 +36,9 @@ export {
   askManufacturingCopilot,
   fetchKnowledgeDocs,
   ingestKnowledgeDoc,
+  extractSopFile,
+  ingestSopClauses,
+  type SopDraft,
 } from "./copilot";
 export {
   fetchIRoomMaterials,

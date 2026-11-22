@@ -29,6 +29,7 @@ import {
   askManufacturingCopilot,
   fetchDecisionActions,
   ingestKnowledgeDoc,
+  ingestSopClauses,
   logoutUser,
   subscribeAuth,
 } from "@/lib/api";
@@ -302,6 +303,14 @@ export default function DashboardLayout({
     }
   };
 
+  const saveSopClauses = async (rows: SopPayload[]): Promise<boolean> => {
+    if (!(await ingestSopClauses(rows))) return false;
+    const [refreshedDocs, freshStatus] = await Promise.all([fetchKnowledgeDocs(), fetchCopilotStatus()]);
+    setKnowledgeDocs(mergeKnowledgeDocs(refreshedDocs, readStoredCustomSops()));
+    setCopilotStatus(freshStatus);
+    return true;
+  };
+
   const addKnowledgeDoc = async (payload: SopPayload): Promise<{ syncedToBackend: boolean }> => {
     const code = payload.doc_code.trim().toUpperCase();
     const normalizedPayload: SopPayload = {
@@ -401,6 +410,7 @@ export default function DashboardLayout({
         handleDecisionReview,
         knowledgeDocs,
         addKnowledgeDoc,
+        saveSopClauses,
         chatMessages,
         isChatLoading,
         sendChatQuery,

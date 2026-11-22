@@ -144,9 +144,8 @@ def upsert_sop(doc: Dict[str, Any]) -> Dict[str, Any]:
             """
             INSERT INTO sop_documents (doc_code, title, clause, keywords_json, excerpt, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(doc_code) DO UPDATE SET
+            ON CONFLICT(doc_code, clause) DO UPDATE SET
                 title = excluded.title,
-                clause = excluded.clause,
                 keywords_json = excluded.keywords_json,
                 excerpt = excluded.excerpt,
                 updated_at = excluded.updated_at
@@ -166,7 +165,7 @@ def upsert_sop(doc: Dict[str, Any]) -> Dict[str, Any]:
             _sb_request(
                 "POST",
                 "sop_documents",
-                query="on_conflict=doc_code",
+                query="on_conflict=doc_code,clause",
                 body={
                     "doc_code": saved["doc_code"],
                     "title": saved["title"],

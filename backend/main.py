@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import database  # noqa: E402
-from app.api import auth, dashboard, iroom, knowledge, legacy, ml, public, risks, scheduler, system  # noqa: E402
+from app.api import auth, dashboard, files, iroom, knowledge, legacy, ml, public, risks, scheduler, system  # noqa: E402
 from app.security import cors_origins, require_user  # noqa: E402
 
 logging.basicConfig(
@@ -47,7 +47,7 @@ for _module in (auth, system, public):
     app.include_router(_module.router)
 
 # Signed-in users only.
-for _module in (legacy, iroom, dashboard, scheduler, risks, knowledge):
+for _module in (legacy, iroom, dashboard, scheduler, risks, knowledge, files):
     app.include_router(_module.router, dependencies=[Depends(require_user)])
 
 # Retraining keeps its own admin-key check; the model card inside it is public on purpose.

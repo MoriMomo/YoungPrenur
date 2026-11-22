@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { ManufacturingRole } from "@/types";
 import { ROLES, ROLE_PRESETS } from "@/lib/mock-data";
@@ -8,6 +8,7 @@ import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import Dither from "@/components/landing/Dither";
 import { Button, LinkButton } from "@/components/ui/Button";
+import { FileDrop } from "@/components/ui/FileDrop";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
 
@@ -91,7 +92,6 @@ export default function LandingPage() {
   const [busy, setBusy] = useState(false);
   const [stampKey, setStampKey] = useState(0);
   const [activeRole, setActiveRole] = useState<ManufacturingRole>("Operations Manager");
-  const fileRef = useRef<HTMLInputElement>(null);
   const role = ROLE_PRESETS[activeRole];
 
   const inspect = async (blob: Blob, name: string) => {
@@ -129,13 +129,7 @@ export default function LandingPage() {
       setNotice(err instanceof ScheduleUploadError ? err.message : `Could not inspect ${name}.`);
     } finally {
       setBusy(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
-  };
-
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) void inspect(file, file.name);
   };
 
   const useSample = async () => {
@@ -179,35 +173,38 @@ export default function LandingPage() {
           </div>
 
           <div className="lg:col-span-5 lg:self-end">
-            <div className="border border-rule-strong bg-sheet p-5">
-              <label htmlFor="schedule-file" className="font-display text-xl font-bold text-ink">
-                Submit a schedule for inspection
-              </label>
-              <p className="mt-1 text-sm text-ink-2">CSV or Excel with tasks, planned days and, if you have them, forecast days and dependencies.</p>
-              <input
-                id="schedule-file"
-                ref={fileRef}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={onFile}
-                className="sr-only"
-              />
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button size="lg" onClick={() => fileRef.current?.click()} disabled={busy}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
-                  {busy ? "Inspecting…" : "Choose schedule file"}
-                </Button>
-                <Button size="lg" variant="secondary" onClick={useSample} disabled={busy}>
-                  <FileSpreadsheet className="h-4 w-4" strokeWidth={1.75} />
-                  Use the sample schedule
-                </Button>
-              </div>
-              {notice && (
-                <p role="status" className="mt-3 border border-warn-line bg-warn-wash px-3 py-2 text-sm text-warn">
-                  {notice}
-                </p>
+            <FileDrop
+              accept=".csv,.xlsx,.xls"
+              maxBytes={2 * 1024 * 1024}
+              disabled={busy}
+              onFile={(file) => void inspect(file, file.name)}
+              onReject={setNotice}
+              className="border border-rule-strong bg-sheet p-5"
+            >
+              {(open) => (
+                <>
+                  <h2 className="font-display text-xl font-bold text-ink">Submit a schedule for inspection</h2>
+                  <p className="mt-1 text-sm text-ink-2">
+                    Drop a CSV or Excel file here, or choose one: tasks, planned days and, if you have them, forecast days and dependencies.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button size="lg" onClick={open} disabled={busy}>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
+                      {busy ? "Inspecting…" : "Choose schedule file"}
+                    </Button>
+                    <Button size="lg" variant="secondary" onClick={useSample} disabled={busy}>
+                      <FileSpreadsheet className="h-4 w-4" strokeWidth={1.75} />
+                      Use the sample schedule
+                    </Button>
+                  </div>
+                  {notice && (
+                    <p role="status" className="mt-3 border border-warn-line bg-warn-wash px-3 py-2 text-sm text-warn">
+                      {notice}
+                    </p>
+                  )}
+                </>
               )}
-            </div>
+            </FileDrop>
           </div>
         </section>
 
