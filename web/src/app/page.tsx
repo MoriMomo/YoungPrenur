@@ -14,7 +14,7 @@ import { inspectScheduleFile, ScheduleUploadError } from "@/lib/api";
 import { Navbar } from "@/components/layout/Navbar";
 import Dither from "@/components/landing/Dither";
 import Threads from "@/components/landing/Threads";
-import Topography from "@/components/landing/Topography";
+import GradientWaves from "@/components/landing/GradientWaves";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { MdipLogo } from "@/components/ui/MdipLogo";
 import { FileDrop } from "@/components/ui/FileDrop";
@@ -664,57 +664,56 @@ export default function LandingPage() {
                     const open = openCode === r.code;
                     return (
                       <React.Fragment key={r.code}>
-                      <tr
-                        id={`row-${r.code}`}
-                        onClick={() => toggleRow(r.code)}
-                        className={`group cursor-pointer border-b border-rule transition-colors ${open ? "bg-paper" : "hover:bg-paper/60"}`}
-                      >
-                        <td
-                          className={`whitespace-nowrap px-3 py-2.5 font-mono-numbers text-xs text-ink-2 ${
-                            open ? "shadow-[inset_2px_0_0_var(--color-stamp)]" : "group-hover:shadow-[inset_1px_0_0_var(--color-stamp)]"
-                          }`}
+                        <tr
+                          id={`row-${r.code}`}
+                          onClick={() => toggleRow(r.code)}
+                          className={`group cursor-pointer border-b border-rule transition-colors ${open ? "bg-paper" : "hover:bg-paper/60"}`}
                         >
-                          {r.code}
-                        </td>
-                        <td className="px-3 py-2.5 text-ink">
-                          <button
-                            type="button"
-                            aria-expanded={open}
-                            aria-controls={`detail-${r.code}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleRow(r.code);
-                            }}
-                            className="cursor-pointer text-left hover:text-stamp"
+                          <td
+                            className={`whitespace-nowrap px-3 py-2.5 font-mono-numbers text-xs text-ink-2 ${open ? "shadow-[inset_2px_0_0_var(--color-stamp)]" : "group-hover:shadow-[inset_1px_0_0_var(--color-stamp)]"
+                              }`}
                           >
-                            {t(r.task)}
-                          </button>
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">{r.planned}</td>
-                        <td className={`px-3 py-2.5 text-right font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>
-                          {r.forecast}
-                          {over && <span className="sr-only">{t(" (over plan)", " (melebihi rencana)")}</span>}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">
-                          {r.float === null ? <span className="text-ink-3">n/a</span> : r.float}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <RiskCell row={r} tone={v.tone} />
-                        </td>
-                        <td className="px-3 py-2.5 text-xs text-ink-2">
-                          {r.drivers?.[0] ? t(r.drivers[0]) : <span className="text-ink-3">{r.done ? "—" : t("None reported", "Tidak ada")}</span>}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <Verdict tone={v.tone}>{t(v.label)}</Verdict>
-                        </td>
-                      </tr>
-                      {open && (
-                        <tr className="border-b border-rule">
-                          <td colSpan={8} className="p-0">
-                            <InspectionDetail row={r} id={`detail-${r.code}`} />
+                            {r.code}
+                          </td>
+                          <td className="px-3 py-2.5 text-ink">
+                            <button
+                              type="button"
+                              aria-expanded={open}
+                              aria-controls={`detail-${r.code}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleRow(r.code);
+                              }}
+                              className="cursor-pointer text-left hover:text-stamp"
+                            >
+                              {t(r.task)}
+                            </button>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">{r.planned}</td>
+                          <td className={`px-3 py-2.5 text-right font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>
+                            {r.forecast}
+                            {over && <span className="sr-only">{t(" (over plan)", " (melebihi rencana)")}</span>}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono-numbers text-ink">
+                            {r.float === null ? <span className="text-ink-3">n/a</span> : r.float}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <RiskCell row={r} tone={v.tone} />
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-ink-2">
+                            {r.drivers?.[0] ? t(r.drivers[0]) : <span className="text-ink-3">{r.done ? "—" : t("None reported", "Tidak ada")}</span>}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <Verdict tone={v.tone}>{t(v.label)}</Verdict>
                           </td>
                         </tr>
-                      )}
+                        {open && (
+                          <tr className="border-b border-rule">
+                            <td colSpan={8} className="p-0">
+                              <InspectionDetail row={r} id={`detail-${r.code}`} />
+                            </td>
+                          </tr>
+                        )}
                       </React.Fragment>
                     );
                   })}
@@ -746,26 +745,26 @@ export default function LandingPage() {
                       </span>
                     </button>
                     <div className="px-4 pb-3">
-                    <p className="mt-1.5 text-xs text-ink-2">
-                      {t("Planned", "Rencana")} <span className="font-mono-numbers text-ink">{r.planned} {t("d", "h")}</span> · {t("Forecast", "Prakiraan")}{" "}
-                      <span className={`font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>{r.forecast} {t("d", "h")}</span>
-                      {r.float !== null && (
-                        <>
-                          {" "}· Float <span className="font-mono-numbers text-ink">{r.float} {t("d", "h")}</span>
-                        </>
-                      )}
-                    </p>
-                    <div className="mt-2">
-                      <RiskCell row={r} tone={v.tone} />
-                    </div>
-                    {r.drivers?.[0] && <p className="mt-1 text-xs text-ink-2">{t("Main driver:", "Pemicu utama:")} {t(r.drivers[0])}</p>}
-                    <button
-                      type="button"
-                      onClick={() => toggleRow(r.code)}
-                      className="mt-1 cursor-pointer py-2 text-xs font-medium text-stamp"
-                    >
-                      {open ? t("Hide the reasons", "Sembunyikan alasan") : t("Why this verdict", "Kenapa putusan ini")}
-                    </button>
+                      <p className="mt-1.5 text-xs text-ink-2">
+                        {t("Planned", "Rencana")} <span className="font-mono-numbers text-ink">{r.planned} {t("d", "h")}</span> · {t("Forecast", "Prakiraan")}{" "}
+                        <span className={`font-mono-numbers ${over ? "font-semibold text-hold" : "text-ink"}`}>{r.forecast} {t("d", "h")}</span>
+                        {r.float !== null && (
+                          <>
+                            {" "}· Float <span className="font-mono-numbers text-ink">{r.float} {t("d", "h")}</span>
+                          </>
+                        )}
+                      </p>
+                      <div className="mt-2">
+                        <RiskCell row={r} tone={v.tone} />
+                      </div>
+                      {r.drivers?.[0] && <p className="mt-1 text-xs text-ink-2">{t("Main driver:", "Pemicu utama:")} {t(r.drivers[0])}</p>}
+                      <button
+                        type="button"
+                        onClick={() => toggleRow(r.code)}
+                        className="mt-1 cursor-pointer py-2 text-xs font-medium text-stamp"
+                      >
+                        {open ? t("Hide the reasons", "Sembunyikan alasan") : t("Why this verdict", "Kenapa putusan ini")}
+                      </button>
                     </div>
                     {open && <InspectionDetail row={r} id={`detail-m-${r.code}`} />}
                   </li>
@@ -780,9 +779,9 @@ export default function LandingPage() {
               <p className="mt-1 max-w-[36rem] text-sm leading-relaxed text-ink-2">
                 {summary
                   ? t(
-                      `${summary.prob.toFixed(1)}% chance the project misses its due date · median slip +${summary.slip.toFixed(1)} days. `,
-                      `${summary.prob.toFixed(1).replace(".", ",")}% peluang proyek melewati tenggat · median mundur +${summary.slip.toFixed(1).replace(".", ",")} hari. `
-                    )
+                    `${summary.prob.toFixed(1)}% chance the project misses its due date · median slip +${summary.slip.toFixed(1)} days. `,
+                    `${summary.prob.toFixed(1).replace(".", ",")}% peluang proyek melewati tenggat · median mundur +${summary.slip.toFixed(1).replace(".", ",")} hari. `
+                  )
                   : t(`${hold} of ${rows.length} tasks are on hold. `, `${hold} dari ${rows.length} tugas ditahan. `)}
                 {t(
                   "Delay risk is the probability a task finishes later than its float allows. Verdicts are recommendations: every action they trigger is authorized or overridden by a named supervisor and logged.",
@@ -863,9 +862,8 @@ export default function LandingPage() {
                 type="button"
                 aria-selected={activeRole === r}
                 onClick={() => setActiveRole(r)}
-                className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-left text-sm font-medium transition-colors sm:px-4 ${
-                  activeRole === r ? "border-transparent text-ink" : "border-transparent text-ink-2 hover:text-ink"
-                }`}
+                className={`-mb-px cursor-pointer border-b-2 px-3 py-2.5 text-left text-sm font-medium transition-colors sm:px-4 ${activeRole === r ? "border-transparent text-ink" : "border-transparent text-ink-2 hover:text-ink"
+                  }`}
               >
                 {t(r)}
               </button>
@@ -898,28 +896,22 @@ export default function LandingPage() {
 
         <PilotAndFaq />
 
-        {/* Plans & Footer unified topographic backdrop */}
+        {/* Plans & footer: calm gradient waves behind, ink-light so the cards stay the focus */}
         <div className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 motion-reduce:hidden">
-            <Topography
-              color="#2b3fbf"
-              lightMode={true}
-              lineCount={22}
-              lineWidth={1.3}
-              elevation={1.15}
-              foreground={0.2}
-              tilt={38}
-              speed={0.25}
-              direction="forward"
-              glow={0}
-              depthOfField={0}
-              fog={0.3}
-              hoverEffect="lift"
-              clickEffect="none"
-              majorLines={true}
-              brightness={1.35}
-              opacity={0.5}
+            <GradientWaves
+              horizonColor="#c2c9ef"
+              waveColor="#2b3fbf"
+              crestColor="#fbfcfa"
+              lightMode
+              speed={0.3}
+              amplitude={2}
+              relief={0.8}
+              grain={0.}
+              opacity={2}
+              quality="low"
               dpr={1}
+              swellOnClick={false}
             />
             <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-sheet to-transparent" />
           </div>
@@ -1008,81 +1000,81 @@ export default function LandingPage() {
               className="guilloche border-b border-rule-strong px-5 py-4 sm:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
               style={{ backgroundColor: "rgb(251 252 250 / 0.72)" }}
             >
-            <div className="flex items-center gap-2.5">
-              <MdipLogo variant="color" size={26} />
-              <div>
-                <p className="font-display text-base font-bold text-ink leading-none">
-                  {t("MDIP · Certificate of Schedule Inspection", "MDIP · Sertifikat Inspeksi Jadwal")}
-                </p>
-                <p className="mt-0.5 font-mono text-[11px] text-ink-3">
-                  {t("Form MDIP-DR-0001 · Manufacturing Decision Intelligence Platform", "Formulir MDIP-DR-0001 · Platform Intelijen Keputusan Manufaktur")}
-                </p>
+              <div className="flex items-center gap-2.5">
+                <MdipLogo variant="color" size={26} />
+                <div>
+                  <p className="font-display text-base font-bold text-ink leading-none">
+                    {t("MDIP · Certificate of Schedule Inspection", "MDIP · Sertifikat Inspeksi Jadwal")}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[11px] text-ink-3">
+                    {t("Form MDIP-DR-0001 · Manufacturing Decision Intelligence Platform", "Formulir MDIP-DR-0001 · Platform Intelijen Keputusan Manufaktur")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <LinkButton href="/login?mode=register" size="md">
+                  {t("Start 30-day pilot", "Mulai pilot 30 hari")}
+                </LinkButton>
+                <LinkButton href="/dashboard" variant="secondary" size="md">
+                  {t("Open live cockpit", "Buka kokpit langsung")}
+                </LinkButton>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <LinkButton href="/login?mode=register" size="md">
-                {t("Start 30-day pilot", "Mulai pilot 30 hari")}
-              </LinkButton>
-              <LinkButton href="/dashboard" variant="secondary" size="md">
-                {t("Open live cockpit", "Buka kokpit langsung")}
-              </LinkButton>
-            </div>
-          </div>
 
-          <div className="relative z-10 grid grid-cols-1 border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs [&>*]:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:[&>*]:border-b-0 lg:[&>*:not(:last-child)]:border-r">
-            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Platform", "Platform")}</p>
-              <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><a href="#inspection-title" className="hover:text-ink hover:underline">{t("Schedule Inspector", "Inspektur Jadwal")}</a></li>
-                <li><Link href="/dashboard" className="hover:text-ink hover:underline">{t("Operations Cockpit", "Kokpit Operasional")}</Link></li>
-                <li><Link href="/dashboard/scheduler" className="hover:text-ink hover:underline">{t("Critical-Path Scheduler", "Penjadwal Jalur Kritis")}</Link></li>
-                <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">{t("IRoom Streams", "Aliran IRoom")}</Link></li>
-              </ul>
+            <div className="relative z-10 grid grid-cols-1 border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs [&>*]:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:[&>*]:border-b-0 lg:[&>*:not(:last-child)]:border-r">
+              <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
+                <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Platform", "Platform")}</p>
+                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                  <li><a href="#inspection-title" className="hover:text-ink hover:underline">{t("Schedule Inspector", "Inspektur Jadwal")}</a></li>
+                  <li><Link href="/dashboard" className="hover:text-ink hover:underline">{t("Operations Cockpit", "Kokpit Operasional")}</Link></li>
+                  <li><Link href="/dashboard/scheduler" className="hover:text-ink hover:underline">{t("Critical-Path Scheduler", "Penjadwal Jalur Kritis")}</Link></li>
+                  <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">{t("IRoom Streams", "Aliran IRoom")}</Link></li>
+                </ul>
+              </div>
+
+              <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
+                <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Intelligence & Governance", "Intelijen & Tata Kelola")}</p>
+                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                  <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">{t("Cited SOP Copilot", "Copilot dengan Kutipan SOP")}</Link></li>
+                  <li><Link href="/dashboard/knowledge" className="hover:text-ink hover:underline">{t("Plant Knowledge Base", "Basis Pengetahuan Pabrik")}</Link></li>
+                  <li><a href="#method" className="hover:text-ink hover:underline">{t("Method & Validation", "Metode & Validasi")}</a></li>
+                  <li><a href="#roles" className="hover:text-ink hover:underline">{t("Role Certificates", "Sertifikat Peran")}</a></li>
+                </ul>
+              </div>
+
+              <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
+                <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Standards & Exports", "Standar & Ekspor")}</p>
+                <ul className="space-y-1.5 text-ink-2">
+                  <li>{t("ISO 9001 Cl. 7.5 Audit Trail", "Jejak Audit ISO 9001 Kl. 7.5")}</li>
+                  <li>{t("ROC-AUC 0.78 (51 Held-Out Projects)", "ROC-AUC 0,78 (51 Proyek Uji)")}</li>
+                  <li>SAP PS · Primavera P6 · MS Project</li>
+                  <li>{t("CSV / Excel Headers (EN & ID)", "Header CSV / Excel (EN & ID)")}</li>
+                </ul>
+              </div>
+
+              <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
+                <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Access & Deployment", "Akses & Deployment")}</p>
+                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                  <li><a href="#plans" className="hover:text-ink hover:underline">{t("Plans & Pricing", "Paket & Harga")}</a></li>
+                  <li><Link href="/login" className="hover:text-ink hover:underline">{t("Operator Sign In", "Masuk Operator")}</Link></li>
+                  <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">{t("Create Plant Account", "Buat Akun Pabrik")}</Link></li>
+                  <li className="py-0.5">{t("Cloud SaaS & On-Premises VPC", "SaaS Cloud & VPC On-Premises")}</li>
+                </ul>
+              </div>
             </div>
 
-            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Intelligence & Governance", "Intelijen & Tata Kelola")}</p>
-              <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">{t("Cited SOP Copilot", "Copilot dengan Kutipan SOP")}</Link></li>
-                <li><Link href="/dashboard/knowledge" className="hover:text-ink hover:underline">{t("Plant Knowledge Base", "Basis Pengetahuan Pabrik")}</Link></li>
-                <li><a href="#method" className="hover:text-ink hover:underline">{t("Method & Validation", "Metode & Validasi")}</a></li>
-                <li><a href="#roles" className="hover:text-ink hover:underline">{t("Role Certificates", "Sertifikat Peran")}</a></li>
-              </ul>
+            <div className="relative z-10 bg-paper/55 px-5 py-3.5 sm:px-8 flex flex-col items-center justify-between gap-2 text-center sm:text-left text-xs text-ink-3 sm:flex-row">
+              <span>© 2026 MDIP · {t("Manufacturing Decision Intelligence Platform", "Platform Intelijen Keputusan Manufaktur")}</span>
+              <nav aria-label={t("Legal", "Hukum")} className="flex flex-wrap justify-center gap-x-4 [&>a]:py-2 sm:[&>a]:py-0">
+                <Link href="/security" className="hover:text-ink hover:underline">{t("Security & data", "Keamanan & data")}</Link>
+                <Link href="/privacy" className="hover:text-ink hover:underline">{t("Privacy", "Privasi")}</Link>
+                <Link href="/terms" className="hover:text-ink hover:underline">{t("Terms", "Ketentuan")}</Link>
+              </nav>
+              <span className="hidden font-mono-numbers xl:inline">
+                {t("XGBoost + 2,000-run Monte Carlo · Human-in-the-loop sign-off required", "XGBoost + 2.000 simulasi Monte Carlo · Wajib pengesahan manusia")}
+              </span>
             </div>
-
-            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Standards & Exports", "Standar & Ekspor")}</p>
-              <ul className="space-y-1.5 text-ink-2">
-                <li>{t("ISO 9001 Cl. 7.5 Audit Trail", "Jejak Audit ISO 9001 Kl. 7.5")}</li>
-                <li>{t("ROC-AUC 0.78 (51 Held-Out Projects)", "ROC-AUC 0,78 (51 Proyek Uji)")}</li>
-                <li>SAP PS · Primavera P6 · MS Project</li>
-                <li>{t("CSV / Excel Headers (EN & ID)", "Header CSV / Excel (EN & ID)")}</li>
-              </ul>
-            </div>
-
-            <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
-              <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Access & Deployment", "Akses & Deployment")}</p>
-              <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
-                <li><a href="#plans" className="hover:text-ink hover:underline">{t("Plans & Pricing", "Paket & Harga")}</a></li>
-                <li><Link href="/login" className="hover:text-ink hover:underline">{t("Operator Sign In", "Masuk Operator")}</Link></li>
-                <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">{t("Create Plant Account", "Buat Akun Pabrik")}</Link></li>
-                <li className="py-0.5">{t("Cloud SaaS & On-Premises VPC", "SaaS Cloud & VPC On-Premises")}</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="relative z-10 bg-paper/55 px-5 py-3.5 sm:px-8 flex flex-col items-center justify-between gap-2 text-center sm:text-left text-xs text-ink-3 sm:flex-row">
-            <span>© 2026 MDIP · {t("Manufacturing Decision Intelligence Platform", "Platform Intelijen Keputusan Manufaktur")}</span>
-            <nav aria-label={t("Legal", "Hukum")} className="flex flex-wrap justify-center gap-x-4 [&>a]:py-2 sm:[&>a]:py-0">
-              <Link href="/security" className="hover:text-ink hover:underline">{t("Security & data", "Keamanan & data")}</Link>
-              <Link href="/privacy" className="hover:text-ink hover:underline">{t("Privacy", "Privasi")}</Link>
-              <Link href="/terms" className="hover:text-ink hover:underline">{t("Terms", "Ketentuan")}</Link>
-            </nav>
-            <span className="hidden font-mono-numbers xl:inline">
-              {t("XGBoost + 2,000-run Monte Carlo · Human-in-the-loop sign-off required", "XGBoost + 2.000 simulasi Monte Carlo · Wajib pengesahan manusia")}
-            </span>
-          </div>
-        </footer>
+          </footer>
         </div>
       </div>
     </div>
