@@ -140,7 +140,7 @@ Struktur antarmuka menggunakan tata letak dua kolom responsif: **Sidebar Tetap (
 * **Menu Burger Seluler:** Tampil pada resolusi $\le 700\text{px}$.
 * **Dropdown Pemilih Peran (`#roleSelect`):** Mengizinkan pergantian 6 peran secara instan.
 * **Tombol Refresh (`#refreshBtn`):** Memicu pembaruan status data demo dan menampilkan toast konfirmasi.
-* **Badge Avatar:** Inisial pengguna (`IM` untuk Indrajani / IMAJIN).
+* **Badge Avatar:** Inisial pengguna (`MD` untuk MDIP).
 
 ### 4.3 Empat Kartu KPI Utama (Grid 4 Kolom)
 Empat kartu metrik dengan visual ringkas:

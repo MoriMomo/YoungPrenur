@@ -8,7 +8,7 @@
 ## 1. Strategi Masuk Pasar (Go-To-Market / GTM Strategy)
 
 ### Fase 1: Validasi Ekosistem Mitra Inti (Bulan 1 - 6)
-* **Target:** 10 Fasilitas Manufaktur dalam jaringan PT IMAJIN (Kawasan Cikarang & Karawang).
+* **Target:** 10 Fasilitas Manufaktur (Kawasan Cikarang & Karawang).
 * **Taktik:** Program Early Adopter Co-Innovation. Pengujian lapangan purwarupa Next.js + FastAPI dengan konektor data IRoom System riil.
 * **Metrik Keberhasilan:** Pengurangan deviasi keterlambatan proyek minimal 25% dan tingkat retensi pengujian 90%.
 
@@ -67,7 +67,7 @@
                                            v
 +-----------------------------------------------------------------------------------------+
 | [BULAN 4 - 8] TRL 4 & 5: Validasi Komponen di Lingkungan Laboratorium & Industri Nyata  |
-| - Akuisisi dataset historis keterlambatan 500+ job order PT IMAJIN.                     |
+| - Akuisisi dataset historis keterlambatan 500+ job order manufaktur.                     |
 | - Pelatihan model XGBoost delay-risk prediction dengan akurasi F1 > 85%.                |
 | - Integrasi Vector DB (Qdrant) untuk pengindeksan 200+ berkas SOP pabrik.              |
 +-----------------------------------------------------------------------------------------+

@@ -1,5 +1,6 @@
 """Unit tests for DSLIB/4TU ETL parsers, fractional CPM timing, and project-grouped splits."""
 
+import io
 import os
 import sys
 import unittest
@@ -240,6 +241,60 @@ class TestMlPipeline(unittest.TestCase):
             },
         ])
         self.assertAlmostEqual(tasks[0]["float_days"], 2.0)
+
+    def test_excel_messy_title_rows_and_second_sheet_detected(self):
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            pd.DataFrame([["PT Contoh Manufaktur"], ["Monthly Summary"]]).to_excel(
+                writer, sheet_name="Cover", index=False, header=False
+            )
+            pd.DataFrame([
+                ["JADWAL PRODUKSI PROYEK WO-2026", None, None, None],
+                ["Plant Cikarang · Rev 3", None, None, None],
+                [None, None, None, None],
+                ["Kode WBS", "Nama Aktivitas", "Durasi Rencana", "Mesin / Work Center"],
+                ["WBS-1.1", "Machining CNC", 5, "CNC-5AXIS"],
+                ["WBS-1.2", "QC CMM", 2, "QA-CMM"],
+            ]).to_excel(writer, sheet_name="Schedule", index=False, header=False)
+
+        tasks = parse_schedule_document(buf.getvalue(), "messy_factory.xlsx")["tasks"]
+        self.assertEqual(len(tasks), 2)
+        self.assertEqual(tasks[0]["code"], "WBS-1.1")
+
+    def test_levy_adapter_and_finetune_platt_smoke(self):
+        import tempfile
+        from pathlib import Path
+        from ml.adapters import load_levy_production_schedules
+        from ml.finetune import build_training_dataset, finetune_models
+
+        rows = []
+        for c in range(1, 7):
+            base_day = c * 2
+            rows.append(["C" + str(c), "Turning", "CNC-1", f"2024-01-{base_day:02d} 08:00:00", f"2024-01-{base_day:02d} 16:00:00", "W1", "No"])
+            rows.append(["C" + str(c), "Milling", "CNC-2", f"2024-01-{base_day+1:02d} 08:00:00", f"2024-01-{base_day+1:02d} 18:00:00", "W2", "No"])
+            rows.append(["C" + str(c), "Turning", "CNC-1", f"2024-01-{base_day+2:02d} 08:00:00", f"2024-01-{base_day+2:02d} 12:00:00", "W1", "Yes"])
+            rows.append(["C" + str(c), "Inspection", "CMM", f"2024-01-{base_day+2:02d} 13:00:00", f"2024-01-{base_day+2:02d} 17:00:00", "W3", "No"])
+        df = pd.DataFrame(rows, columns=["Case ID", "Activity", "Resource", "Start Timestamp", "Complete Timestamp", "Worker ID", "Rework"])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            csv_path = tmp_path / "Production_Data.csv"
+            df.to_csv(csv_path, index=False)
+            tr, va = load_levy_production_schedules(csv_path, train_ratio=0.6)
+            self.assertGreaterEqual(len(tr), 1)
+            self.assertGreaterEqual(len(va), 1)
+            X_tr, y_l_tr, y_s_tr, _ = build_training_dataset(tr, late_tolerance_days=0.01)
+            X_va, y_l_va, y_s_va, _ = build_training_dataset(va, late_tolerance_days=0.01)
+            out_dir = tmp_path / "out"
+            card = finetune_models(
+                X_tr, y_l_tr, y_s_tr, X_va, y_l_va, y_s_va,
+                base_artifacts_dir=Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "ml" / "artifacts",
+                out_artifacts_dir=out_dir,
+                additional_trees=5,
+            )
+            self.assertIn("platt_calibration", card)
+            self.assertTrue((out_dir / "delay_risk_classifier.json").exists())
+            self.assertTrue((out_dir / "delay_slip_regressor.json").exists())
 
 
 if __name__ == "__main__":

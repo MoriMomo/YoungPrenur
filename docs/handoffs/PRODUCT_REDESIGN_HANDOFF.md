@@ -9,7 +9,7 @@
 ## 1. Product Vision, Domain & Target Users
 
 ### What MDIP Is
-**MDIP (Manufacturing Decision Intelligence Platform)** is an AI operations cockpit built for **custom / project-based Engineer-to-Order (ETO) and Make-to-Order (MTO) manufacturing** (industry partner context: **PT Imajinasi Karya Bangsa / IMAJIN**, research grant **BINUS RTT D1521** — CNC 5-axis milling, precision stamping, Wire EDM, subcontract heat treatment, CMM metrology, assembly, and logistics dispatch).
+**MDIP (Manufacturing Decision Intelligence Platform)** is an AI operations cockpit built for **custom / project-based Engineer-to-Order (ETO) and Make-to-Order (MTO) manufacturing** (research grant **BINUS RTT D1521** — CNC 5-axis milling, precision stamping, Wire EDM, subcontract heat treatment, CMM metrology, assembly, and logistics dispatch).
 
 Instead of passively logging delays after a shift slips, MDIP:
 1. **Ingests plant schedules** (CSV/XLSX) and computes **Critical Path Method (CPM)** early/late dates, total float, and upstream slippage propagation (`backend/schedule_parser.py`).

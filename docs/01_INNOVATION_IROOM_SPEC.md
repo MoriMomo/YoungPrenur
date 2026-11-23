@@ -2,7 +2,7 @@
 
 > **Produk:** Manufacturing Decision Intelligence Platform (MDIP)  
 > **Fokus Inovasi:** Transformasi Data Heterogen IRoom System Menjadi Rekomendasi Cerdas Operasional & Mitigasi Risiko Keterlambatan  
-> **Mitra Industri:** PT Imajinasi Karya Bangsa (IMAJIN) & Riset Terapan BINUS RTT  
+> **Riset Terapan:** BINUS RTT  
 > **Status TRL:** TRL 3 (Proof-of-Concept Tervalidasi Analitis & Purwarupa Laboratorium)  
 
 ---

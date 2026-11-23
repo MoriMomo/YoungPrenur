@@ -1,7 +1,7 @@
 ﻿# MDIP: Catatan Pengujian Laboratorium & Bukti Validasi TRL 3 (v1.0)
 
 > **Produk Inovasi:** Manufacturing Decision Intelligence Platform (MDIP)  
-> **Kemitraan:** Riset Terapan BINUS RTT (Dr. Ir. Indrajani, S.Kom., M.M.) & PT Imajinasi Karya Bangsa (IMAJIN)  
+> **Kemitraan:** Riset Terapan BINUS RTT (Dr. Ir. Indrajani, S.Kom., M.M.)  
 > **Tahapan Validasi:** TRL 3 (*Analytical and Experimental Critical Function and/or Characteristic Proof of Concept*)  
 > **Tanggal Pengujian:** 14 Oktober 2026  
 > **Status Kelulusan:** **10/10 TEST CASES PASSED (100.0% COMPLIANT)**  
@@ -66,5 +66,5 @@ $$\text{Penalti SLA} = \Delta T_{\text{total}} \times \text{Tarif Denda Harian}$
 
 * **Penguji Sistem:** Tim Pengembang MDIP & Mahasiswa Peneliti  
 * **Ketua Tim Riset Terapan:** Dr. Ir. Indrajani, S.Kom., M.M. (BINUS RTT)  
-* **Mitra Validasi Industri:** PT Imajinasi Karya Bangsa (IMAJIN Manufacturing Hub)  
+* **Mitra Validasi Industri:** Mitra Manufaktur Hub IRoom  
 * **Status Evaluasi:** **DITERIMA & MEMENUHI SYARAT TRL 3 (PROVEN IN LAB)**  

@@ -245,4 +245,4 @@ Semua endpoint menyajikan payload bertipe `application/json` berstandar RESTful:
 4. **Milestone 4 — Integrasi RAG Semantik & Sitasi Dokumen:**
    Penggantian pencarian kata kunci dengan pipeline embedding teks + Qdrant, menghubungkan berkas manual mesin dan SOP resmi.
 5. **Milestone 5 — Pelatihan Model Delay-Risk ML & Uji Pilot Lapangan:**
-   Pelatihan model klasifikasi keterlambatan jadwal pada lingkungan pilot terverifikasi bersama mitra industri PT Imajinasi Karya Bangsa (IMAJIN).
+   Pelatihan model klasifikasi keterlambatan jadwal pada lingkungan pilot terverifikasi bersama mitra industri manufaktur.

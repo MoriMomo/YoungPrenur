@@ -24,7 +24,7 @@
 * **Serviceable Addressable Market (SAM):**
   * Pasar Solusi Digitalisasi & Operasional Pabrik Presisi di Asia Tenggara (Indonesia, Malaysia, Thailand, Vietnam): **USD 1.8 Miliar**.
 * **Serviceable Obtainable Market (SOM - Target 3 Tahun Pertama):**
-  * Kluster Manufaktur Presisi & Fabrikasi Logam Terhubung di Indonesia (Ekosistem Mitra PT IMAJIN, Asosiasi Pengecoran Logam, dan IKM Permesinan Jawa Barat/Banten): **USD 14.5 Juta (±850 Fasilitas Produksi)**.
+  * Kluster Manufaktur Presisi & Fabrikasi Logam Terhubung di Indonesia (Asosiasi Pengecoran Logam dan IKM Permesinan Jawa Barat/Banten): **USD 14.5 Juta (±850 Fasilitas Produksi)**.
 
 ---
 
@@ -46,7 +46,7 @@
 ## 4. Keunggulan Kompetitif & Parit Bisnis (Competitive Moats)
 
 1. **Parit Integrasi Data Vertikal (*IRoom Domain Synergy*):**
-   * MDIP tidak memulai dari nol; platform dibangun di atas struktur data operasional IRoom System milik PT IMAJIN yang sudah mengagregasi ratusan pabrik permesinan lokal.
+   * MDIP tidak memulai dari nol; platform dibangun di atas struktur data operasional IRoom System MDIP yang mengagregasi pabrik permesinan lokal.
 2. **Keandalan Anti-Halusinasi (*Grounded Decision Traceability*):**
    * Setiap rekomendasi Copilot wajib merujuk sitasi dokumen legal pabrik (misal: SOP penanganan bottleneck atau klausul kualifikasi teknisi AS9100). Model menolak memberikan angka spekulatif jika data sensor tidak terverifikasi.
 3. **Fleksibilitas Penerapan (*Dual-Mode Deployment*):**

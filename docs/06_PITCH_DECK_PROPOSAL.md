@@ -1,7 +1,7 @@
 ﻿# MDIP: Pitch Deck Proposal & Executive Presentation Structure (v1.0)
 
 > **Judul Pitching:** MDIP — AI Manufacturing Decision Intelligence Platform  
-> **Target Audiens:** Dewan Juri Kompetisi Kewirausahaan, Mitra Industri (PT IMAJIN), Investor Institusi & Komite Evaluasi TRL  
+> **Target Audiens:** Dewan Juri Kompetisi Kewirausahaan, Mitra Industri, Investor Institusi & Komite Evaluasi TRL  
 > **Durasi Presentasi:** 7 Menit Pitch + 5 Menit Tanya Jawab (Q&A)  
 
 ---
@@ -9,7 +9,7 @@
 ## Slide 1: Cover & Vision Statement
 * **Headline:** Transforming Shop-Floor Data into Decisive Operational Action.
 * **Sub-headline:** Platform inteligensi keputusan bertenaga AI yang mengintegrasikan data heterogen IRoom System untuk memitigasi risiko keterlambatan dan downtime pada industri manufaktur presisi.
-* **Kemitraan:** Riset Terapan BINUS RTT & PT Imajinasi Karya Bangsa (IMAJIN).
+* **Kemitraan:** Riset Terapan BINUS RTT & Mitra Industri Manufaktur.
 * **Presenter:** Tim Pengembang MDIP.
 
 ---
@@ -63,7 +63,7 @@
   - *MES Konvensional (SAP / Siemens):* Biaya sangat mahal (>$100k), implementasi berbulan-bulan, tanpa prediksi keterlambatan cerdas.
   - *Augury / Alat Pemeliharaan Mesin:* Hanya fokus pada sensor getaran mesin, mengabaikan WBS jadwal proyek dan ketersediaan material.
 * **Unfair Advantage MDIP:**
-  1. Integrasi langsung dengan ekosistem IRoom System PT IMAJIN.
+  1. Integrasi langsung dengan ekosistem IRoom System.
   2. Waktu onboarding < 2 minggu dengan purwarupa mandiri berbasis peramban.
   3. Alur tata kelola berstandar audit ISO 9001 / AS9100.
 
@@ -82,7 +82,7 @@
 
 ## Slide 9: Traction & Academic-Industrial Validation
 * **Status Kesiapan Teknologi:** **TRL 3 Tervalidasi** (Purwarupa laboratorium fungsional Next.js 16 + FastAPI dengan response time < 500ms).
-* **Mitra Industri:** PT Imajinasi Karya Bangsa (IMAJIN) — Menyediakan akses jaringan vendor pabrik permesinan lokal dan spesifikasi telemetri IRoom System.
+* **Mitra Industri:** Jaringan vendor pabrik permesinan lokal dengan spesifikasi telemetri IRoom System.
 * **Basis Riset:** Laboratorium Riset Terapan BINUS RTT (Dr. Ir. Indrajani, S.Kom., M.M.).
 
 ---
@@ -97,7 +97,7 @@
 ## Slide 11: The Team (Engineering, Research & Industrial Domain)
 * **Lead AI Engineer & Product Architect:** Menguasai full-stack Next.js/React, arsitektur microservices FastAPI, dan pipeline RAG manufaktur.
 * **Academic Research Lead:** Dr. Ir. Indrajani, S.Kom., M.M. (Pakar Sistem Informasi & Inteligensi Bisnis, BINUS RTT).
-* **Industrial Partner Advisors:** Tim Engineering & Operations PT Imajinasi Karya Bangsa (IMAJIN).
+* **Industrial Partner Advisors:** Tim Engineering & Operations Mitra Industri.
 
 ---
 

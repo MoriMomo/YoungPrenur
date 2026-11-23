@@ -102,7 +102,7 @@ def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Adds delay_risk, risk_level, expected_slip_days and drivers to each CPM-processed task."""
     if not tasks:
         return tasks
-    clf, reg, _ = _models()
+    clf, reg, card = _models()
     X_own = np.array(feature_matrix(tasks), dtype=float)
     upstream_idx = FEATURE_NAMES.index("upstream_slip_days")
     util_idx = FEATURE_NAMES.index("resource_utilization")
@@ -118,7 +118,12 @@ def score_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             X_own[i, upstream_idx] *= scale
 
     dm = xgb.DMatrix(X_own, feature_names=FEATURE_NAMES)
-    proba = clf.predict(dm)
+    cal = card.get("platt_calibration")
+    if isinstance(cal, dict) and "slope" in cal and "intercept" in cal:
+        margins = clf.predict(dm, output_margin=True)
+        proba = 1.0 / (1.0 + np.exp(-np.clip(float(cal["slope"]) * margins + float(cal["intercept"]), -40.0, 40.0)))
+    else:
+        proba = clf.predict(dm)
     planned_arr = np.array([max(0.0, float(t["planned_days"])) for t in tasks], dtype=float)
     actual_arr = np.array([max(0.0, float(t["actual_days"])) for t in tasks], dtype=float)
     max_prop_slip = _slip_caps(tasks, planned_arr, actual_arr)

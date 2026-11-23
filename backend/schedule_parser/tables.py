@@ -8,9 +8,11 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 
 from schedule_parser.base import (
+    COLUMN_ALIASES,
     ScheduleParseError,
     _build_task_dict,
     _map_columns,
+    _norm,
     _parse_date,
     _parse_duration_days,
     _parse_pred_links,
@@ -336,10 +338,78 @@ def _read_msp_xml_tables(content: bytes) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+_ALIAS_TO_FIELD: Dict[str, str] = {
+    _norm(alias): canonical
+    for canonical, aliases in COLUMN_ALIASES.items()
+    for alias in aliases
+}
+
+
+def _score_header_row(values: List[Any]) -> Tuple[bool, int]:
+    """Return (has_required_fields, unique_matched_canonical_fields)."""
+    matched = set()
+    for cell in values:
+        if pd.isna(cell):
+            continue
+        key = _norm(str(cell))
+        if key in _ALIAS_TO_FIELD:
+            matched.add(_ALIAS_TO_FIELD[key])
+
+    has_task = "task" in matched
+    has_timing = "planned_days" in matched or (
+        "planned_start" in matched and "planned_finish" in matched
+    )
+    return (has_task and has_timing), len(matched)
+
+
+def _read_excel_best_sheet(content: bytes, max_header_scan: int = 15) -> pd.DataFrame:
+    """Scan all sheets and first `max_header_scan` rows to find the real schedule header row."""
+    sheets: Dict[str, pd.DataFrame] = pd.read_excel(
+        io.BytesIO(content),
+        sheet_name=None,
+        header=None,
+        dtype=object,
+    )
+
+    best_candidate: Optional[Tuple[int, int, str, int]] = None
+    for sheet_name, raw_df in sheets.items():
+        if raw_df.empty:
+            continue
+        limit = min(max_header_scan, len(raw_df))
+        for row_idx in range(limit):
+            meets_req, score = _score_header_row(raw_df.iloc[row_idx].tolist())
+            if score == 0:
+                continue
+            rank = (1 if meets_req else 0, score)
+            if best_candidate is None or rank > (best_candidate[0], best_candidate[1]):
+                best_candidate = (rank[0], rank[1], sheet_name, row_idx)
+
+    if best_candidate is None:
+        return pd.read_excel(io.BytesIO(content))
+
+    _, _, best_sheet, header_idx = best_candidate
+    raw_df = sheets[best_sheet]
+
+    headers: List[str] = []
+    seen: Dict[str, int] = {}
+    for i, cell in enumerate(raw_df.iloc[header_idx].tolist()):
+        name = f"Unnamed_{i}" if pd.isna(cell) or not str(cell).strip() else str(cell).strip()
+        if name in seen:
+            seen[name] += 1
+            name = f"{name}_{seen[name]}"
+        else:
+            seen[name] = 0
+        headers.append(name)
+
+    data_df = raw_df.iloc[header_idx + 1 :].copy()
+    data_df.columns = headers
+    return data_df.dropna(how="all").reset_index(drop=True)
+
+
 def read_table(content: bytes, filename: str) -> pd.DataFrame:
     name = filename.lower()
     if name.endswith((".xlsx", ".xlsm", ".xls")):
-        return pd.read_excel(io.BytesIO(content))
+        return _read_excel_best_sheet(content)
     if name.endswith(".csv") or name.endswith(".txt"):
         text = content.decode("utf-8-sig", errors="replace")
         lines = text.splitlines()

@@ -31,7 +31,7 @@ MDIP menerapkan model pendapatan ganda (*dual-stream monetization*) untuk menjan
 +------------------------------------------+------------------------------------------+
 |               STRENGTHS (S)              |              WEAKNESSES (W)              |
 | 1. Sinergi langsung dengan data IRoom    | 1. Model ML tahap awal masih memerlukan  |
-|    milik PT IMAJIN (konektor native).    |    akuisisi data historis mitra.         |
+|    platform IRoom (konektor native).     |    akuisisi data historis mitra.         |
 | 2. AI Copilot dengan sitasi dokumen      | 2. Ketergantungan awal pada konektivitas |
 |    resmi (bebas halusinasi generatif).   |    sensor IoT pihak ketiga (spindle load)|
 | 3. Fitur Human-in-the-Loop memenuhi      | 3. Brand purwarupa baru dibanding vendor |
@@ -54,8 +54,8 @@ MDIP menerapkan model pendapatan ganda (*dual-stream monetization*) untuk menjan
 ## 3. Matriks Strategi TOWS Terpadu
 
 ### 3.1 Strategi SO (Memanfaatkan Kekuatan untuk Menangkap Peluang)
-1. **Ekspansi Cepat ke Kluster Vendor PT IMAJIN (S1, S4 -> O1, O2):**
-   * Memanfaatkan jaringan lebih dari 500 bengkel mesin dan mitra permesinan CNC di Jawa Barat yang sudah terhubung ke ekosistem IMAJIN sebagai basis pengguna awal (*early adopters*).
+1. **Ekspansi Cepat ke Kluster Vendor Manufaktur (S1, S4 -> O1, O2):**
+   * Memanfaatkan jaringan lebih dari 500 bengkel mesin dan mitra permesinan CNC di Jawa Barat yang sudah terhubung ke ekosistem IRoom sebagai basis pengguna awal (*early adopters*).
 2. **Paket Solusi Kepatuhan Standar Kemenperin (S2, S3 -> O1):**
    * Mempromosikan fitur sitasi dokumen SOP dan pencatatan audit trail sebagai sarana mempermudah pabrikan lokal meraih sertifikasi Tingkat Komponen Dalam Negeri (TKDN) dan audit kualitas internasional.
 

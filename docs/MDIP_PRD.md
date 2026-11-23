@@ -3,7 +3,7 @@
 > **Nama Produk:** Manufacturing Decision Intelligence Platform (MDIP)  
 > **Judul Riset / Hibah:** *Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek*  
 > **Peneliti Utama / Pemilik:** Dr. Ir. Indrajani, S.Kom., M.M. (D1521, BINUS RTT)  
-> **Mitra Industri & Validasi:** PT Imajinasi Karya Bangsa (IMAJIN) — Sistem Manufaktur Hub IRoom  
+> **Lingkungan Validasi:** Sistem Manufaktur Hub IRoom  
 > **Versi Dokumen:** v3.0 (Direvisi total berbasis acuan Prototype Interaktif Mentor `mentor_copilot.html`)  
 > **Tanggal Pembaruan:** 13 Oktober 2026  
 >
@@ -31,7 +31,7 @@ Platform ini mengintegrasikan dua pilar inteligensi utama:
 
 * **Target Pengguna Produk:**
   * **SaaS Eksternal**: Pabrik manufaktur skala menengah hingga grup multi-pabrik.
-  * **Internal Operasional**: Manajemen proyek dan operasional PT Imajinasi Karya Bangsa (IMAJIN/IRoom).
+  * **Internal Operasional**: Manajemen proyek dan operasional IRoom.
 * **Posisi Pasar Tegas (*Product Positioning*):** MDIP diposisikan murni sebagai **AI Decision-Support Layer** (lapisan pendukung keputusan cerdas) — **bukan chatbot percakapan umum** dan **bukan pengganti sistem ERP/MES/CMMS**. MDIP bertindak sebagai lapisan orkestrasi dan intelegensi yang mengekstraksi dan menyintesis data dari sistem-sistem pencatat (*systems of record*) yang sudah ada.
 
 ### 1.3 Tujuan Strategis (Goals) `[BRIEF]`

@@ -3,7 +3,6 @@
 
 > **Riset Terverifikasi:** *Sistem Inteligensi Penjadwalan dan Pendukung Keputusan Berbasis AI untuk Mitigasi Risiko Keterlambatan pada Manufaktur Berbasis Proyek*  
 > **Ketua Peneliti:** Dr. Ir. Indrajani, S.Kom., M.M. (D1521, BINUS RTT)  
-> **Mitra Industri:** PT Imajinasi Karya Bangsa (IMAJIN)  
 
 ---
 
@@ -14,7 +13,7 @@ MDIP adalah platform pendukung keputusan (*AI Decision Intelligence Layer*) terp
 2. **AI Manufacturing Copilot:** Kokpit operasional interaktif berbasis peran kerja (*role-based cockpit*), memonitor risiko kritis secara proaktif, menyajikan rekomendasi tindakan terprioritas (*AI Decision Brief* dengan alur *human-in-the-loop audit review*), dan asisten RAG untuk penelusuran SOP dan panduan penanganan kendala mesin dengan sitasi dokumen terverifikasi (PoC saat ini memakai pencocokan kata kunci atas indeks SOP bawaan).
 3. **iRoom Workspace:** Ruang kerja terhubung untuk pengiriman material, progres proyek, persetujuan gambar teknik, quotation & PO, dan pelacakan operasi.
 
-> **Status PoC:** Model XGBoost (*hurdle model*: klasifikasi terlambat + regresi slip) dilatih pada **4.149 aktivitas historis nyata** (251 proyek publik: DSLIB dan log CNC 4TU, bobot 5×) ditambah **7.855 aktivitas sintetis** (900 proyek simulasi, `backend/ml/generate_dataset.py`). Data mitra (PT IMAJIN) belum tersedia dan akan dipakai pada fase pilot. Metrik lengkap ada di `backend/ml/artifacts/model_card.json`:
+> **Status PoC:** Model XGBoost (*hurdle model*: klasifikasi terlambat + regresi slip) dilatih pada **4.149 aktivitas historis nyata** (251 proyek publik: DSLIB dan log CNC 4TU, bobot 5×) ditambah **7.855 aktivitas sintetis** (900 proyek simulasi, `backend/ml/generate_dataset.py`). Data mitra industri belum tersedia dan akan dipakai pada fase pilot. Metrik lengkap ada di `backend/ml/artifacts/model_card.json`:
 >
 > | Evaluasi | ROC-AUC | Presisi | Recall | Baseline aturan lama (AUC) |
 > |---|---|---|---|---|

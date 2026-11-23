@@ -87,7 +87,7 @@ def _ensure_demo_users(conn: sqlite3.Connection) -> None:
     """
     Make sure every demo persona in seed_data.INITIAL_USERS exists with its current email.
     Accounts are matched by their fixed id (usr-ops, ...), so an email change in seed_data
-    (e.g. @imajin.id -> @mdip.id) updates existing databases in place, keeping the password.
+    (e.g. legacy domain -> @mdip.id) updates existing databases in place, keeping the password.
     """
     now = _now_iso()
     for usr in INITIAL_USERS:

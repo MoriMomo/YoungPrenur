@@ -1,7 +1,7 @@
 ﻿# MDIP: Pemetaan 6 User Personas & Arsitektur Keputusan 2-Lapisan (v1.0)
 
 > **Produk:** Manufacturing Decision Intelligence Platform (MDIP)  
-> **Kemitraan:** Riset Terapan BINUS RTT (Dr. Ir. Indrajani, S.Kom., M.M.) & PT Imajinasi Karya Bangsa (IMAJIN)  
+> **Kemitraan:** Riset Terapan BINUS RTT (Dr. Ir. Indrajani, S.Kom., M.M.)  
 > **Status:** Tervalidasi TRL 3 & Terintegrasi Penuh pada Next.js 16 + FastAPI  
 
 ---

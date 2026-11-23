@@ -1,7 +1,7 @@
 """
 MDIP (Manufacturing Decision Intelligence Platform)
 Automated System Verification & Proof of Testing Suite (TRL 3)
-BINUS RTT & PT Imajinasi Karya Bangsa (IMAJIN)
+BINUS RTT
 """
 
 import os
@@ -194,7 +194,7 @@ def run_http_request(url, method="GET", body=None, token=""):
 def main():
     print("=" * 80)
     print("  MDIP: AUTOMATED SYSTEM VERIFICATION & PROOF OF TESTING (TRL 3)")
-    print("  Mitra: BINUS RTT (Dr. Ir. Indrajani) & PT Imajinasi Karya Bangsa (IMAJIN)")
+    print("  Riset: BINUS RTT (Dr. Ir. Indrajani)")
     print("  Timestamp:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 80)
     print()
