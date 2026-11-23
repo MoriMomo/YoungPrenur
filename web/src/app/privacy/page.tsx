@@ -42,7 +42,7 @@ const EN = (
         <li>Vercel hosts the website and the MDIP API.</li>
         <li>Google sign-in confirms your identity if you choose it.</li>
         <li>
-          In cloud mode only: Google Gemini may read PDF and Word schedules, and DeepSeek or Gemini may answer Copilot
+          In cloud mode only: DeepSeek or Google Gemini may read PDF and Word schedules, and DeepSeek or Gemini may answer Copilot
           questions with the SOP clauses they retrieve. On-premises mode does not use them.
         </li>
       </ul>
@@ -104,7 +104,7 @@ const ID = (
         <li>Vercel menjadi host situs web dan API MDIP.</li>
         <li>Masuk dengan Google memastikan identitas Anda jika Anda memilihnya.</li>
         <li>
-          Hanya dalam mode cloud: Google Gemini dapat membaca jadwal PDF dan Word, dan DeepSeek atau Gemini dapat menjawab
+          Hanya dalam mode cloud: DeepSeek atau Google Gemini dapat membaca jadwal PDF dan Word, dan DeepSeek atau Gemini dapat menjawab
           pertanyaan Copilot beserta klausul SOP yang diambilnya. Mode on-premises tidak menggunakannya.
         </li>
       </ul>

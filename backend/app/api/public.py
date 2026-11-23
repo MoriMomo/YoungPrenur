@@ -58,6 +58,7 @@ async def inspect_schedule(request: Request, file: UploadFile = File(...)):
         "high_risk_tasks": analysis["high_risk_tasks_count"],
         "overall_delay_probability": analysis["overall_delay_probability"],
         "estimated_project_slippage_days": analysis["estimated_project_slippage_days"],
+        "p80_slippage_days": analysis["p80_slippage_days"],
         "stored": False,
         "message": f"Inspected {len(analysis['tasks'])} activities from {filename}. Nothing was stored.",
         "tasks": analysis["tasks"],

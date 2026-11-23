@@ -54,6 +54,7 @@ export interface ScheduleUploadResponse {
   high_risk_tasks?: number;
   overall_delay_probability?: number;
   estimated_project_slippage_days?: number;
+  p80_slippage_days?: number;
   extraction_method?: string;
   document_summary?: string | null;
   ai_parsed?: boolean;

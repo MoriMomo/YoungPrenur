@@ -11,12 +11,11 @@ const EN = (
     <section>
       <h2>What is private and what is shared</h2>
       <ul>
-        <li>A schedule you upload is stored against your account and is not shown to other users.</li>
-        <li>Sign-off decisions and the audit log are kept per workspace.</li>
         <li>
-          The SOP knowledge base and IRoom records are shared by everyone on the same MDIP deployment. Plants that need
-          them separated use the on-premise / private VPC licensing add-on.
+          Schedules, SOP clauses and IRoom records are stored against your account and are not shown to other users.
+          Copilot only searches the SOPs and records in your own account.
         </li>
+        <li>Sign-off decisions and the audit log are kept per workspace.</li>
         <li>MDIP does not train its delay-risk model, or any other model, on your schedules or SOPs.</li>
       </ul>
     </section>
@@ -45,8 +44,9 @@ const EN = (
       <p>Delay-risk scores come from MDIP&apos;s own model, which runs on the MDIP server in both modes.</p>
       <ul>
         <li>
-          <strong className="font-medium text-ink">Cloud mode:</strong> PDF and Word schedules may be read by Google
-          Gemini, and Copilot questions with the SOP clauses they retrieve may be answered by DeepSeek or Gemini.
+          <strong className="font-medium text-ink">Cloud mode:</strong> PDF and Word schedules may be read by DeepSeek
+          (text files) or Google Gemini (scanned PDFs), and Copilot questions with the SOP clauses they retrieve may be
+          answered by DeepSeek or Gemini.
         </li>
         <li>
           <strong className="font-medium text-ink">On-premises mode:</strong> the MDIP server reads documents and
@@ -79,12 +79,11 @@ const ID = (
     <section>
       <h2>Apa yang privat dan apa yang dibagikan</h2>
       <ul>
-        <li>Jadwal yang Anda unggah disimpan pada akun Anda dan tidak ditampilkan ke pengguna lain.</li>
-        <li>Keputusan pengesahan dan log audit disimpan per workspace.</li>
         <li>
-          Basis pengetahuan SOP dan catatan IRoom dipakai bersama oleh semua pengguna di deployment MDIP yang sama. Pabrik
-          yang perlu memisahkannya memakai layanan tambahan lisensi on-premise / VPC privat.
+          Jadwal, klausul SOP, dan catatan IRoom disimpan pada akun Anda dan tidak ditampilkan ke pengguna lain. Copilot
+          hanya mencari di SOP dan catatan milik akun Anda sendiri.
         </li>
+        <li>Keputusan pengesahan dan log audit disimpan per workspace.</li>
         <li>MDIP tidak melatih model risiko keterlambatannya, maupun model lain, dengan jadwal atau SOP Anda.</li>
       </ul>
     </section>
@@ -113,8 +112,8 @@ const ID = (
       <p>Nilai risiko keterlambatan berasal dari model MDIP sendiri, yang berjalan di server MDIP pada kedua mode.</p>
       <ul>
         <li>
-          <strong className="font-medium text-ink">Mode cloud:</strong> jadwal PDF dan Word dapat dibaca Google Gemini,
-          dan pertanyaan Copilot beserta klausul SOP yang diambilnya dapat dijawab DeepSeek atau Gemini.
+          <strong className="font-medium text-ink">Mode cloud:</strong> jadwal PDF dan Word dapat dibaca DeepSeek (file
+          berteks) atau Google Gemini (PDF hasil pindai), dan pertanyaan Copilot beserta klausul SOP yang diambilnya dapat dijawab DeepSeek atau Gemini.
         </li>
         <li>
           <strong className="font-medium text-ink">Mode on-premises:</strong> server MDIP membaca dokumen dan menjawab

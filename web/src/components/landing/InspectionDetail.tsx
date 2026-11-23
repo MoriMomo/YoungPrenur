@@ -2,7 +2,9 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { useT } from "@/lib/i18n";
-import { InspectionRow, verdictFor } from "./inspection";
+import { Button } from "@/components/ui/Button";
+import { KNOWLEDGE_DOCS } from "@/lib/mock-data";
+import { Decision, InspectionRow, verdictFor } from "./inspection";
 
 type T = ReturnType<typeof useT>;
 
@@ -100,7 +102,17 @@ function drawerCopy(row: InspectionRow, t: T): DrawerCopy {
 }
 
 /** The drawer under an inspection row: the schedule facts and model drivers behind its verdict. */
-export function InspectionDetail({ row, id }: { row: InspectionRow; id: string }) {
+export function InspectionDetail({
+  row,
+  id,
+  decision,
+  onDecide,
+}: {
+  row: InspectionRow;
+  id: string;
+  decision?: Decision;
+  onDecide?: (decision: Decision) => void;
+}) {
   const t = useT();
   const { tone } = verdictFor(row);
   const copy = drawerCopy(row, t);
@@ -108,6 +120,12 @@ export function InspectionDetail({ row, id }: { row: InspectionRow; id: string }
   const drivers = row.done ? [] : (row.drivers ?? []).slice(0, tone === "pass" ? 2 : 3);
   const positive = row.done || tone === "pass";
   const d = t("d", "h");
+  const actionable = !row.done && (tone === "hold" || tone === "warn");
+  // The clause text comes from the sample knowledge base; record content is not translated.
+  const sop = row.sop && {
+    ...row.sop,
+    text: KNOWLEDGE_DOCS.find((doc) => doc.code === row.sop?.code)?.sections.find((s) => s.clause === row.sop?.clause)?.content,
+  };
 
   return (
     <div id={id} className="grid gap-5 border-l-2 border-stamp bg-paper px-4 py-4 text-sm sm:grid-cols-3 sm:px-5">
@@ -177,13 +195,58 @@ export function InspectionDetail({ row, id }: { row: InspectionRow; id: string }
       <div>
         <p className="text-xs font-medium text-ink-3">{t("What happens next", "Langkah berikutnya")}</p>
         <p className="mt-2 leading-relaxed text-ink-2">{copy.next}</p>
-        <Link
-          href={copy.cta.href}
-          className="mt-2 inline-flex items-center gap-1 py-1 text-sm font-medium text-stamp hover:text-stamp-deep hover:underline"
-        >
-          {copy.cta.label}
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </Link>
+
+        {sop && (
+          <blockquote className="mt-3 border-l-2 border-stamp-line bg-sheet px-3 py-2 text-xs leading-relaxed text-ink-2">
+            <span className="font-mono-numbers font-medium text-stamp">{sop.code}</span> · {sop.clause}
+            {sop.text && <span className="mt-1 block text-ink-3">“{sop.text}”</span>}
+          </blockquote>
+        )}
+
+        {actionable && onDecide ? (
+          decision ? (
+            <p
+              role="status"
+              className={`animate-stamp mt-3 inline-block border-2 px-2.5 py-1 font-display text-sm font-bold uppercase ${
+                decision === "authorized" ? "border-pass text-pass" : "border-ink-3 text-ink-2"
+              }`}
+            >
+              {decision === "authorized" ? t("Authorized", "Disetujui") : t("Overridden", "Dibatalkan")}
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button size="sm" onClick={() => onDecide("authorized")}>
+                {t("Authorize", "Setujui")}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => onDecide("overridden")}>
+                {t("Override", "Batalkan")}
+              </Button>
+              <Link
+                href="/dashboard/copilot"
+                className="inline-flex items-center gap-1 py-1 text-sm font-medium text-stamp hover:text-stamp-deep hover:underline"
+              >
+                {t("Ask Copilot", "Tanya Copilot")}
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </Link>
+            </div>
+          )
+        ) : (
+          <Link
+            href={copy.cta.href}
+            className="mt-2 inline-flex items-center gap-1 py-1 text-sm font-medium text-stamp hover:text-stamp-deep hover:underline"
+          >
+            {copy.cta.label}
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </Link>
+        )}
+        {actionable && onDecide && (
+          <p className="mt-2 text-xs text-ink-3">
+            {t(
+              "A preview on this page. In the cockpit, each decision is saved to the audit log with your name and role.",
+              "Pratinjau di halaman ini. Di kokpit, setiap keputusan disimpan di log audit beserta nama dan peran Anda."
+            )}
+          </p>
+        )}
       </div>
     </div>
   );

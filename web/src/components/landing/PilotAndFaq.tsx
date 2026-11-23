@@ -52,8 +52,8 @@ const FAQ: { q: Pair; a: Pair }[] = [
   {
     q: ["Is our schedule data used to train public models?", "Apakah data jadwal kami dipakai untuk melatih model publik?"],
     a: [
-      "MDIP does not train any model on your schedules or SOPs; its delay-risk model was trained on public project data. In cloud mode, PDF and Word schedules may be read by Google Gemini and Copilot questions answered by DeepSeek or Gemini; on-premises mode keeps both on the MDIP server.",
-      "MDIP tidak melatih model apa pun dengan jadwal atau SOP Anda; model risiko keterlambatannya dilatih dengan data proyek publik. Dalam mode cloud, jadwal PDF dan Word dapat dibaca Google Gemini dan pertanyaan Copilot dijawab DeepSeek atau Gemini; mode on-premises menjaga keduanya di server MDIP.",
+      "MDIP does not train any model on your schedules or SOPs; its delay-risk model was trained on public project data. In cloud mode, PDF and Word schedules may be read by DeepSeek or Google Gemini and Copilot questions answered by DeepSeek or Gemini; on-premises mode keeps both on the MDIP server.",
+      "MDIP tidak melatih model apa pun dengan jadwal atau SOP Anda; model risiko keterlambatannya dilatih dengan data proyek publik. Dalam mode cloud, jadwal PDF dan Word dapat dibaca DeepSeek atau Google Gemini dan pertanyaan Copilot dijawab DeepSeek atau Gemini; mode on-premises menjaga keduanya di server MDIP.",
     ],
   },
   {

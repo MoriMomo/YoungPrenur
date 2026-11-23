@@ -20,10 +20,11 @@ import { MdipLogo } from "@/components/ui/MdipLogo";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { Verdict, VerdictTone } from "@/components/ui/Verdict";
 import { Stamp } from "@/components/ui/Stamp";
-import { InspectionRow, SAMPLE_ROWS, TONE_BAR, verdictFor } from "@/components/landing/inspection";
+import { Decision, InspectionRow, SAMPLE_ROWS, TONE_BAR, verdictFor } from "@/components/landing/inspection";
 import { InspectionDetail } from "@/components/landing/InspectionDetail";
 import { CockpitPreview } from "@/components/landing/CockpitPreview";
 import { PilotAndFaq } from "@/components/landing/PilotAndFaq";
+import ShinyText from "@/components/landing/ShinyText";
 import { Words } from "@/components/landing/Words";
 import { useT } from "@/lib/i18n";
 
@@ -152,7 +153,7 @@ export default function LandingPage() {
   const [rows, setRows] = useState<InspectionRow[]>(SAMPLE_ROWS);
   const [subject, setSubject] = useState("Sample project · precision stamping die set");
   const [isSample, setIsSample] = useState(true);
-  const [summary, setSummary] = useState<{ prob: number; slip: number } | null>(null);
+  const [summary, setSummary] = useState<{ prob: number; slip: number; p80?: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [stampKey, setStampKey] = useState(0);
@@ -162,6 +163,15 @@ export default function LandingPage() {
   const rolePanelRef = useRef<HTMLDivElement>(null);
   const tabIndicatorRef = useRef<HTMLSpanElement>(null);
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [decisions, setDecisions] = useState<Record<string, Decision>>({});
+  const decide = (code: string) => (d: Decision) => setDecisions((prev) => ({ ...prev, [code]: d }));
+  const verdictOf = (r: InspectionRow) => {
+    const d = decisions[r.code];
+    if (!d) return { tone: verdictFor(r).tone, label: t(verdictFor(r).label) };
+    return d === "authorized"
+      ? { tone: "pass" as const, label: t("Authorized", "Disetujui") }
+      : { tone: "neutral" as const, label: t("Overridden", "Dibatalkan") };
+  };
   const role = ROLE_PRESETS[activeRole];
   const t = useT();
 
@@ -189,7 +199,7 @@ export default function LandingPage() {
     return () => window.removeEventListener("resize", place);
   }, [activeRole]);
 
-  // Risk bars fill from zero once they scroll into view, and again after each new inspection.
+  // Risk bars fill from zero via fromTo (Strict Mode safe) on initial view and after each upload.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
@@ -198,96 +208,134 @@ export default function LandingPage() {
           .toArray<HTMLElement>("[data-risk-fill]")
           .filter((el) => el.offsetParent !== null);
         if (!visibleRiskBars.length) return;
-        gsap.from(visibleRiskBars, {
-          scaleX: 0,
-          transformOrigin: "0% 50%",
-          duration: 0.55,
-          stagger: 0.04,
-          ease: "power2.out",
-          overwrite: "auto",
-          clearProps: "transform",
-          scrollTrigger: { trigger: "#inspection-title", start: "top 88%", once: true },
-        });
+        gsap.fromTo(
+          visibleRiskBars,
+          { scaleX: 0, transformOrigin: "left center" },
+          {
+            scaleX: 1,
+            duration: 0.55,
+            stagger: 0.06,
+            ease: "power3.out",
+            overwrite: "auto",
+            clearProps: "transform",
+            scrollTrigger: { trigger: "#inspection-title", start: "top 85%", once: true },
+          }
+        );
       });
-      return () => mm.revert();
+      const rafId = requestAnimationFrame(() => ScrollTrigger.refresh());
+      return () => {
+        cancelAnimationFrame(rafId);
+        mm.revert();
+      };
     },
     { scope: deskRef, dependencies: [rows], revertOnUpdate: true }
   );
 
-  // Cockpit preview Gantt bars fill smoothly once when scrolled into view.
+  // Scroll-driven cockpit bars, ink-press stamp, margin scribbles, section titles, and stagger groups.
   useGSAP(
     () => {
+      const desk = deskRef.current;
+      if (!desk) return;
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.from("[data-gantt-bar]", {
-          scaleX: 0,
-          transformOrigin: "0% 50%",
-          duration: 0.55,
-          stagger: 0.045,
-          ease: "power2.out",
-          clearProps: "transform",
-          scrollTrigger: { trigger: "#cockpit-title", start: "top 85%", once: true },
-        });
-      });
-      return () => mm.revert();
-    },
-    { scope: deskRef }
-  );
+        gsap.fromTo(
+          "[data-gantt-bar]",
+          { scaleX: 0, transformOrigin: "left center" },
+          {
+            scaleX: 1,
+            duration: 0.55,
+            stagger: 0.045,
+            ease: "power3.out",
+            clearProps: "transform",
+            scrollTrigger: { trigger: "#cockpit-title", start: "top 85%", once: true },
+          }
+        );
 
-  // The validation stamp presses in like ink only when the visible stamp enters view.
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
         gsap.utils
           .toArray<HTMLElement>("[data-stamp-press]")
           .filter((el) => el.offsetParent !== null)
           .forEach((el) => {
             gsap.fromTo(
               el,
-              { scale: 1.12, autoAlpha: 0 },
+              { scale: 1.16, autoAlpha: 0, rotate: -5 },
               {
                 scale: 1,
                 autoAlpha: 1,
-                duration: 0.38,
-                ease: "back.out(1.4)",
+                rotate: 0,
+                duration: 0.35,
+                ease: "power3.out",
                 clearProps: "transform,opacity,visibility",
-                scrollTrigger: { trigger: el, start: "top 88%", once: true },
+                scrollTrigger: { trigger: el, start: "top 85%", once: true },
               }
             );
           });
-      });
-      return () => mm.revert();
-    },
-    { scope: deskRef }
-  );
 
-  useGSAP(
-    () => {
-      if (!deskRef.current) return;
-      const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: deskRef.current,
-            start: "top top",
-            end: "bottom bottom",
-            scrub: 0.8,
-          },
+        gsap
+          .timeline({ scrollTrigger: { trigger: desk, start: "top top", end: "bottom bottom", scrub: 0.8 } })
+          .fromTo(
+            "[data-scribble-path]",
+            { strokeDasharray: 1.05, strokeDashoffset: 1.05, autoAlpha: 0 },
+            { strokeDashoffset: 0, autoAlpha: 1, duration: 1, stagger: 0.18, ease: "none" },
+            0
+          )
+          .fromTo(
+            "[data-scribble-label]",
+            { autoAlpha: 0, y: 4 },
+            { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.18, ease: "none" },
+            0.08
+          );
+
+        gsap.utils.toArray<HTMLElement>('h2[id$="-title"]').forEach((title) => {
+          const tl = gsap.timeline({
+            scrollTrigger: { trigger: title, start: "top 88%", once: true, fastScrollEnd: true },
+          });
+          tl.fromTo(
+            title.querySelectorAll("[data-word]"),
+            { y: 12, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.42, stagger: 0.024, ease: "power2.out", force3D: true, clearProps: "transform,opacity,visibility" }
+          );
+          const lead = title.nextElementSibling;
+          if (lead?.tagName === "P") {
+            tl.fromTo(
+              lead,
+              { y: 8, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: 0.42, ease: "power2.out", force3D: true, clearProps: "transform,opacity,visibility" },
+              0.1
+            );
+          }
         });
-        tl.fromTo(
-          "[data-scribble-path]",
-          { strokeDasharray: 1.05, strokeDashoffset: 1.05, autoAlpha: 0 },
-          { strokeDashoffset: 0, autoAlpha: 1, duration: 1, stagger: 0.18, ease: "none" },
-          0
-        ).fromTo(
-          "[data-scribble-label]",
-          { autoAlpha: 0, y: 4 },
-          { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.18, ease: "none" },
-          0.08
-        );
+
+        gsap.utils.toArray<HTMLElement>('[data-gsap="stagger-group"]').forEach((group) => {
+          const items = group.querySelectorAll<HTMLElement>('[data-gsap="stagger-item"]');
+          if (!items.length) return;
+          gsap.fromTo(
+            items,
+            { y: 18, autoAlpha: 0 },
+            {
+              y: 0,
+              autoAlpha: 1,
+              duration: 0.42,
+              stagger: 0.07,
+              ease: "power3.out",
+              clearProps: "transform,opacity,visibility",
+              scrollTrigger: { trigger: group, start: "top 85%", once: true },
+            }
+          );
+        });
       });
-      return () => mm.revert();
+
+      let active = true;
+      const rafId = requestAnimationFrame(() => {
+        if (active) ScrollTrigger.refresh();
+      });
+      document.fonts?.ready?.then(() => {
+        if (active) ScrollTrigger.refresh();
+      });
+      return () => {
+        active = false;
+        cancelAnimationFrame(rafId);
+        mm.revert();
+      };
     },
     { scope: deskRef }
   );
@@ -296,89 +344,35 @@ export default function LandingPage() {
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const tl = gsap.timeline({ defaults: { ease: "power3.out", force3D: true } });
-        tl.from("[data-hero-eyebrow]", {
-          y: 8,
-          autoAlpha: 0,
-          duration: 0.4,
-          clearProps: "transform,opacity,visibility",
-        })
-          .from(
-            "h1 [data-word]",
-            {
-              y: 14,
-              opacity: 0,
-              duration: 0.48,
-              stagger: 0.026,
-              clearProps: "transform,opacity",
-            },
+        gsap
+          .timeline({ defaults: { ease: "power3.out", force3D: true } })
+          .fromTo(
+            "[data-hero-eyebrow]",
+            { y: 8, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.4, clearProps: "transform,opacity,visibility" }
+          )
+          .fromTo(
+            "h1",
+            { y: 12, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.45, clearProps: "transform,opacity,visibility" },
             0.05
           )
-          .from(
+          .fromTo(
             "[data-hero-card]",
-            {
-              y: 12,
-              autoAlpha: 0,
-              duration: 0.5,
-              clearProps: "transform,opacity,visibility",
-            },
+            { y: 12, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.5, clearProps: "transform,opacity,visibility" },
             0.12
           )
-          .from(
+          .fromTo(
             ["[data-hero-lead]", "[data-hero-cta]"],
-            {
-              y: 10,
-              autoAlpha: 0,
-              duration: 0.45,
-              stagger: 0.07,
-              clearProps: "transform,opacity,visibility",
-            },
+            { y: 10, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.07, clearProps: "transform,opacity,visibility" },
             0.22
           );
       });
       return () => mm.revert();
     },
     { scope: heroRef }
-  );
-
-  // Section titles: words rise smoothly in a fast stagger as they scroll into view, followed by the lead line.
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.utils.toArray<HTMLElement>('h2[id$="-title"]').forEach((title) => {
-          const tl = gsap.timeline({
-            scrollTrigger: { trigger: title, start: "top 90%", once: true, fastScrollEnd: true },
-          });
-          tl.from(title.querySelectorAll("[data-word]"), {
-            y: 12,
-            autoAlpha: 0,
-            duration: 0.42,
-            stagger: 0.024,
-            ease: "power2.out",
-            force3D: true,
-            clearProps: "transform,opacity,visibility",
-          });
-          const lead = title.nextElementSibling;
-          if (lead?.tagName === "P") {
-            tl.from(
-              lead,
-              {
-                y: 8,
-                autoAlpha: 0,
-                duration: 0.42,
-                ease: "power2.out",
-                force3D: true,
-                clearProps: "transform,opacity,visibility",
-              },
-              0.1
-            );
-          }
-        });
-      });
-      return () => mm.revert();
-    },
-    { scope: deskRef }
   );
 
   useGSAP(
@@ -430,9 +424,10 @@ export default function LandingPage() {
       setSubject(name.replace(/\.(csv|xlsx|xlsm|xls|xer|xml)$/i, ""));
       setIsSample(false);
       setOpenCode(null);
+      setDecisions({});
       if (typeof result.overall_delay_probability === "number") {
         const p50 = result.estimated_project_slippage_days ?? 0;
-        setSummary({ prob: result.overall_delay_probability, slip: p50 });
+        setSummary({ prob: result.overall_delay_probability, slip: p50, p80: result.p80_slippage_days });
       }
       setStampKey((k) => k + 1);
     } catch (err) {
@@ -595,7 +590,16 @@ export default function LandingPage() {
               {t("Schedule Delay-Risk Inspection · B2B Manufacturing SaaS", "Inspeksi Risiko Keterlambatan Jadwal · SaaS Manufaktur B2B")}
             </p>
             <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[72px]">
-              <Words>{t("Know which tasks will slip before the work cell stalls", "Ketahui tugas yang akan mundur sebelum sel kerja berhenti")}</Words>
+              <ShinyText
+                text={t("Know which tasks will slip before the work cell stalls", "Ketahui tugas yang akan mundur sebelum sel kerja berhenti")}
+                color="#14181c"
+                shineColor="#2b3fbf"
+                speed={2.2}
+                delay={1.4}
+                shineWidth={35}
+                softness={0.85}
+                trigger="loop"
+              />
             </h1>
             <p data-hero-lead className="mt-5 max-w-136 text-base leading-relaxed text-ink-2">
               {t(
@@ -655,19 +659,18 @@ export default function LandingPage() {
         {/* Compatibility & plant governance strip */}
         <section
           aria-label={t("Supported exports and governance", "Ekspor yang didukung dan tata kelola")}
-          className="grid gap-3 border-b border-rule-strong bg-sheet-sunk px-5 py-3.5 text-xs text-ink-2 sm:px-8 lg:grid-cols-2 lg:items-center"
+          className="grid gap-3 border-b border-rule-strong bg-sheet-sunk px-5 py-3.5 text-xs text-ink-2 sm:px-8 lg:grid-cols-3 lg:items-baseline"
         >
-          <p>
-            <span className="font-semibold text-ink">{t("Schedule exports:", "Ekspor jadwal:")}</span>{" "}
-            SAP PS · MS Project · Primavera P6 · Excel / CSV {t("(English & Indonesian headers)", "(header bahasa Inggris & Indonesia)")}
-          </p>
-          <p className="lg:text-right">
-            <span className="font-semibold text-ink">{t("Plant controls:", "Kontrol pabrik:")}</span>{" "}
-            {t(
-              "Isolated workspace · Zero public model training · Full HITL audit trail",
-              "Workspace terisolasi · Tanpa pelatihan model publik · Jejak audit HITL lengkap"
-            )}
-          </p>
+          {[
+            { figure: "0.78", label: t("ROC-AUC on 51 held-out real projects, vs 0.53 for rule-based scoring", "ROC-AUC pada 51 proyek nyata yang tidak dipakai melatih, vs 0,53 untuk penilaian berbasis aturan") },
+            { figure: "2,000", label: t("Monte Carlo runs per schedule for P50 and P80 slip", "simulasi Monte Carlo per jadwal untuk kemunduran P50 dan P80") },
+            { figure: "4", label: t("schedule formats read: CSV, Excel, Primavera P6 .xer, MS Project XML", "format jadwal yang dibaca: CSV, Excel, Primavera P6 .xer, MS Project XML") },
+          ].map((fact) => (
+            <p key={fact.figure} className="flex items-baseline gap-2.5">
+              <span className="font-mono-numbers text-lg font-semibold text-ink">{fact.figure}</span>
+              <span>{fact.label}</span>
+            </p>
+          ))}
         </section>
 
         {/* Inspection table */}
@@ -756,13 +759,13 @@ export default function LandingPage() {
                             {r.drivers?.[0] ? t(r.drivers[0]) : <span className="text-ink-3">{r.done ? "—" : t("None reported", "Tidak ada")}</span>}
                           </td>
                           <td className="px-3 py-2.5">
-                            <Verdict tone={v.tone}>{t(v.label)}</Verdict>
+                            <Verdict tone={verdictOf(r).tone}>{verdictOf(r).label}</Verdict>
                           </td>
                         </tr>
                         {open && (
                           <tr className="border-b border-rule">
                             <td colSpan={8} className="p-0">
-                              <InspectionDetail row={r} id={`detail-${r.code}`} />
+                              <InspectionDetail row={r} id={`detail-${r.code}`} decision={decisions[r.code]} onDecide={decide(r.code)} />
                             </td>
                           </tr>
                         )}
@@ -794,7 +797,7 @@ export default function LandingPage() {
                           <span className="block font-mono-numbers text-xs text-ink-2">{r.code}</span>
                           <span className="block text-sm font-medium text-ink">{t(r.task)}</span>
                         </span>
-                        <Verdict tone={v.tone}>{t(v.label)}</Verdict>
+                        <Verdict tone={verdictOf(r).tone}>{verdictOf(r).label}</Verdict>
                       </span>
                     </button>
                     <div className="px-4 pb-3">
@@ -819,7 +822,7 @@ export default function LandingPage() {
                         {open ? t("Hide the reasons", "Sembunyikan alasan") : t("Why this verdict", "Kenapa putusan ini")}
                       </button>
                     </div>
-                    {open && <InspectionDetail row={r} id={`detail-m-${r.code}`} />}
+                    {open && <InspectionDetail row={r} id={`detail-m-${r.code}`} decision={decisions[r.code]} onDecide={decide(r.code)} />}
                   </li>
                 );
               })}
@@ -833,8 +836,8 @@ export default function LandingPage() {
               <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-2">
                 {summary
                   ? t(
-                    `${summary.prob.toFixed(1)}% chance the project misses its due date · median slip +${summary.slip.toFixed(1)} days. `,
-                    `${summary.prob.toFixed(1).replace(".", ",")}% peluang proyek melewati tenggat · median mundur +${summary.slip.toFixed(1).replace(".", ",")} hari. `
+                    `${summary.prob.toFixed(1)}% chance the project misses its due date · median slip +${summary.slip.toFixed(1)} days${summary.p80 !== undefined ? `, P80 +${summary.p80.toFixed(1)} days` : ""}. `,
+                    `${summary.prob.toFixed(1).replace(".", ",")}% peluang proyek melewati tenggat · median mundur +${summary.slip.toFixed(1).replace(".", ",")} hari${summary.p80 !== undefined ? `, P80 +${summary.p80.toFixed(1).replace(".", ",")} hari` : ""}. `
                   )
                   : t(`${hold} of ${rows.length} tasks are on hold. `, `${hold} dari ${rows.length} tugas ditahan. `)}
                 {t(
@@ -876,9 +879,13 @@ export default function LandingPage() {
               "Dilatih dengan 4.149 tugas nyata (rencana vs. aktual) dari 251 proyek publik ditambah jadwal sintetis. Pada 51 proyek nyata yang tidak dipakai saat pelatihan, MDIP mengurutkan tugas terlambat dengan ROC-AUC 0,78 dibanding 0,53 untuk penilaian berbasis aturan, diatur untuk peringatan dini sebelum sel kerja hilir berhenti."
             )}
           </p>
-          <ol className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
+          <ol data-gsap="stagger-group" className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
             {METHOD.map((step, index) => (
-              <li key={step.title[0]} className="relative pl-12 before:absolute before:-bottom-8 before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:-right-6 md:before:border-l-0 md:before:border-t">
+              <li
+                key={step.title[0]}
+                data-gsap="stagger-item"
+                className="relative pl-12 before:absolute before:-bottom-8 before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:-right-6 md:before:border-l-0 md:before:border-t"
+              >
                 <span aria-hidden="true" className="absolute left-0 top-0 grid size-8 place-items-center border border-ink bg-ink font-mono text-sm font-bold text-white md:relative">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -992,10 +999,11 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-8 border border-rule-strong bg-sheet/80 backdrop-blur-[1px]">
-              <div className="grid divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
+              <div data-gsap="stagger-group" className="grid divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
               {PLANS.map((plan) => (
                 <article
                   key={plan.name[0]}
+                  data-gsap="stagger-item"
                   className={`flex flex-col justify-between p-6 ${plan.featured ? "border-t-2 border-t-stamp bg-paper/80" : ""}`}
                 >
                   <div>
@@ -1048,12 +1056,12 @@ export default function LandingPage() {
                   ))}
                 </ul>
               </div>
-              <p className="mt-3 text-xs text-ink-3">
-                {t("Priced on request:", "Harga sesuai permintaan:")}{" "}
-                <a href={`mailto:${SALES_EMAIL}`} className="font-medium text-stamp hover:underline">
-                  {SALES_EMAIL}
-                </a>
-              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ink-3">
+                {t("Add-ons are priced on request.", "Harga layanan tambahan sesuai permintaan.")}
+                <LinkButton href={`mailto:${SALES_EMAIL}?subject=MDIP%20add-ons`} variant="secondary" size="sm">
+                  {t("Contact sales", "Hubungi sales")}
+                </LinkButton>
+              </div>
             </div>
           </section>
 

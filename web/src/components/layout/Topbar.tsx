@@ -94,8 +94,8 @@ export const Topbar: React.FC<TopbarProps> = ({
                 mode === "internal"
                   ? t("The MDIP server handles documents and Copilot questions locally.", "Server MDIP menangani dokumen dan pertanyaan Copilot secara lokal.")
                   : t(
-                      "Google Gemini may process PDF and Word schedules. DeepSeek or Gemini may process Copilot questions and retrieved context.",
-                      "Google Gemini dapat memproses jadwal PDF dan Word. DeepSeek atau Gemini dapat memproses pertanyaan Copilot dan konteks yang diambil."
+                      "DeepSeek or Google Gemini may read PDF and Word schedules. DeepSeek or Gemini may process Copilot questions and retrieved context.",
+                      "DeepSeek atau Google Gemini dapat membaca jadwal PDF dan Word. DeepSeek atau Gemini dapat memproses pertanyaan Copilot dan konteks yang diambil."
                     )
               }
               className={`flex h-7 cursor-pointer items-center gap-1 whitespace-nowrap rounded-sm px-2.5 font-medium transition-colors ${
