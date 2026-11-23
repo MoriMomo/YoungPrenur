@@ -20,6 +20,7 @@ import { KNOWLEDGE_DOCS, ROLES } from "@/lib/mock-data";
 import {
   AuthUser,
   checkApiHealth,
+  clearKnowledgeDocsApi,
   SESSION_EXPIRED_EVENT,
   setOnPremisesMode,
   fetchAuditLog,
@@ -31,6 +32,7 @@ import {
   fetchDecisionActions,
   ingestKnowledgeDoc,
   ingestSopClauses,
+  loadSampleKnowledgeDocs,
   logoutUser,
   subscribeAuth,
 } from "@/lib/api";
@@ -86,11 +88,11 @@ export default function DashboardLayout({
   const [isApiLive, setIsApiLive] = useState<boolean>(false);
   const [copilotStatus, setCopilotStatus] = useState<CopilotStatus>(DEFAULT_COPILOT_STATUS);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
 
   const [actions, setActions] = useState<DecisionAction[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
-  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>(KNOWLEDGE_DOCS);
+  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>([]);
   const [reviewingAction, setReviewingAction] = useState<DecisionAction | null>(null);
 
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
@@ -107,9 +109,7 @@ export default function DashboardLayout({
     hasUploadedSchedule = false
   ) => {
     const stored = readStoredCustomSops(uid);
-    const mergedDocs = loadedDocs
-      ? mergeKnowledgeDocs(loadedDocs, stored)
-      : mergeKnowledgeDocs(stored, KNOWLEDGE_DOCS);
+    const mergedDocs = loadedDocs ? mergeKnowledgeDocs(loadedDocs, stored) : stored;
     setKnowledgeDocs(mergedDocs);
     if (live && status) {
       setCopilotStatus({
@@ -226,8 +226,8 @@ export default function DashboardLayout({
     router.push("/login");
   };
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
+  const showToast = (msg: string, tone: "success" | "error" = "success") => {
+    setToast({ message: msg, tone });
   };
 
   const handleRoleChange = (newRole: ManufacturingRole) => {
@@ -333,9 +333,16 @@ export default function DashboardLayout({
   const saveSopClauses = async (rows: SopPayload[]): Promise<boolean> => {
     if (!(await ingestSopClauses(rows))) return false;
     const uid = currentUser?.id || null;
-    const [refreshedDocs, freshStatus] = await Promise.all([fetchKnowledgeDocs(), fetchCopilotStatus()]);
+    const [refreshedDocs, freshStatus, freshActions] = await Promise.all([
+      fetchKnowledgeDocs(),
+      fetchCopilotStatus(),
+      fetchDecisionActions(),
+    ]);
     setKnowledgeDocs(mergeKnowledgeDocs(refreshedDocs, readStoredCustomSops(uid)));
     setCopilotStatus(freshStatus);
+    if (readStoredUserSchedule(uid) !== null || freshActions) {
+      setActions(freshActions ?? []);
+    }
     return true;
   };
 
@@ -353,9 +360,10 @@ export default function DashboardLayout({
     if (res?.success) {
       const remainingStored = readStoredCustomSops(uid).filter((d) => d.code.toUpperCase() !== code);
       writeStoredCustomSops(remainingStored, uid);
-      const [refreshedDocs, freshStatus] = await Promise.all([
+      const [refreshedDocs, freshStatus, freshActions] = await Promise.all([
         fetchKnowledgeDocs(),
         fetchCopilotStatus(),
+        fetchDecisionActions(),
       ]);
       const mergedDocs = mergeKnowledgeDocs(refreshedDocs, remainingStored);
       setKnowledgeDocs(mergedDocs);
@@ -363,6 +371,7 @@ export default function DashboardLayout({
         ...freshStatus,
         indexed_sops: Math.max(freshStatus.indexed_sops, res.total_documents ?? mergedDocs.length),
       });
+      if (freshActions) setActions(freshActions);
       return { syncedToBackend: true };
     }
 
@@ -396,6 +405,36 @@ export default function DashboardLayout({
     setKnowledgeDocs(mergedDocs);
     setCopilotStatus((prev) => ({ ...prev, indexed_sops: mergedDocs.length }));
     return { syncedToBackend: false };
+  };
+
+  const loadSampleSops = async () => {
+    const uid = currentUser?.id || null;
+    const remote = await loadSampleKnowledgeDocs();
+    if (remote) {
+      const merged = mergeKnowledgeDocs(remote, readStoredCustomSops(uid));
+      setKnowledgeDocs(merged);
+      const [freshStatus, freshActions] = await Promise.all([fetchCopilotStatus(), fetchDecisionActions()]);
+      setCopilotStatus({ ...freshStatus, indexed_sops: Math.max(freshStatus.indexed_sops, merged.length) });
+      if (freshActions) setActions(freshActions);
+      showToast(t("Loaded sample plant SOPs into your workspace.", "SOP contoh pabrik dimuat ke ruang kerja Anda."));
+      return;
+    }
+    const mergedOffline = mergeKnowledgeDocs(KNOWLEDGE_DOCS, readStoredCustomSops(uid));
+    writeStoredCustomSops(mergedOffline, uid);
+    setKnowledgeDocs(mergedOffline);
+    setCopilotStatus((prev) => ({ ...prev, indexed_sops: mergedOffline.length }));
+    showToast(t("Loaded sample SOPs in offline workspace.", "SOP contoh dimuat ke ruang kerja offline."));
+  };
+
+  const clearKnowledgeDocs = async () => {
+    const uid = currentUser?.id || null;
+    await clearKnowledgeDocsApi();
+    writeStoredCustomSops([], uid);
+    setKnowledgeDocs([]);
+    setCopilotStatus((prev) => ({ ...prev, indexed_sops: 0 }));
+    const freshActions = await fetchDecisionActions();
+    if (freshActions) setActions(freshActions);
+    showToast(t("Cleared SOP knowledge base back to blank.", "Basis pengetahuan SOP dikosongkan kembali."));
   };
 
   const clearChat = () => {
@@ -441,6 +480,8 @@ export default function DashboardLayout({
         knowledgeDocs,
         addKnowledgeDoc,
         saveSopClauses,
+        loadSampleSops,
+        clearKnowledgeDocs,
         chatMessages,
         isChatLoading,
         sendChatQuery,
@@ -509,7 +550,11 @@ export default function DashboardLayout({
           onSubmitDecision={handleDecisionReview}
         />
 
-        <Toast message={toastMessage} onClear={() => setToastMessage(null)} />
+        <Toast
+          message={toast?.message ?? null}
+          tone={toast?.tone}
+          onClear={() => setToast(null)}
+        />
       </div>
     </DashboardContext.Provider>
   );

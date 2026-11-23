@@ -34,7 +34,7 @@ export interface DashboardContextType {
   setDeploymentMode: (mode: DeploymentMode) => void;
   isApiLive: boolean;
   copilotStatus: CopilotStatus;
-  showToast: (msg: string) => void;
+  showToast: (msg: string, tone?: "success" | "error") => void;
   openCopilot: () => void;
   askCopilotWithPrompt: (query: string) => Promise<void>;
   actions: DecisionAction[];
@@ -50,6 +50,8 @@ export interface DashboardContextType {
   knowledgeDocs: KnowledgeDoc[];
   addKnowledgeDoc: (payload: SopPayload) => Promise<{ syncedToBackend: boolean }>;
   saveSopClauses: (rows: SopPayload[]) => Promise<boolean>;
+  loadSampleSops: () => Promise<void>;
+  clearKnowledgeDocs: () => Promise<void>;
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
   sendChatQuery: (query: string) => Promise<void>;
@@ -136,5 +138,5 @@ export const DEFAULT_COPILOT_STATUS: CopilotStatus = {
   llm_configured: false,
   provider: "retrieval",
   model: null,
-  indexed_sops: 4,
+  indexed_sops: 0,
 };

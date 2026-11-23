@@ -72,7 +72,7 @@ async def upload_scheduler_v1(
     n = len(analysis["tasks"])
     extraction_method = analysis.get("extraction_method", "table")
     document_summary = analysis.get("document_summary")
-    ai_parsed = str(extraction_method).startswith("gemini")
+    ai_parsed = str(extraction_method).startswith(("gemini", "deepseek"))
     action_verb = "Read with AI and extracted" if ai_parsed else "Extracted"
     return {
         "success": True,

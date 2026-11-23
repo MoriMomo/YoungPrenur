@@ -11,7 +11,7 @@ from ml.build_real_dataset import _parse_dslib_duration_days, _parse_dslib_preds
 from ml.features import FEATURE_NAMES, infer_category, task_features  # noqa: E402
 from ml.predictor import analyze_schedule  # noqa: E402
 from ml.train import _split_real_projects  # noqa: E402
-from schedule_parser import parse_schedule_document, parse_schedule_file  # noqa: E402
+from schedule_parser import compute_cpm, parse_schedule_document, parse_schedule_file  # noqa: E402
 
 
 class TestMlPipeline(unittest.TestCase):
@@ -166,6 +166,80 @@ class TestMlPipeline(unittest.TestCase):
         self.assertEqual(len(xml_res["tasks"]), 2)
         self.assertAlmostEqual(xml_res["tasks"][0]["planned_days"], 3.0)
         self.assertEqual(xml_res["tasks"][1]["start_day"], 1)  # SS+1d from UID 2
+
+    def test_hardened_xer_cp1252_loe_calendar_rsrc_and_active_forecast(self):
+        # Latin-1/cp1252 degree/en-dash characters, TT_LOE skipped, 10h calendar, RSRC join, TK_Active forecast
+        xer_bytes = (
+            "%T\tPROJECT\n"
+            "%F\tproj_id\tlast_recalc_date\n"
+            "%R\t1\t2026-02-10\n"
+            "%T\tCALENDAR\n"
+            "%F\tclndr_id\tday_hr_cnt\n"
+            "%R\t10\t10\n"
+            "%T\tRSRC\n"
+            "%F\trsrc_id\trsrc_name\n"
+            "%R\t200\tCNC Cell \u2013 Precision\n"
+            "%R\t201\tCMM Bay\n"
+            "%T\tTASK\n"
+            "%F\ttask_id\ttask_code\tclndr_id\ttask_type\tstatus_code\ttarget_drtn_hr_cnt\tremain_drtn_hr_cnt\tact_start_date\ttask_name\n"
+            "%R\t1\tLOE-1\t10\tTT_LOE\tTK_Active\t100\t50\t2026-02-01\tProject Management LOE\n"
+            "%R\t2\tA-10\t10\tTT_Task\tTK_Active\t40\t30\t2026-02-07\tRough Turning\n"
+            "%R\t3\tA-20\t10\tTT_Task\tTK_NotStart\t20\t20\t\tInspection Gate\n"
+            "%T\tTASKRSRC\n"
+            "%F\ttask_id\trsrc_id\n"
+            "%R\t2\t200\n"
+            "%R\t2\t201\n"
+            "%T\tTASKPRED\n"
+            "%F\ttask_id\tpred_task_id\tpred_type\tlag_hr_cnt\n"
+            "%R\t3\t2\tPR_FS\t10\n"
+        ).encode("cp1252")
+        res = parse_schedule_document(xer_bytes, "plant_p6.xer")
+        tasks = res["tasks"]
+        # TT_LOE skipped -> 2 tasks left
+        self.assertEqual([t["code"] for t in tasks], ["A-10", "A-20"])
+        # 40h / 10h per day = 4.0 planned days
+        self.assertAlmostEqual(tasks[0]["planned_days"], 4.0)
+        # TK_Active: (2026-02-10 - 2026-02-07 = 3.0d elapsed) + (30h / 10h = 3.0d remain) = 6.0d
+        self.assertAlmostEqual(tasks[0]["actual_days"], 6.0)
+        self.assertEqual(tasks[0]["work_center"], "CNC Cell \u2013 Precision")
+        # lag = 10h / 10h = 1d -> A-20 starts at 4 + 1 = 5
+        self.assertEqual(tasks[1]["start_day"], 5)
+
+    def test_sf_backward_pass_uses_successor_late_finish(self):
+        # P -> S via SF+0d: S cannot finish until P starts.
+        # P=3d (ES=0, EF=3), S=2d (ES=0..2), plus longer branch B=8d (ES=0..8) from START=0?
+        # Wait: connect P -(SF+0d)-> S -(FS+0d)-> END(4d), so EF_S >= ES_P=0 -> S is 0..2, END is 2..6.
+        # Comp_end = 6. LF_S = 2, LS_S = 0.
+        # Backward SF constraint: ES_P + 0 <= LF_S (= 2) -> LS_P <= 2 -> LF_P = min(comp_end=6, LF_S + dur_P = 2 + 3 = 5).
+        # Float_P = LF_P - EF_P = 5 - 3 = 2.0 (NOT LS_S + dur_P = 0 + 3 = 3 -> float 0!).
+        tasks = compute_cpm([
+            {
+                "code": "P",
+                "task": "Predecessor Task",
+                "planned_days": 3.0,
+                "actual_days": 3.0,
+                "predecessors": [],
+                "has_dependency_column": True,
+            },
+            {
+                "code": "S",
+                "task": "SF Successor",
+                "planned_days": 2.0,
+                "actual_days": 2.0,
+                "predecessors": ["P"],
+                "pred_links": [{"code": "P", "rel": "SF", "lag_days": 0.0}],
+                "has_dependency_column": True,
+            },
+            {
+                "code": "END",
+                "task": "Final Test",
+                "planned_days": 4.0,
+                "actual_days": 4.0,
+                "predecessors": ["S"],
+                "has_dependency_column": True,
+            },
+        ])
+        self.assertAlmostEqual(tasks[0]["float_days"], 2.0)
 
 
 if __name__ == "__main__":

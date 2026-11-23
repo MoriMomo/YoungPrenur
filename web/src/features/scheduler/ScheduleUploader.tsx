@@ -39,7 +39,7 @@ interface ScheduleUploaderProps {
   activeDocumentSummary?: string | null;
   onUploadComplete?: (data: ScheduleUploadResult) => void;
   onAskCopilot?: (query: string) => void;
-  onToast?: (message: string) => void;
+  onToast?: (message: string, tone?: "success" | "error") => void;
 }
 
 function splitCsvRow(line: string, sep: string): string[] {
@@ -206,7 +206,10 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
       }
     } catch (err) {
       clearSelection();
-      onToast?.(err instanceof ScheduleUploadError ? err.message : t(`Could not ingest ${name}.`, `Tidak dapat memasukkan ${name}.`));
+      onToast?.(
+        err instanceof ScheduleUploadError ? err.message : t(`Could not ingest ${name}.`, `Tidak dapat memasukkan ${name}.`),
+        "error"
+      );
       return;
     }
 
@@ -226,9 +229,10 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
     clearSelection();
     onToast?.(
       t(
-        "Backend offline: upload a valid CSV matching the template headers, or connect the MDIP service for Excel, PDF, and Word files.",
-        "Backend offline: unggah CSV valid sesuai header template, atau hubungkan layanan MDIP untuk file Excel, PDF, dan Word."
-      )
+        "Backend offline: upload a valid CSV matching the template headers, or connect the MDIP service for Excel, Primavera P6 (.xer), MS Project (.xml), PDF, and Word files.",
+        "Backend offline: unggah CSV valid sesuai header template, atau hubungkan layanan MDIP untuk file Excel, Primavera P6 (.xer), MS Project (.xml), PDF, dan Word."
+      ),
+      "error"
     );
   };
 
@@ -239,7 +243,7 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
       const res = await fetch(`${basePath}/sample_master_schedule_wbs.csv`);
       if (!res.ok) {
-        onToast?.(t("The sample schedule could not be loaded.", "Jadwal contoh tidak dapat dimuat."));
+        onToast?.(t("The sample schedule could not be loaded.", "Jadwal contoh tidak dapat dimuat."), "error");
         return;
       }
       const text = await res.text();
@@ -266,15 +270,15 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
   const displayCount = selectedFile ? parsedCount : activeTaskCount;
   const displayMethod = selectedFile ? lastMethod : activeExtractionMethod;
   const displaySummary = selectedFile ? lastSummary : activeDocumentSummary;
-  const isAiParsed = Boolean(displayMethod?.startsWith("gemini"));
+  const isAiParsed = Boolean(displayMethod?.startsWith("gemini") || displayMethod?.startsWith("deepseek"));
 
   return (
     <FileDrop
-      accept=".csv,.xlsx,.xls,.pdf,.docx,.doc"
+      accept=".csv,.xlsx,.xls,.xer,.xml,.pdf,.docx,.doc"
       maxBytes={4 * 1024 * 1024}
       disabled={isUploading}
       onFile={(file) => void handleFile(file)}
-      onReject={(message) => onToast?.(message)}
+      onReject={(message) => onToast?.(message, "error")}
       className="bg-white rounded-xl border border-rule p-5"
     >
       {(open) => (
@@ -287,8 +291,8 @@ export const ScheduleUploader: React.FC<ScheduleUploaderProps> = ({
               </h2>
               <p className="text-xs text-ink-2 mt-0.5">
                 {t(
-                  "Drop or upload a CSV, Excel, PDF, or Word (.docx) schedule (up to 4 MB) — AI reads PDF and Word files into WBS tasks and Copilot",
-                  "Letakkan atau unggah jadwal CSV, Excel, PDF, atau Word (.docx) (maks. 4 MB) — AI membaca file PDF dan Word menjadi tugas WBS dan Copilot"
+                  "Drop or upload a CSV, Excel, Primavera P6 (.xer), MS Project (.xml), PDF, or Word (.docx) schedule (up to 4 MB)",
+                  "Letakkan atau unggah jadwal CSV, Excel, Primavera P6 (.xer), MS Project (.xml), PDF, atau Word (.docx) (maks. 4 MB)"
                 )}
               </p>
             </div>

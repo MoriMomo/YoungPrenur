@@ -170,7 +170,8 @@ class TestCopilotService(unittest.TestCase):
         self.assertIn("SOP", res["reply"])
 
     def test_ingested_sop_connects_to_copilot_status_and_chat(self):
-        before = knowledge_api.copilot_status()["indexed_sops"]
+        test_user = {"id": "usr-test", "role": "Quality Manager"}
+        before = knowledge_api.copilot_status(user=test_user)["indexed_sops"]
         knowledge_api.ingest_knowledge_doc(
             SopDocumentPayload(
                 doc_code="SOP-QA-15",
@@ -178,14 +179,15 @@ class TestCopilotService(unittest.TestCase):
                 clause="Clause 2.1: Ultrasonic Rejection",
                 keywords=["ultrasonic", "porosity"],
                 excerpt="Reject any forging with ultrasonic porosity indication exceeding 1.5mm.",
-            )
+            ),
+            user=test_user,
         )
-        after = knowledge_api.copilot_status()["indexed_sops"]
+        after = knowledge_api.copilot_status(user=test_user)["indexed_sops"]
         self.assertEqual(after, before + 1)
 
         res = knowledge_api.copilot_chat(
             CopilotQuery(message="What does SOP QA 15 say about ultrasonic porosity?"),
-            user={"id": "usr-test", "role": "Quality Manager"},
+            user=test_user,
         )
         self.assertGreater(len(res["citations"]), 0)
         self.assertEqual(res["citations"][0]["doc_code"], "SOP-QA-15")

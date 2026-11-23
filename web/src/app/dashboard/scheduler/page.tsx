@@ -105,7 +105,7 @@ export default function SchedulerPage() {
     }
     if (data?.tasks && data.tasks.length > 0) {
       const cleanName = data.filename
-        ? data.filename.replace(/\.(csv|xlsx|xls|pdf|docx|doc)$/i, "").replace(/_/g, " ")
+        ? data.filename.replace(/\.(csv|xlsx|xlsm|xls|xer|xml|pdf|docx|doc)$/i, "").replace(/_/g, " ")
         : "Uploaded schedule";
       const totalSlip = data.tasks.reduce(
         (acc, t) => acc + Math.max(0, t.actualDays - t.plannedDays),

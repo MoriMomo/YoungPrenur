@@ -9,7 +9,7 @@ documents (Word, PDF and plain-text extraction), ai_reader (optional Gemini read
 
 from typing import Any, Dict, List, Optional
 
-from schedule_parser.ai_reader import _extract_schedule_with_gemini
+from schedule_parser.ai_reader import _extract_schedule_with_ai
 from schedule_parser.base import ScheduleParseError, _trim_excerpt
 from schedule_parser.cpm import compute_cpm
 from schedule_parser.documents import _extract_docx, _extract_pdf_text, _parse_text_schedule_heuristic
@@ -57,12 +57,13 @@ def parse_schedule_document(content: bytes, filename: str, allow_external_ai: bo
             raise ScheduleParseError(f"No readable text or tables found in Word document {filename}.")
 
         ai_result, ai_error = (
-            _extract_schedule_with_gemini(filename, text=full_text) if allow_external_ai else (None, None)
+            _extract_schedule_with_ai(filename, text=full_text) if allow_external_ai else (None, None)
         )
         if ai_result:
+            provider = ai_result.get("provider", "gemini")
             return _doc_result(
                 ai_result["tasks"],
-                "gemini_document",
+                f"{provider}_document",
                 project_name=ai_result.get("project_name"),
                 document_summary=ai_result.get("document_summary"),
                 document_excerpt=excerpt,
@@ -81,23 +82,24 @@ def parse_schedule_document(content: bytes, filename: str, allow_external_ai: bo
             raise ScheduleParseError(f"Could not find a schedule table in {filename}. On-premises mode reads only schedule tables and selectable text. Switch to Cloud mode to let the AI reader extract tasks from this document.")
         raise ScheduleParseError(
             f"Could not find WBS activities with planned durations in {filename}. "
-            "Include a schedule table (Activity Name + Planned Duration), or configure GEMINI_API_KEY for AI reading."
+            "Include a schedule table (Activity Name + Planned Duration), or configure DEEPSEEK_API_KEY / GEMINI_API_KEY for AI reading."
         )
 
     if low.endswith(".pdf"):
         pdf_text = _extract_pdf_text(content, filename)
         ai_result, ai_error = (
-            _extract_schedule_with_gemini(filename, pdf_bytes=content, text=pdf_text)
+            _extract_schedule_with_ai(filename, pdf_bytes=content, text=pdf_text)
             if allow_external_ai
             else (None, None)
         )
         if ai_result:
+            provider = ai_result.get("provider", "gemini")
             combined = "\n\n".join(
                 part for part in (ai_result.get("document_summary") or "", pdf_text) if part.strip()
             )
             return _doc_result(
                 ai_result["tasks"],
-                "gemini_pdf",
+                f"{provider}_pdf",
                 project_name=ai_result.get("project_name"),
                 document_summary=ai_result.get("document_summary"),
                 document_excerpt=_trim_excerpt(combined),
@@ -130,7 +132,7 @@ def parse_schedule_document(content: bytes, filename: str, allow_external_ai: bo
             )
         raise ScheduleParseError(
             f"Could not extract WBS tasks with planned durations from {filename}. "
-            "Configure GEMINI_API_KEY for AI document reading or include columns like Activity Name and Planned Duration (days)."
+            "Configure DEEPSEEK_API_KEY / GEMINI_API_KEY for AI document reading or include columns like Activity Name and Planned Duration (days)."
         )
 
     raise ScheduleParseError(

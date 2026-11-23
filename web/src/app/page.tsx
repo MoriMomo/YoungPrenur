@@ -189,24 +189,24 @@ export default function LandingPage() {
     return () => window.removeEventListener("resize", place);
   }, [activeRole]);
 
-  // Risk and timeline bars fill from zero once they scroll into view, and again after each new inspection.
+  // Risk bars fill from zero once they scroll into view, and again after each new inspection.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.from("[data-risk-fill]", {
+        const visibleRiskBars = gsap.utils
+          .toArray<HTMLElement>("[data-risk-fill]")
+          .filter((el) => el.offsetParent !== null);
+        if (!visibleRiskBars.length) return;
+        gsap.from(visibleRiskBars, {
           scaleX: 0,
-          duration: 0.7,
+          transformOrigin: "0% 50%",
+          duration: 0.55,
+          stagger: 0.04,
           ease: "power2.out",
-          stagger: 0.05,
-          scrollTrigger: { trigger: "#inspection-title", start: "top 85%", once: true },
-        });
-        gsap.from("[data-gantt-bar]", {
-          scaleX: 0,
-          duration: 0.6,
-          ease: "power2.out",
-          stagger: 0.06,
-          scrollTrigger: { trigger: "#cockpit-title", start: "top 80%", once: true },
+          overwrite: "auto",
+          clearProps: "transform",
+          scrollTrigger: { trigger: "#inspection-title", start: "top 88%", once: true },
         });
       });
       return () => mm.revert();
@@ -214,18 +214,48 @@ export default function LandingPage() {
     { scope: deskRef, dependencies: [rows], revertOnUpdate: true }
   );
 
-  // The validation stamp presses in like ink the first time the certificate comes into view.
+  // Cockpit preview Gantt bars fill smoothly once when scrolled into view.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.utils.toArray<HTMLElement>("[data-stamp-press]").forEach((el) => {
-          gsap.fromTo(
-            el,
-            { scale: 1.08, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.32, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 85%", once: true } }
-          );
+        gsap.from("[data-gantt-bar]", {
+          scaleX: 0,
+          transformOrigin: "0% 50%",
+          duration: 0.55,
+          stagger: 0.045,
+          ease: "power2.out",
+          clearProps: "transform",
+          scrollTrigger: { trigger: "#cockpit-title", start: "top 85%", once: true },
         });
+      });
+      return () => mm.revert();
+    },
+    { scope: deskRef }
+  );
+
+  // The validation stamp presses in like ink only when the visible stamp enters view.
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.utils
+          .toArray<HTMLElement>("[data-stamp-press]")
+          .filter((el) => el.offsetParent !== null)
+          .forEach((el) => {
+            gsap.fromTo(
+              el,
+              { scale: 1.12, autoAlpha: 0 },
+              {
+                scale: 1,
+                autoAlpha: 1,
+                duration: 0.38,
+                ease: "back.out(1.4)",
+                clearProps: "transform,opacity,visibility",
+                scrollTrigger: { trigger: el, start: "top 88%", once: true },
+              }
+            );
+          });
       });
       return () => mm.revert();
     },
@@ -237,36 +267,24 @@ export default function LandingPage() {
       if (!deskRef.current) return;
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.fromTo(
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: deskRef.current,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 0.8,
+          },
+        });
+        tl.fromTo(
           "[data-scribble-path]",
-          { strokeDasharray: 1, strokeDashoffset: 1 },
-          {
-            strokeDashoffset: 0,
-            ease: "none",
-            stagger: 0.12,
-            scrollTrigger: {
-              trigger: deskRef.current,
-              start: "top top",
-              end: "bottom bottom",
-              scrub: 0.6,
-            },
-          }
-        );
-        gsap.fromTo(
+          { strokeDasharray: 1.05, strokeDashoffset: 1.05, autoAlpha: 0 },
+          { strokeDashoffset: 0, autoAlpha: 1, duration: 1, stagger: 0.18, ease: "none" },
+          0
+        ).fromTo(
           "[data-scribble-label]",
-          { opacity: 0, y: 4 },
-          {
-            opacity: 1,
-            y: 0,
-            ease: "none",
-            stagger: 0.12,
-            scrollTrigger: {
-              trigger: deskRef.current,
-              start: "top top",
-              end: "bottom bottom",
-              scrub: 0.6,
-            },
-          }
+          { autoAlpha: 0, y: 4 },
+          { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.18, ease: "none" },
+          0.08
         );
       });
       return () => mm.revert();
@@ -278,49 +296,83 @@ export default function LandingPage() {
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // Headline words rise out of a blur. No opacity, so the headline counts as painted at once (LCP).
-        gsap.from("h1 [data-word]", {
-          yPercent: 35,
-          filter: "blur(10px)",
-          duration: 0.8,
-          stagger: 0.05,
-          ease: "power3.out",
-          clearProps: "transform,filter",
-        });
-        gsap.from("[data-hero-item] > :not(h1)", {
-          y: 14,
-          opacity: 0,
-          duration: 0.6,
-          stagger: 0.08,
-          delay: 0.3,
-          ease: "power2.out",
-          clearProps: "transform,opacity",
-        });
+        const tl = gsap.timeline({ defaults: { ease: "power3.out", force3D: true } });
+        tl.from("[data-hero-eyebrow]", {
+          y: 8,
+          autoAlpha: 0,
+          duration: 0.4,
+          clearProps: "transform,opacity,visibility",
+        })
+          .from(
+            "h1 [data-word]",
+            {
+              y: 14,
+              opacity: 0,
+              duration: 0.48,
+              stagger: 0.026,
+              clearProps: "transform,opacity",
+            },
+            0.05
+          )
+          .from(
+            "[data-hero-card]",
+            {
+              y: 12,
+              autoAlpha: 0,
+              duration: 0.5,
+              clearProps: "transform,opacity,visibility",
+            },
+            0.12
+          )
+          .from(
+            ["[data-hero-lead]", "[data-hero-cta]"],
+            {
+              y: 10,
+              autoAlpha: 0,
+              duration: 0.45,
+              stagger: 0.07,
+              clearProps: "transform,opacity,visibility",
+            },
+            0.22
+          );
       });
       return () => mm.revert();
     },
     { scope: heroRef }
   );
 
-  // Section titles: words rise in a stagger as they scroll into view, the intro line follows.
+  // Section titles: words rise smoothly in a fast stagger as they scroll into view, followed by the lead line.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         gsap.utils.toArray<HTMLElement>('h2[id$="-title"]').forEach((title) => {
-          const trigger = { trigger: title, start: "top 88%", once: true };
-          gsap.from(title.querySelectorAll("[data-word]"), {
-            yPercent: 70,
+          const tl = gsap.timeline({
+            scrollTrigger: { trigger: title, start: "top 90%", once: true, fastScrollEnd: true },
+          });
+          tl.from(title.querySelectorAll("[data-word]"), {
+            y: 12,
             autoAlpha: 0,
-            duration: 0.7,
-            stagger: 0.06,
-            ease: "power3.out",
+            duration: 0.42,
+            stagger: 0.024,
+            ease: "power2.out",
+            force3D: true,
             clearProps: "transform,opacity,visibility",
-            scrollTrigger: trigger,
           });
           const lead = title.nextElementSibling;
           if (lead?.tagName === "P") {
-            gsap.from(lead, { y: 12, autoAlpha: 0, duration: 0.7, delay: 0.2, ease: "power2.out", clearProps: "transform,opacity,visibility", scrollTrigger: trigger });
+            tl.from(
+              lead,
+              {
+                y: 8,
+                autoAlpha: 0,
+                duration: 0.42,
+                ease: "power2.out",
+                force3D: true,
+                clearProps: "transform,opacity,visibility",
+              },
+              0.1
+            );
           }
         });
       });
@@ -375,7 +427,7 @@ export default function LandingPage() {
           done: /complete|done|selesai/i.test(t.status),
         }))
       );
-      setSubject(name.replace(/\.(csv|xlsx|xls)$/i, ""));
+      setSubject(name.replace(/\.(csv|xlsx|xlsm|xls|xer|xml)$/i, ""));
       setIsSample(false);
       setOpenCode(null);
       if (typeof result.overall_delay_probability === "number") {
@@ -511,7 +563,7 @@ export default function LandingPage() {
         </span>
         <span>B4</span>
       </div>
-      <div className="cert-frame relative z-10 mx-auto max-w-[1440px] bg-sheet shadow-[0_24px_60px_-24px_rgb(20_24_28/0.18)]">
+      <div className="cert-frame relative z-10 mx-auto max-w-360 bg-sheet shadow-[0_24px_60px_-24px_rgb(20_24_28/0.18)]">
         <Navbar />
 
         {/* Subject and action */}
@@ -538,20 +590,20 @@ export default function LandingPage() {
               opacity={0.34}
             />
           </div>
-          <div data-hero-item className="lg:col-span-7">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-ink-3">
+          <div className="lg:col-span-7">
+            <p data-hero-eyebrow className="font-mono text-xs uppercase tracking-[0.08em] text-ink-3">
               {t("Schedule Delay-Risk Inspection · B2B Manufacturing SaaS", "Inspeksi Risiko Keterlambatan Jadwal · SaaS Manufaktur B2B")}
             </p>
             <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[72px]">
               <Words>{t("Know which tasks will slip before the work cell stalls", "Ketahui tugas yang akan mundur sebelum sel kerja berhenti")}</Words>
             </h1>
-            <p className="mt-5 max-w-[34rem] text-base leading-relaxed text-ink-2">
+            <p data-hero-lead className="mt-5 max-w-136 text-base leading-relaxed text-ink-2">
               {t(
                 "MDIP inspects a project schedule the way your plant inspects a steel bar: every task's forecast measured against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.",
                 "MDIP memeriksa jadwal proyek seperti pabrik Anda memeriksa batang baja: prakiraan tiap tugas diukur terhadap rencananya, putusan risiko keterlambatan beserta alasannya, dan supervisor bernama yang mengesahkan perbaikannya."
               )}
             </p>
-            <div className="mt-6 flex flex-wrap gap-2.5">
+            <div data-hero-cta className="mt-6 flex flex-wrap gap-2.5">
               <LinkButton href="/login?mode=register" size="lg">
                 {t("Start 30-day pilot", "Mulai pilot 30 hari")}
               </LinkButton>
@@ -561,9 +613,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div data-hero-item className="lg:col-span-5 lg:self-center">
+          <div data-hero-card className="lg:col-span-5 lg:self-center">
             <FileDrop
-              accept=".csv,.xlsx,.xls"
+              accept=".csv,.xlsx,.xls,.xer,.xml"
               maxBytes={2 * 1024 * 1024}
               disabled={busy}
               onFile={(file) => void inspect(file, file.name)}
@@ -575,8 +627,8 @@ export default function LandingPage() {
                   <h2 className="font-display text-xl font-bold text-ink">{t("Submit a schedule for inspection", "Kirim jadwal untuk diinspeksi")}</h2>
                   <p className="mt-1 text-sm text-ink-2">
                     {t(
-                      "Drop a CSV or Excel file here, or choose one: tasks, planned days and, if you have them, forecast days and dependencies.",
-                      "Letakkan file CSV atau Excel di sini, atau pilih satu: tugas, hari rencana, dan jika ada, hari prakiraan serta ketergantungan."
+                      "Drop a CSV, Excel, Primavera P6 (.xer), or MS Project (.xml) file here, or choose one to inspect tasks, critical path, and delay risk.",
+                      "Letakkan file CSV, Excel, Primavera P6 (.xer), atau MS Project (.xml) di sini, atau pilih satu untuk memeriksa tugas, jalur kritis, dan risiko terlambat."
                     )}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -590,7 +642,7 @@ export default function LandingPage() {
                     </Button>
                   </div>
                   {notice && (
-                    <p role="status" className="mt-3 border border-warn-line bg-warn-wash px-3 py-2 text-sm text-warn">
+                    <p role="alert" className="mt-3 border border-hold-line bg-hold-wash px-3 py-2 text-sm text-hold">
                       {notice}
                     </p>
                   )}
@@ -631,7 +683,7 @@ export default function LandingPage() {
           </div>
 
           <div className="relative mt-5">
-            <div data-stamp-press className="absolute -top-[84px] right-1.5 z-20 hidden xl:block">
+            <div data-stamp-press className="absolute -top-21 right-1.5 z-20 hidden xl:block">
               <Stamp
                 key={stampKey}
                 top={t("Validated on real data", "Divalidasi data nyata")}
@@ -644,7 +696,7 @@ export default function LandingPage() {
 
             {/* Desktop and tablet: the ruled inspection table */}
             <div className="relative hidden overflow-x-auto border border-rule-strong md:block">
-              <table className="w-full min-w-[820px] border-collapse text-sm">
+              <table className="w-full min-w-205 border-collapse text-sm">
                 <thead>
                   <tr className="bg-paper text-left text-xs text-ink-2">
                     <th scope="col" className="border-b border-rule-strong px-3 py-2.5 font-medium">WBS</th>
@@ -722,7 +774,8 @@ export default function LandingPage() {
             </div>
 
             {/* Phones: one stacked record per task, verdict always visible */}
-            <ol className="divide-y divide-rule border border-rule-strong md:hidden">
+            <div className="border border-rule-strong md:hidden">
+              <ol className="divide-y divide-rule">
               {rows.map((r) => {
                 const v = verdictFor(r);
                 const over = r.forecast > r.planned;
@@ -770,13 +823,14 @@ export default function LandingPage() {
                   </li>
                 );
               })}
-            </ol>
+              </ol>
+            </div>
           </div>
 
           <div className="mt-5 grid gap-5 border-t border-rule pt-5 md:grid-cols-12">
             <div className="md:col-span-8">
               <h3 className="text-sm font-semibold text-ink">{t("Remarks", "Catatan")}</h3>
-              <p className="mt-1 max-w-[36rem] text-sm leading-relaxed text-ink-2">
+              <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-2">
                 {summary
                   ? t(
                     `${summary.prob.toFixed(1)}% chance the project misses its due date · median slip +${summary.slip.toFixed(1)} days. `,
@@ -816,7 +870,7 @@ export default function LandingPage() {
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
             <Words>{t("How a verdict is reached", "Bagaimana putusan dibuat")}</Words>
           </h2>
-          <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
+          <p className="mt-2 max-w-136 text-sm leading-relaxed text-ink-2">
             {t(
               "Trained on 4,149 real planned-versus-actual tasks from 251 public projects plus synthetic schedules. On 51 held-out real projects, MDIP ranks late tasks at ROC-AUC 0.78 versus 0.53 for rule-based scoring, tuned for early-warning coverage before downstream work cells stall.",
               "Dilatih dengan 4.149 tugas nyata (rencana vs. aktual) dari 251 proyek publik ditambah jadwal sintetis. Pada 51 proyek nyata yang tidak dipakai saat pelatihan, MDIP mengurutkan tugas terlambat dengan ROC-AUC 0,78 dibanding 0,53 untuk penilaian berbasis aturan, diatur untuk peringatan dini sebelum sel kerja hilir berhenti."
@@ -824,7 +878,7 @@ export default function LandingPage() {
           </p>
           <ol className="relative mt-10 grid gap-8 md:grid-cols-4 md:gap-6">
             {METHOD.map((step, index) => (
-              <li key={step.title[0]} className="relative pl-12 before:absolute before:bottom-[-2rem] before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:right-[-1.5rem] md:before:border-l-0 md:before:border-t">
+              <li key={step.title[0]} className="relative pl-12 before:absolute before:-bottom-8 before:left-4 before:top-4 before:border-l before:border-rule-strong last:before:hidden md:pl-0 md:before:bottom-auto md:before:left-4 md:before:-right-6 md:before:border-l-0 md:before:border-t">
                 <span aria-hidden="true" className="absolute left-0 top-0 grid size-8 place-items-center border border-ink bg-ink font-mono text-sm font-bold text-white md:relative">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -842,7 +896,7 @@ export default function LandingPage() {
               <h2 id="roles-title" className="font-display text-[34px] font-bold leading-tight text-ink">
                 <Words>{t("One certificate, six readers", "Satu sertifikat, enam pembaca")}</Words>
               </h2>
-              <p className="mt-2 max-w-[32rem] text-sm leading-relaxed text-ink-2">
+              <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-2">
                 {t(
                   "Each role opens the same project and sees the measurements it is accountable for.",
                   "Setiap peran membuka proyek yang sama dan melihat ukuran yang menjadi tanggung jawabnya."
@@ -882,14 +936,16 @@ export default function LandingPage() {
             </div>
             <div className="md:col-span-7">
               <p className="text-sm font-medium text-ink">{t("Measurements on this role's certificate", "Ukuran pada sertifikat peran ini")}</p>
-              <ul className="mt-2 divide-y divide-rule border-y border-rule">
-                {role.kpis.map((k) => (
-                  <li key={k.title} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
-                    <span className="text-ink">{t(k.title)}</span>
-                    <span className="text-right text-xs text-ink-3">{t(k.subtle)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-2 border-y border-rule">
+                <ul className="divide-y divide-rule">
+                  {role.kpis.map((k) => (
+                    <li key={k.title} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+                      <span className="text-ink">{t(k.title)}</span>
+                      <span className="text-right text-xs text-ink-3">{t(k.subtle)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </section>
@@ -913,7 +969,7 @@ export default function LandingPage() {
               dpr={1}
               swellOnClick={false}
             />
-            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-sheet to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-b from-sheet to-transparent" />
           </div>
 
           {/* Plans & Pilot */}
@@ -923,7 +979,7 @@ export default function LandingPage() {
                 <h2 id="plans-title" className="font-display text-[34px] font-bold leading-tight text-ink">
                   <Words>{t("Plans & pricing", "Paket & harga")}</Words>
                 </h2>
-                <p className="mt-2 max-w-[34rem] text-sm leading-relaxed text-ink-2">
+                <p className="mt-2 max-w-136 text-sm leading-relaxed text-ink-2">
                   {t(
                     "Every subscription starts with a guided 30-day pilot on one active schedule. Billed monthly or annually.",
                     "Setiap langganan dimulai dengan pilot terpandu 30 hari pada satu jadwal aktif. Ditagih bulanan atau tahunan."
@@ -935,7 +991,8 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-8 grid border border-rule-strong bg-sheet/80 backdrop-blur-[1px] divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="mt-8 border border-rule-strong bg-sheet/80 backdrop-blur-[1px]">
+              <div className="grid divide-y divide-rule-strong md:grid-cols-3 md:divide-x md:divide-y-0">
               {PLANS.map((plan) => (
                 <article
                   key={plan.name[0]}
@@ -953,11 +1010,13 @@ export default function LandingPage() {
                       {plan.price && <span className="text-sm text-ink-3">{t("/ month", "/ bulan")}</span>}
                     </p>
                     <p className="mt-1.5 text-sm text-ink-2">{t(...plan.desc)}</p>
-                    <ul className="mt-5 divide-y divide-rule border-y border-rule text-sm text-ink-2 [&>li]:py-2.5">
-                      {plan.items.map((item) => (
-                        <li key={item[0]}>{t(...item)}</li>
-                      ))}
-                    </ul>
+                    <div className="mt-5 border-y border-rule">
+                      <ul className="divide-y divide-rule text-sm text-ink-2 [&>li]:py-2.5">
+                        {plan.items.map((item) => (
+                          <li key={item[0]}>{t(...item)}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                   <LinkButton
                     href={plan.href}
@@ -969,6 +1028,7 @@ export default function LandingPage() {
                   </LinkButton>
                 </article>
               ))}
+              </div>
             </div>
 
             <p className="mt-4 text-xs text-ink-2">
@@ -978,14 +1038,16 @@ export default function LandingPage() {
 
             <div className="mt-8">
               <h3 className="font-display text-xl font-bold text-ink">{t("Add-ons", "Layanan tambahan")}</h3>
-              <ul className="mt-3 grid border border-rule-strong bg-sheet/80 divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0">
-                {ADD_ONS.map((addOn) => (
-                  <li key={addOn.name[0]} className="p-5">
-                    <p className="text-sm font-semibold text-ink">{t(...addOn.name)}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-2">{t(...addOn.body)}</p>
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-3 border border-rule-strong bg-sheet/80">
+                <ul className="grid divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0">
+                  {ADD_ONS.map((addOn) => (
+                    <li key={addOn.name[0]} className="p-5">
+                      <p className="text-sm font-semibold text-ink">{t(...addOn.name)}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-ink-2">{t(...addOn.body)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <p className="mt-3 text-xs text-ink-3">
                 {t("Priced on request:", "Harga sesuai permintaan:")}{" "}
                 <a href={`mailto:${SALES_EMAIL}`} className="font-medium text-stamp hover:underline">
@@ -1021,7 +1083,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="relative z-10 grid grid-cols-1 border-b border-rule sm:grid-cols-2 lg:grid-cols-4 text-xs [&>*]:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:[&>*]:border-b-0 lg:[&>*:not(:last-child)]:border-r">
+            <div className="border-b border-rule">
+              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 text-xs *:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:*:border-b-0 lg:[&>*:not(:last-child)]:border-r">
               <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
                 <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Platform", "Platform")}</p>
                 <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
@@ -1060,6 +1123,7 @@ export default function LandingPage() {
                   <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">{t("Create Plant Account", "Buat Akun Pabrik")}</Link></li>
                   <li className="py-0.5">{t("Cloud SaaS & On-Premises VPC", "SaaS Cloud & VPC On-Premises")}</li>
                 </ul>
+              </div>
               </div>
             </div>
 

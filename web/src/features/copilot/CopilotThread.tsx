@@ -10,8 +10,8 @@ import { useT } from "@/lib/i18n";
 const STARTER_PROMPTS: [string, string][] = [
   ["What needs attention first today?", "Apa yang paling perlu diperhatikan hari ini?"],
   ["Summarize current schedule risks and bottlenecks", "Ringkas risiko dan hambatan jadwal saat ini"],
-  ["Which SOP covers press vibration limits?", "SOP mana yang mengatur batas getaran mesin press?"],
-  ["Explain the procurement rule for low stock cover", "Jelaskan aturan pengadaan saat ketahanan stok rendah"],
+  ["Summarize my uploaded SOP clauses and checks", "Ringkas klausul SOP yang saya unggah dan pemeriksaannya"],
+  ["Which critical-path tasks have the highest slip risk?", "Tugas jalur kritis mana yang risiko mundurnya tertinggi?"],
 ];
 
 interface CopilotThreadProps {
@@ -242,7 +242,7 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
               return (
                 <article
                   key={msg.id}
-                  className="space-y-3 border-b border-rule-soft pb-5 last:border-b-0 last:pb-1"
+                  className="space-y-3 not-last:border-b not-last:border-rule-soft not-last:pb-5 last:pb-1"
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
                     <span className="font-medium text-ink-2">
@@ -301,18 +301,18 @@ export const CopilotThread: React.FC<CopilotThreadProps> = ({
 
       {/* Unified composer */}
       <form onSubmit={handleSubmit} className="border-t border-rule-strong bg-sheet p-3 sm:p-4">
-        <div className="flex items-center gap-2 rounded-lg border border-rule-strong bg-paper px-3 py-1.5 focus-within:border-stamp focus-within:ring-2 focus-within:ring-stamp/20">
+        <div className="flex items-center gap-2 rounded-lg border not-focus-within:border-rule-strong bg-paper px-3 py-1.5 focus-within:border-stamp focus-within:ring-2 focus-within:ring-stamp/20">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={t("Ask about shop-floor risks, SOP clauses, or WBS slippage", "Tanyakan risiko lantai produksi, klausul SOP, atau kemunduran WBS")}
-            className="flex-1 bg-transparent py-1 text-sm text-ink placeholder:text-ink-3 focus:outline-none"
+            className="flex-1 bg-transparent py-1 text-sm text-ink [&::placeholder]:text-ink-3 focus:outline-none"
           />
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-stamp px-3 text-xs font-medium text-sheet transition-colors hover:bg-stamp-deep disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-stamp px-3 text-xs font-medium text-sheet transition-colors hover:bg-stamp-deep enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span>{t("Send", "Kirim")}</span>
             <Send className="h-3.5 w-3.5" strokeWidth={1.6} />

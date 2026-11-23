@@ -10,7 +10,7 @@ export interface DrawingTabProps {
   searchQuery: string;
   handleInspectWithAI: (entityName: string, detail: string) => void;
   drawings: DrawingApprovalItem[];
-  selectedDrawing: DrawingApprovalItem;
+  selectedDrawing: DrawingApprovalItem | null;
   setSelectedDwgId: React.Dispatch<React.SetStateAction<string>>;
   activeRevision: "Rev 2.0" | "Rev 3.1";
   setActiveRevision: React.Dispatch<React.SetStateAction<"Rev 2.0" | "Rev 3.1">>;
@@ -21,8 +21,11 @@ export interface DrawingTabProps {
 
 export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selectedDrawing, setSelectedDwgId, activeRevision, setActiveRevision, showGdtOverlay, setShowGdtOverlay, handleApproveSelectedDrawing }: DrawingTabProps) {
   const t = useT();
+  const isCompensated = activeRevision === "Rev 3.1";
+  const revStroke = isCompensated ? "var(--color-pass)" : "var(--color-hold)";
   return (
     <div className="space-y-5">
+      {selectedDrawing && (
       <div className="bg-paper rounded-xl p-4 sm:p-5 border border-rule-strong text-ink overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 mb-3 border-b border-rule-strong">
           <div>
@@ -189,7 +192,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                     ? "rgba(16, 185, 129, 0.08)"
                     : "rgba(239, 68, 68, 0.12)"
                 }
-                stroke={activeRevision === "Rev 3.1" ? "var(--color-pass)" : "var(--color-hold)"}
+                stroke={revStroke}
                 strokeWidth="2.5"
               />
 
@@ -201,7 +204,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                   height="104"
                   rx="6"
                   fill="none"
-                  stroke={activeRevision === "Rev 3.1" ? "var(--color-pass)" : "var(--color-hold)"}
+                  stroke={revStroke}
                   strokeWidth="2"
                   strokeDasharray="5 3"
                 />
@@ -258,14 +261,14 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                 <polyline
                   points="210,135 270,75 490,75"
                   fill="none"
-                  stroke={activeRevision === "Rev 3.1" ? "var(--color-pass)" : "var(--color-hold)"}
+                  stroke={revStroke}
                   strokeWidth="1.5"
                 />
                 <circle
                   cx="210"
                   cy="135"
                   r="3"
-                  fill={activeRevision === "Rev 3.1" ? "var(--color-pass)" : "var(--color-hold)"}
+                  fill={revStroke}
                 />
                 <rect
                   x="490"
@@ -274,13 +277,13 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                   height="78"
                   rx="8"
                   fill="var(--color-paper)"
-                  stroke={activeRevision === "Rev 3.1" ? "var(--color-pass)" : "var(--color-hold)"}
+                  stroke={revStroke}
                   strokeWidth="1.5"
                 />
                 <text
                   x="502"
                   y="52"
-                  fill={activeRevision === "Rev 3.1" ? "var(--color-pass)" : "var(--color-hold)"}
+                  fill={revStroke}
                   fontSize="10"
                   fontWeight="bold"
                 >
@@ -341,7 +344,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
               type="button"
               onClick={handleApproveSelectedDrawing}
               disabled={selectedDrawing.status === "Approved"}
-              className="px-3 py-1.5 rounded-lg bg-stamp hover:bg-stamp-deep disabled:bg-pass text-sheet text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer disabled:cursor-default"
+              className="px-3 py-1.5 rounded-lg enabled:bg-stamp enabled:hover:bg-stamp-deep disabled:bg-pass text-sheet text-xs font-medium transition-colors flex items-center gap-1.5 enabled:cursor-pointer disabled:cursor-default"
             >
               <Check className="w-3.5 h-3.5" />
               <span>
@@ -353,6 +356,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
           </div>
         </div>
       </div>
+      )}
 
       <IRoomTable
         headers={[
@@ -375,7 +379,7 @@ export function DrawingTab({ searchQuery, handleInspectWithAI, drawings, selecte
                   key={dwg.id}
                   onClick={() => setSelectedDwgId(dwg.id)}
                   className={`transition-colors cursor-pointer ${
-                    selectedDrawing.id === dwg.id ? "bg-stamp-wash" : "hover:bg-paper"
+                    selectedDrawing?.id === dwg.id ? "bg-stamp-wash" : "hover:bg-paper"
                   }`}
                 >
                   <td className="py-3 px-3">

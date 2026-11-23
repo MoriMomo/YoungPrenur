@@ -2,7 +2,7 @@
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import database
 from ml.features import infer_category
@@ -30,15 +30,61 @@ def _infer_task_category(task: Dict[str, Any]) -> str:
     return infer_category(str(task.get("task", "")), str(task.get("work_center", "")))
 
 
+def _stream_workspace(workspace: Optional[str]) -> Optional[str]:
+    if not workspace:
+        return None
+    return workspace[:-7] if workspace.endswith(":upload") else workspace
+
+
+def _match_sop_for_context(
+    query_text: str,
+    sops: List[Dict[str, Any]],
+    preferred_code: str = "",
+) -> Tuple[str, str]:
+    """Match the best user-indexed SOP clause for a task/alert; returns ('', '') when user has no SOPs."""
+    if not sops:
+        return "", ""
+    q_low = query_text.lower()
+    q_tokens = set(re.findall(r"[a-z0-9\-]{2,}", q_low))
+    best_score = -1.0
+    best_doc = None
+    for doc in sops:
+        code = str(doc.get("doc_code", "")).strip()
+        score = 0.0
+        if code and code.lower() in q_low:
+            score += 8.0
+        if preferred_code and code.upper() == preferred_code.upper():
+            score += 2.0
+        for kw in doc.get("keywords", []):
+            kw_low = str(kw).strip().lower()
+            if kw_low and kw_low in q_low:
+                score += 3.0
+        hay = f"{doc.get('title', '')} {doc.get('clause', '')} {doc.get('excerpt', '')}".lower()
+        hay_tokens = set(re.findall(r"[a-z0-9\-]{2,}", hay))
+        score += float(len(q_tokens & hay_tokens))
+        if score > best_score:
+            best_score = score
+            best_doc = doc
+    if best_doc and best_score > 0:
+        return str(best_doc["doc_code"]), str(best_doc.get("clause", ""))
+    if preferred_code:
+        for doc in sops:
+            if str(doc.get("doc_code", "")).upper() == preferred_code.upper():
+                return str(doc["doc_code"]), str(doc.get("clause", ""))
+    return str(sops[0]["doc_code"]), str(sops[0].get("clause", ""))
+
+
 def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = None) -> List[Dict[str, Any]]:
     """Derive prioritized HITL decision briefs from a schedule analysis & IRoom telemetry.
 
-    `workspace` scopes sign-off statuses to one user's schedule.
+    `workspace` scopes sign-off statuses and SOP references to one user's workspace.
     """
     statuses = database.get_decision_statuses(workspace)
-    materials = database.get_stream("materials")
-    operations = database.get_stream("operations")
-    drawings = database.get_stream("drawings")
+    stream_ws = _stream_workspace(workspace)
+    user_sops = database.get_sops(workspace=stream_ws)
+    materials = database.get_stream("materials", workspace=stream_ws)
+    operations = database.get_stream("operations", workspace=stream_ws)
+    drawings = database.get_stream("drawings", workspace=stream_ws)
 
     decisions: List[Dict[str, Any]] = []
 
@@ -55,12 +101,21 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
     for t in risk_tasks[:6]:
         risk = float(t.get("delay_risk", 0))
         cat = _infer_task_category(t)
-        dept, sop_code, default_owner = CATEGORY_ROUTING.get(cat, CATEGORY_ROUTING["other"])
+        dept, preferred_sop, default_owner = CATEGORY_ROUTING.get(cat, CATEGORY_ROUTING["other"])
         drivers = [d.get("label", "") for d in t.get("drivers", []) if d.get("label")]
         driver_summary = ", ".join(drivers[:2]) if drivers else "critical-path schedule sensitivity"
         slip = float(t.get("expected_slip_days", 0))
         var_days = int(t.get("variance_days", 0))
         confidence = round(max(0.55, min(0.98, risk if risk >= 0.55 else 0.72)) * 100)
+
+        sop_code, sop_clause = _match_sop_for_context(
+            f"{t.get('code', '')} {t.get('task', '')} {t.get('work_center', '')} {cat} {dept} {driver_summary}",
+            user_sops,
+            preferred_code="" if stream_ws else preferred_sop,
+        )
+        sop_phrase = (
+            f"{sop_code} ({sop_clause})" if sop_code and sop_clause else sop_code
+        )
 
         if risk >= 0.75 or (t.get("critical") and var_days >= 2):
             urgency, badge = "Urgent", "red"
@@ -97,7 +152,9 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
             "checklist": [
                 f"Verify field telemetry & actual progress on {t['code']} ({t.get('work_center') or dept})",
                 f"Review primary SHAP driver: {driver_summary}",
-                f"Apply mitigation protocol under {sop_code} and log sign-off",
+                f"Apply mitigation protocol under {sop_phrase} and log sign-off"
+                if sop_phrase
+                else "Verify procedure in SOP Knowledge Base and log sign-off",
             ],
         })
 
@@ -108,6 +165,11 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
             if cover <= 48:
                 action_id = f"act-iroom-{_slug(str(mat.get('id', mat.get('partNumber', 'mat'))))}"
                 persisted = statuses.get(action_id, {})
+                mat_sop, _ = _match_sop_for_context(
+                    f"procurement inventory stock cover supplier freight {mat.get('partNumber', '')} {mat.get('description', '')}",
+                    user_sops,
+                    preferred_code="" if stream_ws else "SOP-SCM-12",
+                )
                 decisions.append({
                     "id": action_id,
                     "title": f"Expedite Stock Cover for {mat.get('partNumber', 'Material')}",
@@ -122,14 +184,14 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
                     "impact": f"Safeguards open purchase order {mat.get('openPo', 'PO-ACTIVE')} against line stoppage",
                     "owner": "Supply Chain Lead",
                     "due": "Within 4 hours",
-                    "source_doc": "SOP-SCM-12",
+                    "source_doc": mat_sop,
                     "flagged": bool(persisted.get("flagged", False)),
                     "status": persisted.get("status", "pending"),
                     "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
                     "checklist": [
                         f"Verify physical warehouse stock for {mat.get('partNumber')} ({int(cover)}h remaining)",
                         f"Confirm expedited freight clearance against {mat.get('openPo', 'open PO')}",
-                        "Log supplier ETA confirmation under SOP-SCM-12",
+                        f"Log supplier ETA confirmation under {mat_sop}" if mat_sop else "Log supplier ETA confirmation and SOP check",
                     ],
                 })
 
@@ -139,6 +201,12 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
             if vib == "ELEVATED" or oee < 75.0:
                 action_id = f"act-iroom-{_slug(str(op.get('id', op.get('machineId', 'op'))))}"
                 persisted = statuses.get(action_id, {})
+                pref_op_sop = "SOP-PRS-04" if "press" in str(op.get("workCenter", "")).lower() else "SOP-LINE2-OPT"
+                op_sop, _ = _match_sop_for_context(
+                    f"maintenance vibration oee {op.get('workCenter', '')} {op.get('machineId', '')}",
+                    user_sops,
+                    preferred_code="" if stream_ws else pref_op_sop,
+                )
                 decisions.append({
                     "id": action_id,
                     "title": f"Inspect {op.get('machineId', op.get('workCenter', 'Work Center'))} Anomaly",
@@ -153,14 +221,14 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
                     "impact": "Prevents unplanned mechanical downtime and tool collision on stamping/machining bay",
                     "owner": op.get("operator") or "Maintenance Lead",
                     "due": "Before next batch changeover",
-                    "source_doc": "SOP-PRS-04" if "press" in str(op.get("workCenter", "")).lower() else "SOP-LINE2-OPT",
+                    "source_doc": op_sop,
                     "flagged": bool(persisted.get("flagged", False)),
                     "status": persisted.get("status", "pending"),
                     "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
                     "checklist": [
                         f"Inspect transducer & mechanical clearances on {op.get('machineId', 'machine')}",
                         f"Verify operator load & cycle speed ({oee:.1f}% OEE)",
-                        "Record preventive sign-off per ISO 9001 Cl. 7.5",
+                        f"Record preventive sign-off under {op_sop}" if op_sop else "Record preventive sign-off per ISO 9001 Cl. 7.5",
                     ],
                 })
 
@@ -168,6 +236,11 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
             if dwg.get("criticalDwg") and "approved" not in str(dwg.get("status", "")).lower():
                 action_id = f"act-iroom-{_slug(str(dwg.get('id', dwg.get('dwgNumber', 'dwg'))))}"
                 persisted = statuses.get(action_id, {})
+                dwg_sop, _ = _match_sop_for_context(
+                    f"drawing engineering revision approval {dwg.get('dwgNumber', '')} {dwg.get('title', '')}",
+                    user_sops,
+                    preferred_code="" if stream_ws else "SOP-ENG-02",
+                )
                 decisions.append({
                     "id": action_id,
                     "title": f"Expedite Critical Sign-off: {dwg.get('dwgNumber', 'Drawing')}",
@@ -182,13 +255,13 @@ def compute_live_decisions(analysis: Dict[str, Any], workspace: Optional[str] = 
                     "impact": "Unblocks critical-path CAM toolpath release and machining prep",
                     "owner": dwg.get("engineer") or "Engineering Lead",
                     "due": "Within 4 working hours",
-                    "source_doc": "SOP-ENG-02",
+                    "source_doc": dwg_sop,
                     "flagged": bool(persisted.get("flagged", False)),
                     "status": persisted.get("status", "pending"),
                     "override_reason": persisted.get("notes") if persisted.get("status") == "overridden" else None,
                     "checklist": [
                         f"Validate GD&T tolerances on {dwg.get('dwgNumber')} ({dwg.get('revision', '')})",
-                        "Execute 4-working-hour SLA sign-off under SOP-ENG-02 Cl. 2.3",
+                        f"Execute sign-off check under {dwg_sop}" if dwg_sop else "Execute SLA sign-off and record verification",
                         "Release approved drawing to shop floor",
                     ],
                 })
@@ -205,8 +278,9 @@ def _compute_overview_kpis(analysis: Dict[str, Any], workspace: Optional[str] = 
     attainment = round(min(100.0, (total_planned / total_actual) * 100.0), 1) if total_actual > 0 else 100.0
     attainment_delta = round(attainment - 100.0, 1)
 
-    ops = database.get_stream("operations")
-    dwgs = database.get_stream("drawings")
+    stream_ws = _stream_workspace(workspace)
+    ops = database.get_stream("operations", workspace=stream_ws)
+    dwgs = database.get_stream("drawings", workspace=stream_ws)
     avg_oee = sum(float(o.get("oeePercent", 85.0)) for o in ops) / max(1, len(ops))
     elevated_sensors = sum(1 for o in ops if str(o.get("vibrationSensor", "NORMAL")).upper() != "NORMAL")
     revision_dwgs = sum(1 for d in dwgs if "revision" in str(d.get("status", "")).lower())
@@ -346,12 +420,15 @@ def _compute_performance_series(metric: str, analysis: Dict[str, Any]) -> Dict[s
     }
 
 
-def _compute_iroom_overview(extra_projects: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
-    materials = database.get_stream("materials")
-    projects = (extra_projects or []) + database.get_stream("progress")
-    drawings = database.get_stream("drawings")
-    quotations = database.get_stream("quotations")
-    operations = database.get_stream("operations")
+def _compute_iroom_overview(
+    extra_projects: Optional[List[Dict[str, Any]]] = None,
+    workspace: Optional[str] = None,
+) -> Dict[str, Any]:
+    materials = database.get_stream("materials", workspace=workspace)
+    projects = (extra_projects or []) + database.get_stream("progress", workspace=workspace)
+    drawings = database.get_stream("drawings", workspace=workspace)
+    quotations = database.get_stream("quotations", workspace=workspace)
+    operations = database.get_stream("operations", workspace=workspace)
 
     alerts: List[Dict[str, str]] = []
     for m in materials:

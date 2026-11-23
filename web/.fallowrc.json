@@ -1,5 +1,6 @@
 {
   "ignoreDependencies": ["@tailwindcss/turbopack"],
+  "entry": ["scripts/*.mjs"],
   "duplicates": {
     "ignore": ["src/components/landing/**"]
   }

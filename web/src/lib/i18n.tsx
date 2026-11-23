@@ -3,7 +3,7 @@
 import React, { useEffect, useSyncExternalStore } from "react";
 import { ID } from "./i18n-id";
 
-export type Lang = "en" | "id";
+type Lang = "en" | "id";
 
 const KEY = "mdip-lang";
 const EVENT = "mdip-lang-change";
@@ -25,7 +25,7 @@ function subscribe(onChange: () => void) {
   };
 }
 
-export function setLang(lang: Lang) {
+function setLang(lang: Lang) {
   try {
     window.localStorage.setItem(KEY, lang);
   } catch {
@@ -35,7 +35,7 @@ export function setLang(lang: Lang) {
 }
 
 /** Current language; the server and first paint render English, then the stored choice applies. */
-export function useLang(): Lang {
+function useLang(): Lang {
   const lang = useSyncExternalStore(subscribe, read, () => "en" as Lang);
   useEffect(() => {
     document.documentElement.lang = lang;

@@ -30,11 +30,6 @@ const NAV: { name: [string, string]; href: string; icon: typeof Layers }[] = [
   { name: ["Copilot", "Copilot"], href: "/dashboard/copilot", icon: MessageSquareText },
 ];
 
-const WATCHLIST: { label: [string, string]; value: [string, string]; href: string; tone: string }[] = [
-  { label: ["INGOT-AL7075-T6 cover", "Stok INGOT-AL7075-T6"], value: ["36h left", "sisa 36 jam"], href: "/dashboard/iroom?tab=material", tone: "text-hold" },
-  { label: ["Press P-07 vibration", "Getaran Press P-07"], value: ["+18%", "+18%"], href: "/dashboard/iroom?tab=operations", tone: "text-warn" },
-];
-
 export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, pendingActionsCount, isApiLive }) => {
   const pathname = usePathname();
   const t = useT();
@@ -95,17 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, p
               <span>{t("Decisions", "Keputusan")}</span>
               <span className="font-mono-numbers text-warn">{pendingActionsCount}</span>
             </Link>
-            {WATCHLIST.map((w) => (
-              <Link
-                key={w.href}
-                href={w.href}
-                onClick={onCloseMobile}
-                className="flex h-9 items-center justify-between gap-2 rounded-md px-3 text-sm text-ink-2 hover:bg-sheet-sunk hover:text-ink"
-              >
-                <span className="truncate">{t(...w.label)}</span>
-                <span className={`shrink-0 font-mono-numbers text-xs ${w.tone}`}>{t(...w.value)}</span>
-              </Link>
-            ))}
           </div>
         </nav>
 
@@ -116,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile, onCloseMobile, p
           </div>
           <p className="flex items-center gap-2 px-3 pb-2 text-xs text-ink-2">
             <span className={`h-1.5 w-1.5 rounded-full ${isApiLive ? "bg-pass" : "bg-warn"}`} aria-hidden="true" />
-            {isApiLive ? t("Live data from the MDIP service", "Data langsung dari layanan MDIP") : t("Sample data (service offline)", "Data contoh (layanan offline)")}
+            {isApiLive ? t("Live data from the MDIP service", "Data langsung dari layanan MDIP") : t("Offline mode (local cache)", "Mode offline (cache lokal)")}
           </p>
           <Link href="/" className="flex h-9 items-center gap-2.5 rounded-md px-3 text-ink-2 hover:bg-sheet-sunk hover:text-ink">
             <ArrowLeft className="h-4 w-4" strokeWidth={1.6} />

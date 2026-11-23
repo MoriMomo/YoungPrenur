@@ -1,12 +1,5 @@
-/** IRoom connector streams. */
+/** IRoom connector streams (blank until user enters records or explicitly loads samples). */
 
-import {
-  IROOM_MATERIALS,
-  IROOM_PROJECTS,
-  IROOM_DRAWINGS,
-  IROOM_QUOTATIONS,
-  IROOM_OPERATIONS,
-} from "@/lib/mock-data";
 import {
   MaterialDeliveryItem,
   ProjectProgressItem,
@@ -17,56 +10,55 @@ import {
 import { API_BASE, apiFetch } from "./client";
 
 async function fetchStream<T extends { id: string }>(
-  stream: "materials" | "progress" | "drawings" | "quotations" | "operations",
-  fallback: T[]
+  stream: "materials" | "progress" | "drawings" | "quotations" | "operations"
 ): Promise<T[]> {
-  let base: T[] = fallback;
   try {
     const res = await apiFetch(`${API_BASE}/iroom/${stream}`, {
       signal: AbortSignal.timeout(2000),
     });
     if (res.ok) {
-      base = await res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? (data as T[]) : [];
     }
   } catch {
-    // Fallback
+    // Keep empty rather than showing mock data
   }
-  return base;
+  return [];
 }
 
 /**
  * Fetches IRoom Material Delivery Management streams.
  */
 export function fetchIRoomMaterials(): Promise<MaterialDeliveryItem[]> {
-  return fetchStream("materials", IROOM_MATERIALS);
+  return fetchStream("materials");
 }
 
 /**
  * Fetches IRoom Project Progress Tracking streams.
  */
 export function fetchIRoomProjects(): Promise<ProjectProgressItem[]> {
-  return fetchStream("progress", IROOM_PROJECTS);
+  return fetchStream("progress");
 }
 
 /**
  * Fetches IRoom Drawing Approval streams.
  */
 export function fetchIRoomDrawings(): Promise<DrawingApprovalItem[]> {
-  return fetchStream("drawings", IROOM_DRAWINGS);
+  return fetchStream("drawings");
 }
 
 /**
  * Fetches IRoom Quotation & PO management streams.
  */
 export function fetchIRoomQuotations(): Promise<QuotationPoItem[]> {
-  return fetchStream("quotations", IROOM_QUOTATIONS);
+  return fetchStream("quotations");
 }
 
 /**
  * Fetches IRoom Shop-Floor Operation Tracker streams.
  */
 export function fetchIRoomOperations(): Promise<OperationTrackerItem[]> {
-  return fetchStream("operations", IROOM_OPERATIONS);
+  return fetchStream("operations");
 }
 
 export async function ingestIRoomRecord(
@@ -89,6 +81,26 @@ export async function ingestIRoomRecord(
   return null;
 }
 
-// -------------------------------------------------------------
-// Live Auth, Audit Log, Overview KPIs & Knowledge Base
-// -------------------------------------------------------------
+export async function loadSampleIRoomApi(): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}/iroom/load-sample`, {
+      method: "POST",
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearIRoomApi(): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}/iroom`, {
+      method: "DELETE",
+      signal: AbortSignal.timeout(3500),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

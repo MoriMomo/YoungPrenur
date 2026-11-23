@@ -86,8 +86,10 @@ def _re_score(analysis: Dict[str, Any]) -> Dict[str, Any]:
             "planned_days": float(t["planned_days"]),
             "actual_days": float(t["actual_days"]),
             "predecessors": list(t.get("predecessors", [])),
+            "pred_links": list(t["pred_links"]) if t.get("pred_links") else None,
             "has_dependency_column": True,
             "work_center": t.get("work_center", ""),
+            "resource_utilization": t.get("resource_utilization"),
             "owner": t.get("owner", ""),
             "status_declared": t.get("status", ""),
         })

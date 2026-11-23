@@ -41,7 +41,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const checklist = action.checklist || [
     t("Confirm telemetry and physical inventory match source records", "Pastikan telemetri dan stok fisik cocok dengan catatan sumber"),
-    t(`Verify compliance with ${action.sourceDoc}`, `Verifikasi kepatuhan terhadap ${action.sourceDoc}`),
+    action.sourceDoc
+      ? t(`Verify compliance with ${action.sourceDoc}`, `Verifikasi kepatuhan terhadap ${action.sourceDoc}`)
+      : t("Verify compliance against your uploaded plant SOPs", "Verifikasi kepatuhan terhadap SOP pabrik yang Anda unggah"),
   ];
 
   const submit = async (decision: "AUTHORIZED" | "OVERRIDDEN") => {
@@ -147,13 +149,23 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 {t("Traceable SOP Reference:", "Referensi SOP yang Dapat Ditelusuri:")}
               </span>
             </div>
-            <Link
-              href={`/dashboard/knowledge?doc=${encodeURIComponent(action.sourceDoc)}`}
-              onClick={onClose}
-              className="font-mono-numbers font-medium text-stamp hover:underline text-xs"
-            >
-              {t("Inspect", "Periksa")} {action.sourceDoc} →
-            </Link>
+            {action.sourceDoc ? (
+              <Link
+                href={`/dashboard/knowledge?doc=${encodeURIComponent(action.sourceDoc)}`}
+                onClick={onClose}
+                className="font-mono-numbers font-medium text-stamp hover:underline text-xs"
+              >
+                {t("Inspect", "Periksa")} {action.sourceDoc} →
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard/knowledge"
+                onClick={onClose}
+                className="font-medium text-stamp hover:underline text-xs"
+              >
+                {t("Upload SOP in Knowledge →", "Unggah SOP di Pengetahuan →")}
+              </Link>
+            )}
           </div>
 
           {/* Verification Checklist */}

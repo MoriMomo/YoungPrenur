@@ -193,7 +193,7 @@ def _topo_order(tasks: List[Dict[str, Any]], index: Dict[str, int]) -> List[int]
 
 def simulate_project(
     tasks: List[Dict[str, Any]],
-    buffer_days: float = None,
+    buffer_days: float | None = None,
     seed: int = 7,
     buffer_ratio: float = DEFAULT_PROJECT_BUFFER_RATIO,
 ) -> Dict[str, float]:
@@ -228,8 +228,8 @@ def simulate_project(
     unique_groups = {k: idx for idx, k in enumerate(dict.fromkeys(group_keys))}
     task_group_idx = np.array([unique_groups[k] for k in group_keys], dtype=int)
 
-    plant_shock = rng.gamma(6.0, 1.0 / 6.0, size=(N_SIMULATIONS, 1))
-    group_shocks = rng.gamma(6.0, 1.0 / 6.0, size=(N_SIMULATIONS, max(1, len(unique_groups))))
+    plant_shock = rng.gamma(2.0, 0.5, size=(N_SIMULATIONS, 1))
+    group_shocks = rng.gamma(2.0, 0.5, size=(N_SIMULATIONS, max(1, len(unique_groups))))
     shock = 0.5 * plant_shock + 0.5 * group_shocks[:, task_group_idx]
 
     p_eff = np.clip(1.0 - np.power(np.clip(1.0 - p[None, :], 1e-6, 1.0), shock), 0.0, 0.99)
@@ -322,7 +322,7 @@ def _validation_phrase(card: Dict[str, Any]) -> str:
 def analyze_schedule(
     tasks: List[Dict[str, Any]],
     project_name: str,
-    buffer_days: float = None,
+    buffer_days: float | None = None,
     buffer_ratio: float = DEFAULT_PROJECT_BUFFER_RATIO,
 ) -> Dict[str, Any]:
     """Score CPM-processed tasks and build the /risks/prediction payload."""
@@ -348,7 +348,9 @@ def analyze_schedule(
             "variance_days": max(0, int(round(t["variance_days"]))),
             "upstream_slip_days": t["upstream_slip_days"],
             "predecessors": t.get("predecessors", []),
+            "pred_links": t.get("pred_links", [{"code": c, "rel": "FS", "lag_days": 0.0} for c in t.get("predecessors", [])]),
             "work_center": t.get("work_center", ""),
+            "resource_utilization": t.get("resource_utilization"),
             "owner": t.get("owner", ""),
             "drivers": t["drivers"],
         })

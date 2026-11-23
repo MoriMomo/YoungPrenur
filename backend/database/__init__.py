@@ -45,6 +45,8 @@ from database.decisions import (  # noqa: E402
     record_decision_flag,
 )
 from database.plant_data import (  # noqa: E402
+    clear_sops,
+    clear_stream_records,
     get_sops,
     get_stream,
     upsert_sop,
@@ -76,6 +78,8 @@ __all__ = [
     "assert_auth_configured",
     "authenticate_user",
     "clear_decision_statuses",
+    "clear_sops",
+    "clear_stream_records",
     "create_session_token",
     "create_user",
     "db_status",

@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDashboard } from "@/features/workspace/dashboard-context";
 import { KnowledgeDoc } from "@/types";
-import { ChevronRight, X, Bookmark, Plus, MessageSquareText } from "lucide-react";
+import { ChevronRight, X, Bookmark, Plus, MessageSquareText, BookOpen, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { SopUpload } from "@/features/knowledge/SopUpload";
@@ -21,7 +21,7 @@ function findMatchingDoc(docs: KnowledgeDoc[], docCode: string | null): Knowledg
 }
 
 function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null }) {
-  const { knowledgeDocs, addKnowledgeDoc, askCopilotWithPrompt, showToast } = useDashboard();
+  const { knowledgeDocs, addKnowledgeDoc, loadSampleSops, clearKnowledgeDocs, askCopilotWithPrompt, showToast } = useDashboard();
   const t = useT();
   const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(null);
   const [dismissedUrlCode, setDismissedUrlCode] = useState<string | null>(null);
@@ -109,10 +109,18 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
           "Prosedur operasi standar yang dikutip copilot klausul demi klausul, dan diperiksa supervisor sebelum mengesahkan"
         )}
         actions={
-          <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
-            {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showAddForm ? t("Cancel", "Batal") : t("Add SOP clause", "Tambah klausul SOP")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {knowledgeDocs.length > 0 && (
+              <Button variant="secondary" onClick={() => void clearKnowledgeDocs()}>
+                <Trash2 className="h-4 w-4" />
+                {t("Clear SOPs", "Kosongkan SOP")}
+              </Button>
+            )}
+            <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
+              {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {showAddForm ? t("Cancel", "Batal") : t("Add SOP clause", "Tambah klausul SOP")}
+            </Button>
+          </div>
         }
       />
 
@@ -175,56 +183,84 @@ function KnowledgeContent({ initialDocCode }: { initialDocCode: string | null })
         </form>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {knowledgeDocs.map((doc) => (
-          <div
-            key={doc.id}
-
-            className="bg-white rounded-xl border border-rule p-5 flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-stamp-wash text-stamp border border-stamp-line">
-                  {t(doc.category)}
-                </span>
-                <span className="font-mono-numbers text-xs font-medium text-ink-3">
-                  {doc.code}
-                </span>
-              </div>
-
-              <h3 className="text-sm font-semibold text-ink mb-2">
-                {doc.title}
-              </h3>
-
-              <p className="text-xs text-ink-2 leading-relaxed mb-4">{doc.summary}</p>
-            </div>
-
-            <div className="pt-3 border-t border-rule-soft flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <span className="text-xs text-ink-3">
-                {t(`${doc.sections.length} indexed clauses`, `${doc.sections.length} klausul terindeks`)}
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleAskCopilot(doc)}
-                  className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-medium text-ink-2 hover:text-stamp cursor-pointer"
-                >
-                  <MessageSquareText className="w-3.5 h-3.5" strokeWidth={1.6} />
-                  <span>{t("Ask Copilot", "Tanya Copilot")}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenDoc(doc)}
-                  className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-semibold text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
-                >
-                  <span>{t("Inspect Clauses", "Periksa Klausul")}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
+      {knowledgeDocs.length === 0 ? (
+        <div className="bg-white rounded-xl border border-dashed border-rule-strong p-8 text-center space-y-3">
+          <div className="mx-auto w-9 h-9 rounded-full bg-paper border border-rule flex items-center justify-center text-ink-3">
+            <BookOpen className="w-4 h-4" />
           </div>
-        ))}
-      </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h2 className="text-sm font-semibold text-ink">
+              {t("No SOP documents in your workspace yet", "Belum ada dokumen SOP di ruang kerja Anda")}
+            </h2>
+            <p className="text-xs text-ink-2 leading-relaxed">
+              {t(
+                "Upload a PDF, Word, or text SOP above or add your own clause so Copilot answers exclusively from your plant's procedures.",
+                "Unggah SOP PDF, Word, atau teks di atas atau tambahkan klausul Anda sendiri agar Copilot menjawab hanya dari prosedur pabrik Anda."
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+            <Button variant="secondary" onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4" />
+              {t("Add your SOP clause", "Tambah klausul SOP")}
+            </Button>
+            <Button variant="secondary" onClick={() => void loadSampleSops()}>
+              <BookOpen className="h-4 w-4" />
+              {t("Load sample plant SOPs", "Muat SOP contoh pabrik")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {knowledgeDocs.map((doc) => (
+            <div
+              key={doc.id}
+              className="bg-white rounded-xl border border-rule p-5 flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-stamp-wash text-stamp border border-stamp-line">
+                    {t(doc.category)}
+                  </span>
+                  <span className="font-mono-numbers text-xs font-medium text-ink-3">
+                    {doc.code}
+                  </span>
+                </div>
+
+                <h3 className="text-sm font-semibold text-ink mb-2">
+                  {doc.title}
+                </h3>
+
+                <p className="text-xs text-ink-2 leading-relaxed mb-4">{doc.summary}</p>
+              </div>
+
+              <div className="pt-3 border-t border-rule-soft flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <span className="text-xs text-ink-3">
+                  {t(`${doc.sections.length} indexed clauses`, `${doc.sections.length} klausul terindeks`)}
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleAskCopilot(doc)}
+                    className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-medium text-ink-2 hover:text-stamp cursor-pointer"
+                  >
+                    <MessageSquareText className="w-3.5 h-3.5" strokeWidth={1.6} />
+                    <span>{t("Ask Copilot", "Tanya Copilot")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDoc(doc)}
+                    className="inline-flex items-center gap-1 whitespace-nowrap py-2 text-xs font-semibold text-stamp hover:text-stamp-deep hover:underline cursor-pointer"
+                  >
+                    <span>{t("Inspect Clauses", "Periksa Klausul")}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {activeDoc && (
         <div

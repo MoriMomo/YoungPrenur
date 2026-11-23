@@ -33,7 +33,7 @@ export const DeviationTable: React.FC<DeviationTableProps> = ({ tasks }) => {
         </div>
       ) : (
         <div className="relative overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-xs">
+          <table className="w-full min-w-180 text-left text-xs">
             <thead>
               <tr className="border-b border-rule text-ink-3 text-xs font-semibold">
                 <th className="pb-3 font-semibold">{t("WBS Code", "Kode WBS")}</th>

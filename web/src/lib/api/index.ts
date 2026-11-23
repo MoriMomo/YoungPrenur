@@ -32,10 +32,13 @@ export {
 export {
   fetchCopilotStatus,
   askManufacturingCopilot,
+  scoreSopDocument,
   fetchKnowledgeDocs,
   ingestKnowledgeDoc,
   extractSopFile,
   ingestSopClauses,
+  loadSampleKnowledgeDocs,
+  clearKnowledgeDocsApi,
   type SopDraft,
 } from "./copilot";
 export {
@@ -45,6 +48,8 @@ export {
   fetchIRoomQuotations,
   fetchIRoomOperations,
   ingestIRoomRecord,
+  loadSampleIRoomApi,
+  clearIRoomApi,
 } from "./iroom";
 export {
   type MlModelCard,

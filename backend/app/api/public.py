@@ -19,12 +19,12 @@ from schedule_parser import ScheduleParseError, parse_schedule_document
 router = APIRouter()
 
 INSPECT_MAX_BYTES = 2 * 1024 * 1024
-INSPECT_EXTENSIONS = (".csv", ".xlsx", ".xls")
+INSPECT_EXTENSIONS = (".csv", ".xlsx", ".xls", ".xer", ".xml")
 
 
 @router.post("/api/v1/scheduler/inspect")
 async def inspect_schedule(request: Request, file: UploadFile = File(...)):
-    """Score an uploaded schedule without storing it. CSV/XLSX only, 2 MB max, rate-limited per IP."""
+    """Score an uploaded schedule without storing it. Table formats only, 2 MB max, rate-limited per IP."""
     ip = client_ip(request)
     inspections.check(ip)
 
@@ -32,7 +32,7 @@ async def inspect_schedule(request: Request, file: UploadFile = File(...)):
     if not filename.lower().endswith(INSPECT_EXTENSIONS):
         raise HTTPException(
             status_code=415,
-            detail="Inspection accepts CSV or Excel schedules. Sign in to upload PDF or Word documents.",
+            detail="Inspection accepts CSV, Excel, Primavera P6 (.xer), or MS Project (.xml) schedules. Sign in to upload PDF or Word documents.",
         )
     content = await file.read(INSPECT_MAX_BYTES + 1)
     if len(content) > INSPECT_MAX_BYTES:
@@ -45,7 +45,7 @@ async def inspect_schedule(request: Request, file: UploadFile = File(...)):
     except ScheduleParseError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception:
-        raise HTTPException(status_code=422, detail=f"Could not read {filename}. Check that it is a valid CSV or Excel file.")
+        raise HTTPException(status_code=422, detail=f"Could not read {filename}. Check that it is a valid CSV, Excel, .xer, or .xml file.")
 
     project_name = os.path.splitext(filename)[0].replace("_", " ").strip() or "Inspected schedule"
     analysis = analyze_schedule(parsed["tasks"], project_name)

@@ -17,7 +17,16 @@ import {
   fetchIRoomQuotations,
   fetchIRoomOperations,
   ingestIRoomRecord,
+  loadSampleIRoomApi,
+  clearIRoomApi,
 } from "@/lib/api";
+import {
+  IROOM_MATERIALS,
+  IROOM_PROJECTS,
+  IROOM_DRAWINGS,
+  IROOM_QUOTATIONS,
+  IROOM_OPERATIONS,
+} from "@/lib/mock-data";
 import {
   PackageCheck,
   TrendingUp,
@@ -27,6 +36,8 @@ import {
   Search,
   Plus,
   X,
+  Database,
+  Trash2,
 } from "lucide-react";
 import { MaterialTab } from "./tabs/MaterialTab";
 import { ProgressTab } from "./tabs/ProgressTab";
@@ -173,6 +184,21 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     { dependencies: [activeTab] }
   );
 
+  const refreshStreams = async () => {
+    const [m, p, d, q, o] = await Promise.all([
+      fetchIRoomMaterials(),
+      fetchIRoomProjects(),
+      fetchIRoomDrawings(),
+      fetchIRoomQuotations(),
+      fetchIRoomOperations(),
+    ]);
+    setMaterials(m);
+    setProjects(p);
+    setDrawings(d);
+    setQuotations(q);
+    setOperations(o);
+  };
+
   useEffect(() => {
     let active = true;
     fetchIRoomMaterials().then((d) => active && setMaterials(d));
@@ -184,6 +210,31 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       active = false;
     };
   }, []);
+
+  const handleLoadSampleIRoom = async () => {
+    const ok = await loadSampleIRoomApi();
+    if (ok) {
+      await refreshStreams();
+      onToast?.(t("Loaded sample IRoom streams into your workspace.", "Aliran IRoom contoh dimuat ke ruang kerja Anda."));
+      return;
+    }
+    setMaterials(IROOM_MATERIALS);
+    setProjects(IROOM_PROJECTS);
+    setDrawings(IROOM_DRAWINGS);
+    setQuotations(IROOM_QUOTATIONS);
+    setOperations(IROOM_OPERATIONS);
+    onToast?.(t("Loaded sample IRoom streams for local preview.", "Aliran IRoom contoh dimuat untuk pratinjau lokal."));
+  };
+
+  const handleClearIRoom = async () => {
+    await clearIRoomApi();
+    setMaterials([]);
+    setProjects([]);
+    setDrawings([]);
+    setQuotations([]);
+    setOperations([]);
+    onToast?.(t("Cleared all IRoom stream records back to blank.", "Semua catatan aliran IRoom dikosongkan kembali."));
+  };
 
   const tabs = [
     {
@@ -218,19 +269,21 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     },
   ];
 
-  const selectedDrawing =
-    drawings.find((d) => d.id === selectedDwgId) ||
-    drawings[0] || {
-      id: "dwg-01",
-      dwgNumber: "DWG-2026-04-REV-C",
-      title: "Upper Stamping Punch Geometry & Clearance",
-      revision: "Rev C.2",
-      engineer: "Hendra Wijaya, ST",
-      department: "Tooling R&D",
-      submittedDate: "13 Oct 2026 14:15",
-      status: "Pending Review" as const,
-      criticalDwg: true,
-    };
+  const selectedDrawing: DrawingApprovalItem | null =
+    drawings.find((d) => d.id === selectedDwgId) || drawings[0] || null;
+
+  const totalRecordCount =
+    materials.length + projects.length + drawings.length + quotations.length + operations.length;
+  const activeTabCount =
+    activeTab === "material"
+      ? materials.length
+      : activeTab === "progress"
+      ? projects.length
+      : activeTab === "drawing"
+      ? drawings.length
+      : activeTab === "quotation"
+      ? quotations.length
+      : operations.length;
 
   const handleInspectWithAI = (entityName: string, detail: string) => {
     const query = t(
@@ -242,6 +295,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   };
 
   const handleApproveSelectedDrawing = async () => {
+    if (!selectedDrawing) return;
     const updated: DrawingApprovalItem = { ...selectedDrawing, status: "Approved" };
     setDrawings((prev) =>
       prev.map((d) => (d.id === selectedDrawing.id ? updated : d))
@@ -354,8 +408,8 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
           "Pengiriman material, progres proyek, persetujuan gambar, penawaran, dan operasi di satu tempat, masing-masing mengisi keputusan yang perlu disahkan."
         )} ${
           isApiLive
-            ? t("Live from the MDIP service.", "Langsung dari layanan MDIP.")
-            : t("Sample data while the service is offline.", "Data contoh selama layanan offline.")
+            ? t("Scoped to your live workspace.", "Khusus untuk ruang kerja langsung Anda.")
+            : t("Blank until you add records or load samples.", "Kosong hingga Anda menambah catatan atau memuat contoh.")
         }`}
       />
 
@@ -430,10 +484,18 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
             />
           </div>
 
-          <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
-            {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showAddForm ? t("Cancel", "Batal") : t("Add record", "Tambah catatan")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {totalRecordCount > 0 && (
+              <Button variant="secondary" onClick={() => void handleClearIRoom()}>
+                <Trash2 className="h-4 w-4" />
+                {t("Clear streams", "Kosongkan aliran")}
+              </Button>
+            )}
+            <Button variant={showAddForm ? "secondary" : "primary"} onClick={() => setShowAddForm((prev) => !prev)}>
+              {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {showAddForm ? t("Cancel", "Batal") : t("Add record", "Tambah catatan")}
+            </Button>
+          </div>
         </div>
 
         {showAddForm && (
@@ -500,61 +562,92 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
           </form>
         )}
 
-        <div>
-          <div>
-            {/* 1. Material Delivery */}
-            {activeTab === "material" && (
-              <MaterialTab
-                searchQuery={searchQuery}
-                handleInspectWithAI={handleInspectWithAI}
-                materials={materials}
-              />
-            )}
-
-            {/* 2. Project Progress */}
-            {activeTab === "progress" && (
-              <ProgressTab
-                searchQuery={searchQuery}
-                handleInspectWithAI={handleInspectWithAI}
-                projects={projects}
-              />
-            )}
-
-            {/* 3. Drawing Approval + Dynamic CAD Inspector */}
-            {activeTab === "drawing" && (
-              <DrawingTab
-                searchQuery={searchQuery}
-                handleInspectWithAI={handleInspectWithAI}
-                drawings={drawings}
-                selectedDrawing={selectedDrawing}
-                setSelectedDwgId={setSelectedDwgId}
-                activeRevision={activeRevision}
-                setActiveRevision={setActiveRevision}
-                showGdtOverlay={showGdtOverlay}
-                setShowGdtOverlay={setShowGdtOverlay}
-                handleApproveSelectedDrawing={handleApproveSelectedDrawing}
-              />
-            )}
-
-            {/* 4. Quotation & PO */}
-            {activeTab === "quotation" && (
-              <QuotationTab
-                searchQuery={searchQuery}
-                handleInspectWithAI={handleInspectWithAI}
-                quotations={quotations}
-              />
-            )}
-
-            {/* 5. Operation Tracker */}
-            {activeTab === "operations" && (
-              <OperationsTab
-                searchQuery={searchQuery}
-                handleInspectWithAI={handleInspectWithAI}
-                operations={operations}
-              />
-            )}
+        {activeTabCount === 0 && !showAddForm ? (
+          <div className="rounded-xl border border-dashed border-rule-strong bg-paper p-8 text-center space-y-3">
+            <div className="mx-auto w-9 h-9 rounded-full bg-white border border-rule flex items-center justify-center text-ink-3">
+              <Database className="w-4 h-4" />
+            </div>
+            <div className="space-y-1 max-w-md mx-auto">
+              <h3 className="text-sm font-semibold text-ink">
+                {t(`No ${STREAM_EXPLANATIONS[activeTab].title[0]} records yet`, `Belum ada catatan ${STREAM_EXPLANATIONS[activeTab].title[1]}`)}
+              </h3>
+              <p className="text-xs text-ink-2 leading-relaxed">
+                {t(
+                  "Keep your streams clean with only your plant's real inputs, or load sample IRoom data to preview.",
+                  "Gunakan hanya input nyata pabrik Anda, atau muat data contoh IRoom untuk pratinjau."
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+              <Button variant="secondary" onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4" />
+                {t("Add record", "Tambah catatan")}
+              </Button>
+              {totalRecordCount === 0 && (
+                <Button variant="secondary" onClick={() => void handleLoadSampleIRoom()}>
+                  <Database className="h-4 w-4" />
+                  {t("Load sample streams", "Muat aliran contoh")}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div>
+            <div>
+              {/* 1. Material Delivery */}
+              {activeTab === "material" && (
+                <MaterialTab
+                  searchQuery={searchQuery}
+                  handleInspectWithAI={handleInspectWithAI}
+                  materials={materials}
+                />
+              )}
+
+              {/* 2. Project Progress */}
+              {activeTab === "progress" && (
+                <ProgressTab
+                  searchQuery={searchQuery}
+                  handleInspectWithAI={handleInspectWithAI}
+                  projects={projects}
+                />
+              )}
+
+              {/* 3. Drawing Approval + Dynamic CAD Inspector */}
+              {activeTab === "drawing" && (
+                <DrawingTab
+                  searchQuery={searchQuery}
+                  handleInspectWithAI={handleInspectWithAI}
+                  drawings={drawings}
+                  selectedDrawing={selectedDrawing}
+                  setSelectedDwgId={setSelectedDwgId}
+                  activeRevision={activeRevision}
+                  setActiveRevision={setActiveRevision}
+                  showGdtOverlay={showGdtOverlay}
+                  setShowGdtOverlay={setShowGdtOverlay}
+                  handleApproveSelectedDrawing={handleApproveSelectedDrawing}
+                />
+              )}
+
+              {/* 4. Quotation & PO */}
+              {activeTab === "quotation" && (
+                <QuotationTab
+                  searchQuery={searchQuery}
+                  handleInspectWithAI={handleInspectWithAI}
+                  quotations={quotations}
+                />
+              )}
+
+              {/* 5. Operation Tracker */}
+              {activeTab === "operations" && (
+                <OperationsTab
+                  searchQuery={searchQuery}
+                  handleInspectWithAI={handleInspectWithAI}
+                  operations={operations}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

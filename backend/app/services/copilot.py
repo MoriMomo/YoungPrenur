@@ -30,14 +30,14 @@ def _copilot_config() -> Tuple[str, str, str]:
     return ("gemini" if api_key else "retrieval"), api_key, model
 
 
-def get_copilot_status() -> Dict[str, Any]:
+def get_copilot_status(workspace: Optional[str] = None) -> Dict[str, Any]:
     """Report active Copilot synthesis provider, model, and indexed SOP count."""
     provider, api_key, model = _copilot_config()
     return {
         "llm_configured": bool(api_key),
         "provider": provider,
         "model": model if api_key else None,
-        "indexed_sops": len(database.get_sops()),
+        "indexed_sops": len(database.get_sops(workspace=workspace)),
     }
 
 
@@ -54,15 +54,16 @@ def _run_grounded_copilot(
     history: Optional[List[Dict[str, str]]] = None,
     analysis: Optional[Dict[str, Any]] = None,
     allow_external_ai: bool = True,
+    workspace: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Grounded retrieval over SOPs, the user's schedule tasks (baseline if None) and IRoom records."""
     if analysis is None:
         analysis = state.get_analysis()
-    sops = database.get_sops()
+    sops = database.get_sops(workspace=workspace)
     tasks = analysis.get("tasks", [])
-    materials = database.get_stream("materials")
-    operations = database.get_stream("operations")
-    drawings = database.get_stream("drawings")
+    materials = database.get_stream("materials", workspace=workspace)
+    operations = database.get_stream("operations", workspace=workspace)
+    drawings = database.get_stream("drawings", workspace=workspace)
 
     q_lower = message.lower().strip()
     q_alnum = re.sub(r"[^a-z0-9]", "", q_lower)

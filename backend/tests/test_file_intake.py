@@ -92,13 +92,14 @@ class TestExtractEndpoint(SecurityTestBase):
 
     def test_reads_word_sop_into_a_draft_without_saving(self):
         headers = self.login()
-        before = len(database.get_sops())
+        docs_before = self.client.get("/api/v1/knowledge/docs", headers=headers).json()
+        self.assertEqual(docs_before, [])
         res = self.post(make_docx(SOP_TEXT.splitlines()), name="SOP-PRS-09.docx", headers=headers)
         self.assertEqual(res.status_code, 200, res.text)
         body = res.json()
         self.assertEqual((body["kind"], body["doc_code"]), ("docx", "SOP-PRS-09"))
         self.assertEqual(len(body["sections"]), 3)
-        self.assertEqual(len(database.get_sops()), before)
+        self.assertEqual(self.client.get("/api/v1/knowledge/docs", headers=headers).json(), [])
 
     def test_rejects_binary_and_oversized_files(self):
         headers = self.login()
@@ -106,18 +107,68 @@ class TestExtractEndpoint(SecurityTestBase):
         big = b"a" * (file_intake.MAX_UPLOAD_BYTES + 1)
         self.assertEqual(self.post(big, headers=headers).status_code, 413)
 
-    def test_batch_ingest_keeps_every_clause(self):
+    def test_batch_ingest_keeps_every_clause_and_sample_toggle(self):
         headers = self.login()
+        # User starts completely blank on SOP knowledge and IRoom streams.
+        self.assertEqual(self.client.get("/api/v1/knowledge/docs", headers=headers).json(), [])
+        self.assertEqual(self.client.get("/api/v1/iroom/materials", headers=headers).json(), [])
+
         rows = [
             {"doc_code": "SOP-TST-01", "title": "Test", "clause": f"Clause {i}", "keywords": ["test"], "excerpt": f"Text {i}"}
             for i in (1, 2)
         ]
         res = self.client.post("/api/v1/knowledge/ingest-batch", json=rows, headers=headers)
         self.assertEqual(res.status_code, 200, res.text)
-        saved = [d for d in database.get_sops() if d["doc_code"] == "SOP-TST-01"]
+        docs = self.client.get("/api/v1/knowledge/docs", headers=headers).json()
+        saved = [d for d in docs if d["doc_code"] == "SOP-TST-01"]
         self.assertEqual(sorted(d["clause"] for d in saved), ["Clause 1", "Clause 2"])
         too_long = [{**rows[0], "excerpt": "x" * 4001}]
         self.assertEqual(self.client.post("/api/v1/knowledge/ingest-batch", json=too_long, headers=headers).status_code, 422)
+
+        # Explicit sample buttons populate only the signed-in user's workspace and can be cleared back to blank.
+        self.assertEqual(self.client.post("/api/v1/knowledge/load-sample", headers=headers).status_code, 200)
+        self.assertGreater(len(self.client.get("/api/v1/knowledge/docs", headers=headers).json()), 2)
+        self.assertEqual(self.client.delete("/api/v1/knowledge/docs", headers=headers).status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/knowledge/docs", headers=headers).json(), [])
+
+        self.assertEqual(self.client.post("/api/v1/iroom/load-sample", headers=headers).status_code, 200)
+        self.assertGreater(len(self.client.get("/api/v1/iroom/materials", headers=headers).json()), 0)
+        self.assertEqual(self.client.delete("/api/v1/iroom", headers=headers).status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/iroom/materials", headers=headers).json(), [])
+
+    def test_decisions_match_user_sops_dynamically_without_hardcoded_refs(self):
+        headers = self.login()
+        csv_bytes = (
+            "WBS Code,Activity Name,Planned Duration,Actual Forecast Days,Predecessors\n"
+            "OP-1,SMT Reflow Oven Setup,4,7,\n"
+        ).encode("utf-8")
+        self.assertEqual(
+            self.client.post("/api/v1/scheduler/upload", files={"file": ("smt.csv", csv_bytes, "text/csv")}, headers=headers).status_code,
+            200,
+        )
+        # With zero SOPs uploaded, decisions leave source_doc blank rather than fabricating SOP-SCM-12.
+        decs_empty = self.client.get("/api/v1/risks/decisions", headers=headers).json()
+        self.assertTrue(decs_empty)
+        self.assertEqual(decs_empty[0]["source_doc"], "")
+
+        # Upload a matching user SOP and confirm the decision dynamically cites it.
+        sop_res = self.client.post(
+            "/api/v1/knowledge/ingest",
+            json={
+                "doc_code": "SOP-SMT-99",
+                "title": "Reflow Profile Verification",
+                "clause": "Clause 4.1: Thermal Soak",
+                "keywords": ["smt", "reflow", "thermal"],
+                "excerpt": "Verify oven thermocouple calibration before launching SMT reflow production.",
+            },
+            headers=headers,
+        )
+        self.assertEqual(sop_res.status_code, 200)
+        decs_linked = self.client.get("/api/v1/risks/decisions", headers=headers).json()
+        self.assertEqual(decs_linked[0]["source_doc"], "SOP-SMT-99")
+        self.assertIn("SOP-SMT-99", " ".join(decs_linked[0]["checklist"]))
+
+        self.assertEqual(self.client.delete("/api/v1/knowledge/docs", headers=headers).status_code, 200)
 
 
 class TestSopKeyMigration(unittest.TestCase):

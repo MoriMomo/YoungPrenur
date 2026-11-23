@@ -97,6 +97,21 @@ class _MockGeminiHttpResponse:
         return False
 
 
+class _MockDeepSeekHttpResponse:
+    def __init__(self, payload_obj):
+        wrapped = {"choices": [{"message": {"content": json.dumps(payload_obj)}}]}
+        self._buf = io.BytesIO(json.dumps(wrapped).encode("utf-8"))
+
+    def read(self) -> bytes:
+        return self._buf.getvalue()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
 class TestDocumentScheduleIngestion(unittest.TestCase):
     def setUp(self):
         self._orig_db = database.DB_PATH
@@ -104,6 +119,10 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
         database.DB_PATH = os.path.join(self._tmp.name, "doc_schedule.db")
         database.init_db()
         self._orig_key = os.environ.get("GEMINI_API_KEY")
+        self._orig_deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
+        self._orig_deepseek_model = os.environ.get("DEEPSEEK_MODEL")
+        os.environ.pop("DEEPSEEK_API_KEY", None)
+        os.environ.pop("DEEPSEEK_MODEL", None)
 
     def tearDown(self):
         database.DB_PATH = self._orig_db
@@ -111,6 +130,14 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
             os.environ.pop("GEMINI_API_KEY", None)
         else:
             os.environ["GEMINI_API_KEY"] = self._orig_key
+        if self._orig_deepseek_key is None:
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+        else:
+            os.environ["DEEPSEEK_API_KEY"] = self._orig_deepseek_key
+        if self._orig_deepseek_model is None:
+            os.environ.pop("DEEPSEEK_MODEL", None)
+        else:
+            os.environ["DEEPSEEK_MODEL"] = self._orig_deepseek_model
         self._tmp.cleanup()
 
     def test_docx_table_parses_without_gemini(self):
@@ -290,6 +317,66 @@ class TestDocumentScheduleIngestion(unittest.TestCase):
         doc_codes = [c["doc_code"] for c in res["citations"]]
         self.assertIn("manifold_build.pdf", doc_codes)
         self.assertTrue(any(code.startswith("SOP-") for code in doc_codes))
+
+    def test_docx_and_text_pdf_prefer_deepseek_over_gemini(self):
+        os.environ["DEEPSEEK_API_KEY"] = "test-deepseek-key"
+        os.environ["GEMINI_API_KEY"] = "test-gemini-key"
+        docx_bytes = _build_docx_bytes(
+            paragraphs=[
+                "Wafer Fab Tooling Install: Cleanroom hookup takes 3 days before chamber qualification.",
+            ]
+        )
+        captured = {}
+        ai_payload = {
+            "project_name": "Cleanroom Hookup",
+            "document_summary": "Chamber hookup followed by qualification.",
+            "tasks": [
+                {
+                    "code": "WBS-1",
+                    "task": "Cleanroom Hookup",
+                    "planned_days": 3,
+                    "actual_days": 3,
+                    "predecessors": [],
+                },
+                {
+                    "code": "WBS-2",
+                    "task": "Chamber Qualification",
+                    "planned_days": 2,
+                    "actual_days": 3,
+                    "predecessors": ["WBS-1SS+1d"],
+                },
+            ],
+        }
+
+        def _fake_urlopen(req, timeout=0):
+            captured["url"] = req.full_url
+            captured["auth"] = req.get_header("Authorization")
+            captured["body"] = json.loads(req.data.decode("utf-8"))
+            return _MockDeepSeekHttpResponse(ai_payload)
+
+        with patch("schedule_parser.ai_reader.urllib.request.urlopen", side_effect=_fake_urlopen):
+            docx_res = schedule_parser.parse_schedule_document(docx_bytes, "hookup.docx")
+
+        self.assertEqual(captured["url"], "https://api.deepseek.com/chat/completions")
+        self.assertEqual(captured["auth"], "Bearer test-deepseek-key")
+        self.assertEqual(captured["body"]["model"], "deepseek-flash")
+        self.assertEqual(captured["body"]["temperature"], 0.1)
+        self.assertEqual(captured["body"]["response_format"], {"type": "json_object"})
+        self.assertEqual(docx_res["extraction_method"], "deepseek_document")
+        self.assertEqual(docx_res["tasks"][1]["start_day"], 1)  # WBS-1SS+1d preserved
+
+        pdf_bytes = _build_minimal_pdf(["Battery Cell Line", "WBS-1 Electrode Coating - 4 days"])
+        with patch("schedule_parser.ai_reader.urllib.request.urlopen", side_effect=_fake_urlopen):
+            pdf_res = schedule_parser.parse_schedule_document(pdf_bytes, "battery.pdf")
+        self.assertEqual(pdf_res["extraction_method"], "deepseek_pdf")
+
+    def test_scanned_pdf_with_only_deepseek_reports_clear_error(self):
+        os.environ["DEEPSEEK_API_KEY"] = "test-deepseek-key"
+        os.environ.pop("GEMINI_API_KEY", None)
+        blank_pdf = _build_minimal_pdf([])
+        with self.assertRaises(schedule_parser.ScheduleParseError) as ctx:
+            schedule_parser.parse_schedule_document(blank_pdf, "scanned.pdf")
+        self.assertIn("GEMINI_API_KEY", str(ctx.exception))
 
 
 if __name__ == "__main__":

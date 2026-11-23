@@ -9,7 +9,7 @@ export function Words({ children }: { children: string }) {
     <>
       {children.split(" ").map((word, i) => (
         <React.Fragment key={i}>
-          <span data-word className="inline-block will-change-transform">
+          <span data-word className="inline-block">
             {word}
           </span>{" "}
         </React.Fragment>

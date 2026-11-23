@@ -23,13 +23,13 @@ export function downloadOperationalExport(
     "1. PRIORITIZED DECISION BRIEF",
     ...(actions.length > 0
       ? actions.map((a, idx) =>
-          `   ${idx + 1}. [${a.urgency.toUpperCase()}] ${a.title} | Status: ${(a.status || "pending").toUpperCase()} | Ref: ${a.sourceDoc}\n      Impact: ${a.impact} | Owner: ${a.owner} | Due: ${a.due}`
+          `   ${idx + 1}. [${a.urgency.toUpperCase()}] ${a.title} | Status: ${(a.status || "pending").toUpperCase()} | Ref: ${a.sourceDoc || "Unlinked"}\n      Impact: ${a.impact} | Owner: ${a.owner} | Due: ${a.due}`
         )
       : ["   - No risk actions generated for the active schedule."]),
     "",
     "2. HUMAN-IN-THE-LOOP AUDIT LOG (ISO 9001 Cl. 7.5)",
     ...(auditLog.length > 0
-      ? auditLog.map(e => `   - [${e.timestamp}] ${e.decision}: ${e.actionTitle} by ${e.reviewerRole} (${e.sopRef}) | Notes: ${e.notes || "Verified"}`)
+      ? auditLog.map(e => `   - [${e.timestamp}] ${e.decision}: ${e.actionTitle} by ${e.reviewerRole} (${e.sopRef || "Unlinked"}) | Notes: ${e.notes || "Verified"}`)
       : ["   - No actions authorized or overridden in this session yet."]),
   ];
 

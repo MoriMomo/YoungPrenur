@@ -28,12 +28,33 @@ import {
   fetchDelayRiskPrediction,
   fetchMlModelCard,
   MlModelCard,
+  scoreSopDocument,
 } from "@/lib/api";
-import { DecisionAction, DelayRiskPrediction, KpiItem, RiskItem, WbsTask } from "@/types";
+import { DecisionAction, DelayRiskPrediction, KnowledgeDoc, KpiItem, RiskItem, WbsTask } from "@/types";
 import { Download, CalendarClock } from "lucide-react";
 import { useT } from "@/lib/i18n";
 
-function actionsFromTasks(tasks: WbsTask[], priorityDepartment: string): DecisionAction[] {
+function matchSopForTask(task: WbsTask, priorityDepartment: string, docs: KnowledgeDoc[]): string {
+  if (docs.length === 0) return "";
+  const query = `${task.code} ${task.task} ${task.workCenter || ""} ${priorityDepartment}`.toLowerCase();
+  const qTokens = new Set(query.match(/[a-z0-9-]{2,}/g) || []);
+  let bestScore = -1;
+  let bestCode = docs[0].code;
+  for (const doc of docs) {
+    const score = scoreSopDocument(doc, query, qTokens);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCode = doc.code;
+    }
+  }
+  return bestCode;
+}
+
+function actionsFromTasks(
+  tasks: WbsTask[],
+  priorityDepartment: string,
+  knowledgeDocs: KnowledgeDoc[] = []
+): DecisionAction[] {
   return [...tasks]
     .filter((t) => t.delayRisk >= 0.25 || (t.varianceDays ?? 0) > 0 || t.actualDays > t.plannedDays)
     .sort((a, b) => b.delayRisk - a.delayRisk)
@@ -54,7 +75,7 @@ function actionsFromTasks(tasks: WbsTask[], priorityDepartment: string): Decisio
         impact: `Protects ${t.critical ? "critical path" : "WBS float"} (${t.plannedDays}d planned vs ${t.actualDays}d forecast).`,
         owner: t.owner || priorityDepartment,
         due: urgency === "Urgent" ? "Immediate" : "Next shift review",
-        sourceDoc: "SOP-LINE2-OPT",
+        sourceDoc: matchSopForTask(t, priorityDepartment, knowledgeDocs),
         flagged: false,
         status: "pending",
       };
@@ -69,6 +90,7 @@ export default function DashboardOverviewPage() {
     userId,
     userName,
     selectedRole,
+    knowledgeDocs,
     actions,
     setActions,
     auditLog,
@@ -155,7 +177,7 @@ export default function DashboardOverviewPage() {
   const activeActions = (
     backendTaskActions.length > 0
       ? backendTaskActions
-      : actionsFromTasks(tasks, currentRolePreset.priorityDepartment)
+      : actionsFromTasks(tasks, currentRolePreset.priorityDepartment, knowledgeDocs)
   ).toSorted((a, b) => {
     const aMatch = a.department === currentRolePreset.priorityDepartment ? 0 : 1;
     const bMatch = b.department === currentRolePreset.priorityDepartment ? 0 : 1;
@@ -429,12 +451,16 @@ export default function DashboardOverviewPage() {
                       <p className="text-ink-2 mt-1">{entry.notes}</p>
                       <div className="text-xs text-ink-3 mt-0.5 font-mono-numbers">
                         {tr(entry.reviewerRole)} · Ref:{" "}
-                        <Link
-                          href={`/dashboard/knowledge?doc=${encodeURIComponent(entry.sopRef)}`}
-                          className="text-stamp hover:underline"
-                        >
-                          {entry.sopRef}
-                        </Link>
+                        {entry.sopRef ? (
+                          <Link
+                            href={`/dashboard/knowledge?doc=${encodeURIComponent(entry.sopRef)}`}
+                            className="text-stamp hover:underline"
+                          >
+                            {entry.sopRef}
+                          </Link>
+                        ) : (
+                          <span>{tr("No SOP linked", "Belum ada SOP terkait")}</span>
+                        )}
                       </div>
                     </div>
                     <span className="text-xs font-mono-numbers text-ink-3 shrink-0">

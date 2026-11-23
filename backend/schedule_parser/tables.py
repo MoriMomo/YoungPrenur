@@ -133,8 +133,12 @@ def _local_tag(tag: str) -> str:
 
 
 def _read_xer_tables(content: bytes) -> pd.DataFrame:
-    """Parse Primavera P6 .xer TASK and TASKPRED tables into a normalized DataFrame."""
-    text = content.decode("utf-8-sig", errors="replace")
+    """Parse Primavera P6 .xer TASK, TASKPRED, CALENDAR, RSRC, TASKRSRC, and PROJECT tables."""
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("cp1252", errors="replace")
+
     tables: Dict[str, List[Dict[str, str]]] = {}
     cur_table: Optional[str] = None
     cur_fields: List[str] = []
@@ -158,11 +162,44 @@ def _read_xer_tables(content: bytes) -> pd.DataFrame:
     if not raw_tasks:
         raise ScheduleParseError("No %T TASK records found in Primavera P6 .xer file.")
 
+    cal_hours: Dict[str, float] = {}
+    for cal in tables.get("CALENDAR", []):
+        cid = cal.get("clndr_id", "").strip()
+        raw_day_hr = cal.get("day_hr_cnt", "").strip()
+        if cid and raw_day_hr:
+            try:
+                hr = float(raw_day_hr)
+                if hr > 0:
+                    cal_hours[cid] = hr
+            except ValueError:
+                pass
+
+    rsrc_names: Dict[str, str] = {}
+    for r in tables.get("RSRC", []):
+        rid = r.get("rsrc_id", "").strip()
+        rname = (r.get("rsrc_name") or r.get("rsrc_short_name") or "").strip()
+        if rid and rname:
+            rsrc_names[rid] = rname
+
+    task_wc: Dict[str, str] = {}
+    for tr in tables.get("TASKRSRC", []):
+        tid = tr.get("task_id", "").strip()
+        rid = tr.get("rsrc_id", "").strip()
+        if tid and tid not in task_wc and rid in rsrc_names:
+            task_wc[tid] = rsrc_names[rid]
+
+    recalc_dt = None
+    for proj in tables.get("PROJECT", []):
+        recalc_dt = _parse_date(proj.get("last_recalc_date"))
+        if recalc_dt is not None:
+            break
+
     id_to_code: Dict[str, str] = {}
+    task_day_hr: Dict[str, float] = {}
     used_codes = set()
     filtered_tasks = []
     for row in raw_tasks:
-        if row.get("task_type", "").upper() == "TT_WBS":
+        if row.get("task_type", "").strip().upper() in {"TT_WBS", "TT_LOE"}:
             continue
         tid = row.get("task_id", "").strip()
         tcode = row.get("task_code", "").strip() or tid
@@ -170,6 +207,7 @@ def _read_xer_tables(content: bytes) -> pd.DataFrame:
             tcode = f"{tcode}-{tid}"
         if tid:
             id_to_code[tid] = tcode
+            task_day_hr[tid] = cal_hours.get(row.get("clndr_id", "").strip(), 8.0)
         used_codes.add(tcode)
         filtered_tasks.append((tid, tcode, row))
 
@@ -180,8 +218,9 @@ def _read_xer_tables(content: bytes) -> pd.DataFrame:
         if tid and p_tid in id_to_code:
             p_code = id_to_code[p_tid]
             rel = pred_row.get("pred_type", "PR_FS").replace("PR_", "").upper() or "FS"
+            day_hr = task_day_hr.get(tid, 8.0)
             try:
-                lag_days = float(pred_row.get("lag_hr_cnt") or 0.0) / 8.0
+                lag_days = float(pred_row.get("lag_hr_cnt") or 0.0) / day_hr
             except ValueError:
                 lag_days = 0.0
             tok = f"{p_code}{rel}" + (f"{lag_days:+.4g}d" if abs(lag_days) > 1e-6 else "")
@@ -189,23 +228,40 @@ def _read_xer_tables(content: bytes) -> pd.DataFrame:
 
     rows = []
     for tid, tcode, row in filtered_tasks:
+        day_hr = cal_hours.get(row.get("clndr_id", "").strip(), 8.0)
         dur_days: Any = ""
         raw_hr = row.get("target_drtn_hr_cnt", "").strip()
         if raw_hr:
             try:
-                dur_days = round(float(raw_hr) / 8.0, 4)
+                dur_days = round(float(raw_hr) / day_hr, 4)
             except ValueError:
                 dur_days = ""
         status_code = row.get("status_code", "").strip()
         status = "Completed" if status_code == "TK_Complete" else status_code
+
+        actual_forecast: Any = ""
+        act_start_raw = row.get("act_start_date", "").strip()
+        remain_raw = row.get("remain_drtn_hr_cnt", "").strip()
+        if status_code == "TK_Active" and remain_raw and act_start_raw and recalc_dt is not None:
+            act_start_dt = _parse_date(act_start_raw)
+            if act_start_dt is not None:
+                try:
+                    remain_days = max(0.0, float(remain_raw) / day_hr)
+                    elapsed_days = max(0.0, (recalc_dt - act_start_dt).total_seconds() / 86400.0)
+                    actual_forecast = round(elapsed_days + remain_days, 4)
+                except ValueError:
+                    actual_forecast = ""
+
         rows.append({
             "WBS Code": tcode,
             "Activity Name": row.get("task_name", "").strip(),
             "Planned Duration": dur_days,
+            "Actual_Forecast_Days": actual_forecast,
             "Planned Start": row.get("target_start_date", "").strip(),
             "Planned Finish": row.get("target_end_date", "").strip(),
-            "Actual Start": row.get("act_start_date", "").strip(),
+            "Actual Start": act_start_raw,
             "Actual Finish": row.get("act_end_date", "").strip(),
+            "Assigned_Work_Center": task_wc.get(tid, ""),
             "Predecessors": ";".join(preds_by_tid.get(tid, [])),
             "Status": status,
         })
