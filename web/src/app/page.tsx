@@ -186,6 +186,8 @@ export default function LandingPage() {
   };
 
   // Sliding underline under the active role tab: measured, so it follows the two-column grid on phones too.
+  // Language changes re-wrap the tab labels, so the underline is re-measured then too.
+  const langKey = t("en", "id");
   useLayoutEffect(() => {
     const place = () => {
       const bar = tabIndicatorRef.current;
@@ -197,7 +199,7 @@ export default function LandingPage() {
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
-  }, [activeRole]);
+  }, [activeRole, langKey]);
 
   // Risk bars fill from zero via fromTo (Strict Mode safe) on initial view and after each upload.
   useGSAP(
@@ -437,7 +439,9 @@ export default function LandingPage() {
     }
   };
 
-  const useSample = async () => {
+  const trySample = async () => {
+    // Jump before the results land: re-renders cancel a smooth scroll, and the GSAP rebuild after results resets a late one.
+    document.getElementById("inspection-title")?.scrollIntoView({ block: "start" });
     const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
     const res = await fetch(`${base}/sample_master_schedule_wbs.csv`);
     if (!res.ok) {
@@ -563,7 +567,7 @@ export default function LandingPage() {
 
         {/* Subject and action */}
         <section ref={heroRef} className="relative isolate grid gap-8 overflow-hidden border-b border-rule-strong bg-paper px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden max-md:hidden">
             <Threads
               color="#2b3fbf"
               accentColor="#aab6ac"
@@ -603,16 +607,17 @@ export default function LandingPage() {
             </h1>
             <p data-hero-lead className="mt-5 max-w-136 text-base leading-relaxed text-ink-2">
               {t(
-                "MDIP inspects a project schedule the way your plant inspects a steel bar: every task's forecast measured against its plan, a delay-risk verdict with the reasons behind it, and a named supervisor who signs off the fix.",
-                "MDIP memeriksa jadwal proyek seperti pabrik Anda memeriksa batang baja: prakiraan tiap tugas diukur terhadap rencananya, putusan risiko keterlambatan beserta alasannya, dan supervisor bernama yang mengesahkan perbaikannya."
+                "Upload the schedule you already export from MS Project, Primavera P6 or Excel. MDIP shows which tasks are likely to be late, why, and what to do about it, and a supervisor signs off every fix.",
+                "Unggah jadwal yang sudah Anda ekspor dari MS Project, Primavera P6, atau Excel. MDIP menunjukkan tugas mana yang kemungkinan terlambat, alasannya, dan tindakannya, lalu supervisor mengesahkan setiap perbaikan."
               )}
             </p>
             <div data-hero-cta className="mt-6 flex flex-wrap gap-2.5">
-              <LinkButton href="/login?mode=register" size="lg">
+              <Button size="lg" onClick={() => void trySample()} disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" strokeWidth={1.75} />}
+                {t("Try it with a sample schedule", "Coba dengan jadwal contoh")}
+              </Button>
+              <LinkButton href="/login?mode=register" variant="secondary" size="lg">
                 {t("Start 30-day pilot", "Mulai pilot 30 hari")}
-              </LinkButton>
-              <LinkButton href="/dashboard" variant="secondary" size="lg">
-                {t("Open live cockpit", "Buka kokpit langsung")}
               </LinkButton>
             </div>
           </div>
@@ -628,7 +633,7 @@ export default function LandingPage() {
             >
               {(open) => (
                 <>
-                  <h2 className="font-display text-xl font-bold text-ink">{t("Submit a schedule for inspection", "Kirim jadwal untuk diinspeksi")}</h2>
+                  <h2 className="font-display text-xl font-bold text-ink">{t("Or check your own schedule", "Atau periksa jadwal Anda sendiri")}</h2>
                   <p className="mt-1 text-sm text-ink-2">
                     {t(
                       "Drop a CSV, Excel, Primavera P6 (.xer), or MS Project (.xml) file here, or choose one to inspect tasks, critical path, and delay risk.",
@@ -639,10 +644,6 @@ export default function LandingPage() {
                     <Button size="lg" onClick={open} disabled={busy}>
                       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
                       {busy ? t("Inspecting…", "Memeriksa…") : t("Choose schedule file", "Pilih file jadwal")}
-                    </Button>
-                    <Button size="lg" variant="secondary" onClick={useSample} disabled={busy}>
-                      <FileSpreadsheet className="h-4 w-4" strokeWidth={1.75} />
-                      {t("Use the sample schedule", "Pakai jadwal contoh")}
                     </Button>
                   </div>
                   {notice && (
@@ -679,7 +680,7 @@ export default function LandingPage() {
             <h2 id="inspection-title" className="w-fit font-display text-2xl font-bold text-ink">
               <Words>{t("Inspection results", "Hasil inspeksi")}</Words>
             </h2>
-            <p className="mt-1 w-fit max-w-[calc(100%-140px)] text-sm text-ink-2">
+            <p className="mt-1 w-fit break-words xl:max-w-[calc(100%-140px)] text-sm text-ink-2">
               {t("Item inspected:", "Objek inspeksi:")} <span className="font-medium text-ink">{t(subject)}</span>
               {isSample && <span className="ml-2 text-ink-3">{t("(illustrative sample data)", "(data contoh ilustratif)")}</span>}
             </p>
@@ -867,7 +868,7 @@ export default function LandingPage() {
 
         {/* Method: one axis, four stations */}
         <section id="method" aria-labelledby="method-title" className="relative isolate overflow-hidden border-t border-rule-strong bg-paper px-5 py-12 sm:px-8">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-60 motion-reduce:hidden">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-60 motion-reduce:hidden max-md:hidden">
             <Dither backgroundColor="#f3f5f1" waveColor="#c9d5cb" pixelSize={2} waveSpeed={0.04} dpr={1} />
           </div>
           <h2 id="method-title" className="font-display text-[34px] font-bold leading-tight text-ink">
@@ -961,7 +962,7 @@ export default function LandingPage() {
 
         {/* Plans & footer: calm gradient waves behind, ink-light so the cards stay the focus */}
         <div className="relative isolate overflow-hidden border-t border-rule-strong bg-paper">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 motion-reduce:hidden">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 motion-reduce:hidden max-md:hidden">
             <GradientWaves
               horizonColor="#c2c9ef"
               waveColor="#2b3fbf"
@@ -1086,7 +1087,7 @@ export default function LandingPage() {
                   {t("Start 30-day pilot", "Mulai pilot 30 hari")}
                 </LinkButton>
                 <LinkButton href="/dashboard" variant="secondary" size="md">
-                  {t("Open live cockpit", "Buka kokpit langsung")}
+                  {t("Sign in to the dashboard", "Masuk ke dasbor")}
                 </LinkButton>
               </div>
             </div>
@@ -1095,17 +1096,17 @@ export default function LandingPage() {
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 text-xs *:border-rule [&>*:not(:last-child)]:border-b sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(n+3)]:border-b-0 lg:*:border-b-0 lg:[&>*:not(:last-child)]:border-r">
               <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
                 <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Platform", "Platform")}</p>
-                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-1.5 sm:[&_a]:py-0.5">
                   <li><a href="#inspection-title" className="hover:text-ink hover:underline">{t("Schedule Inspector", "Inspektur Jadwal")}</a></li>
-                  <li><Link href="/dashboard" className="hover:text-ink hover:underline">{t("Operations Cockpit", "Kokpit Operasional")}</Link></li>
+                  <li><Link href="/dashboard" className="hover:text-ink hover:underline">{t("Operations Dashboard", "Dasbor Operasional")}</Link></li>
                   <li><Link href="/dashboard/scheduler" className="hover:text-ink hover:underline">{t("Critical-Path Scheduler", "Penjadwal Jalur Kritis")}</Link></li>
-                  <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">{t("IRoom Streams", "Aliran IRoom")}</Link></li>
+                  <li><Link href="/dashboard/iroom" className="hover:text-ink hover:underline">{t("Plant Records", "Catatan Pabrik")}</Link></li>
                 </ul>
               </div>
 
               <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
                 <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Intelligence & Governance", "Intelijen & Tata Kelola")}</p>
-                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-1.5 sm:[&_a]:py-0.5">
                   <li><Link href="/dashboard/copilot" className="hover:text-ink hover:underline">{t("Cited SOP Copilot", "Copilot dengan Kutipan SOP")}</Link></li>
                   <li><Link href="/dashboard/knowledge" className="hover:text-ink hover:underline">{t("Plant Knowledge Base", "Basis Pengetahuan Pabrik")}</Link></li>
                   <li><a href="#method" className="hover:text-ink hover:underline">{t("Method & Validation", "Metode & Validasi")}</a></li>
@@ -1125,7 +1126,7 @@ export default function LandingPage() {
 
               <div className="bg-paper/45 p-5 sm:px-8 space-y-2">
                 <p className="font-mono uppercase tracking-[0.06em] text-ink-3">{t("Access & Deployment", "Akses & Deployment")}</p>
-                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-0.5">
+                <ul className="space-y-1 text-ink-2 [&_a]:inline-block [&_a]:py-1.5 sm:[&_a]:py-0.5">
                   <li><a href="#plans" className="hover:text-ink hover:underline">{t("Plans & Pricing", "Paket & Harga")}</a></li>
                   <li><Link href="/login" className="hover:text-ink hover:underline">{t("Operator Sign In", "Masuk Operator")}</Link></li>
                   <li><Link href="/login?mode=register" className="hover:text-ink hover:underline">{t("Create Plant Account", "Buat Akun Pabrik")}</Link></li>

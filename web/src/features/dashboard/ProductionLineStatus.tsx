@@ -191,11 +191,11 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-1 h-8 p-0.5 bg-sheet-sunk rounded-lg border border-rule self-start sm:self-auto">
+        <div className="flex items-center gap-1 h-10 sm:h-8 p-0.5 bg-sheet-sunk rounded-lg border border-rule self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setViewMode("map")}
-            className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               viewMode === "map" ? "bg-white text-ink" : "text-ink-2 hover:text-ink"
             }`}
           >
@@ -206,7 +206,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
           <button
             type="button"
             onClick={() => setViewMode("table")}
-            className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               viewMode === "table" ? "bg-white text-ink" : "text-ink-2 hover:text-ink"
             }`}
           >
@@ -219,7 +219,7 @@ export const ProductionLineStatus: React.FC<ProductionLineStatusProps> = ({
       {viewMode === "map" ? (
         <div className="grid grid-cols-1 @3xl:grid-cols-12 gap-5 items-stretch">
           <div className="@3xl:col-span-8 bg-paper rounded-xl p-3 border border-rule relative overflow-x-auto">
-            <div className="min-w-[520px]">
+            <div className="min-w-[700px] @xl:min-w-0">
               <div className="flex items-center justify-between text-xs font-mono-numbers text-ink-3 mb-2 px-1">
                 <span className="text-stamp font-medium">
                   {t(`Top ${mapWorkCenters.length} Highest-Risk Work Centers`, `${mapWorkCenters.length} Work Center Paling Berisiko`)}

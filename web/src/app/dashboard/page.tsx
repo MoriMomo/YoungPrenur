@@ -16,6 +16,7 @@ import { DecisionBrief } from "@/features/risks/DecisionBrief";
 import { RisksMonitor } from "@/features/risks/RisksMonitor";
 import { PerformanceChart } from "@/features/dashboard/PerformanceChart";
 import { ProductionLineStatus } from "@/features/dashboard/ProductionLineStatus";
+import { StartHere } from "@/features/dashboard/StartHere";
 import { ScheduleUploader } from "@/features/scheduler/ScheduleUploader";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, LinkButton } from "@/components/ui/Button";
@@ -337,6 +338,8 @@ export default function DashboardOverviewPage() {
           </>
         }
       />
+
+      {!loadingSchedule && <StartHere hasSchedule={Boolean(prediction)} />}
 
       <div
         data-dash-section

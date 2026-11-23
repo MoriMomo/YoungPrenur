@@ -24,7 +24,7 @@ interface SidebarProps {
 
 const NAV: { name: [string, string]; href: string; icon: typeof Layers }[] = [
   { name: ["Overview", "Ringkasan"], href: "/dashboard", icon: LayoutDashboard },
-  { name: ["IRoom streams", "Aliran IRoom"], href: "/dashboard/iroom", icon: Layers },
+  { name: ["Plant records", "Catatan pabrik"], href: "/dashboard/iroom", icon: Layers },
   { name: ["Scheduler", "Penjadwal"], href: "/dashboard/scheduler", icon: CalendarClock },
   { name: ["SOP knowledge", "Pengetahuan SOP"], href: "/dashboard/knowledge", icon: BookOpen },
   { name: ["Copilot", "Copilot"], href: "/dashboard/copilot", icon: MessageSquareText },

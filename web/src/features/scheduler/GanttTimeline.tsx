@@ -121,7 +121,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, baseRisk = 
                     step="1"
                     value={simulatedSlipDays}
                     onChange={(e) => setSimulatedSlipDays(parseInt(e.target.value, 10))}
-                    className="flex-1 h-2 bg-sheet-sunk rounded-lg appearance-none cursor-pointer accent-stamp"
+                    className="min-w-0 flex-1 h-2 bg-sheet-sunk rounded-lg appearance-none cursor-pointer accent-stamp"
                   />
                   <span className="text-xs text-hold font-mono-numbers font-medium">
                     {t("+7d (Severe)", "+7 h (Berat)")}

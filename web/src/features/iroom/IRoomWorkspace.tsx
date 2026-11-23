@@ -215,7 +215,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     const ok = await loadSampleIRoomApi();
     if (ok) {
       await refreshStreams();
-      onToast?.(t("Loaded sample IRoom streams into your workspace.", "Aliran IRoom contoh dimuat ke ruang kerja Anda."));
+      onToast?.(t("Loaded sample plant records into your workspace.", "Catatan pabrik contoh dimuat ke ruang kerja Anda."));
       return;
     }
     setMaterials(IROOM_MATERIALS);
@@ -223,7 +223,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
     setDrawings(IROOM_DRAWINGS);
     setQuotations(IROOM_QUOTATIONS);
     setOperations(IROOM_OPERATIONS);
-    onToast?.(t("Loaded sample IRoom streams for local preview.", "Aliran IRoom contoh dimuat untuk pratinjau lokal."));
+    onToast?.(t("Loaded sample plant records for local preview.", "Catatan pabrik contoh dimuat untuk pratinjau lokal."));
   };
 
   const handleClearIRoom = async () => {
@@ -402,7 +402,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("IRoom streams", "Aliran IRoom")}
+        title={t("Plant records", "Catatan pabrik")}
         description={`${t(
           "Material delivery, project progress, drawing approval, quotations and operations in one place, each feeding the decisions that need sign-off.",
           "Pengiriman material, progres proyek, persetujuan gambar, penawaran, dan operasi di satu tempat, masing-masing mengisi keputusan yang perlu disahkan."
@@ -420,7 +420,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
       >
         <div className="border-b border-rule px-4 py-2">
           <h2 id="iroom-how-it-works-heading" className="text-xs font-semibold text-ink">
-            {t("How IRoom works", "Cara kerja IRoom")}
+            {t("How plant records work", "Cara kerja catatan pabrik")}
           </h2>
         </div>
         <ol className="grid grid-cols-1 divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0">
@@ -435,7 +435,7 @@ export const IRoomWorkspace: React.FC<IRoomWorkspaceProps> = ({
         </ol>
       </section>
 
-      <div role="tablist" aria-label={t("IRoom streams", "Aliran IRoom")} className="flex flex-wrap border-b border-rule-strong">
+      <div role="tablist" aria-label={t("Plant records", "Catatan pabrik")} className="flex flex-wrap border-b border-rule-strong">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;

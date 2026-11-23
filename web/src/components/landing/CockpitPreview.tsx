@@ -41,14 +41,14 @@ export function CockpitPreview({
           </p>
         </div>
         <LinkButton href="/dashboard" variant="secondary" size="lg">
-          {t("Open live cockpit", "Buka kokpit langsung")}
+          {t("Sign in to the dashboard", "Masuk ke dasbor")}
         </LinkButton>
       </div>
 
       <div className="mt-6 border border-rule-strong bg-sheet">
         <dl className="grid grid-cols-3 divide-x divide-rule border-b border-rule-strong">
           {[
-            { label: t("Tasks on hold", "Tugas ditahan"), value: t(`${hold} of ${rows.length}`, `${hold} dari ${rows.length}`) },
+            { label: t("Tasks on hold", "Tugas ditahan"), value: `${hold}/${rows.length}` },
             { label: t("On the critical path", "Di jalur kritis"), value: `${critical}` },
             { label: t("Forecast overrun", "Prakiraan kelebihan"), value: `+${slip} ${d}` },
           ].map((k) => (

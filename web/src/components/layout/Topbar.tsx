@@ -23,7 +23,7 @@ interface TopbarProps {
 
 const ROUTE_TITLES: Record<string, [string, string]> = {
   "/dashboard": ["Overview", "Ringkasan"],
-  "/dashboard/iroom": ["IRoom streams", "Aliran IRoom"],
+  "/dashboard/iroom": ["Plant records", "Catatan pabrik"],
   "/dashboard/scheduler": ["Scheduler", "Penjadwal"],
   "/dashboard/knowledge": ["SOP knowledge", "Pengetahuan SOP"],
   "/dashboard/copilot": ["Copilot", "Copilot"],
@@ -55,12 +55,12 @@ export const Topbar: React.FC<TopbarProps> = ({
         <button
           type="button"
           onClick={onOpenMobileMenu}
-          className="-ml-2 cursor-pointer rounded-md p-2.5 text-ink-2 hover:bg-sheet-sunk hover:text-ink lg:hidden"
+          className="-ml-2 shrink-0 cursor-pointer rounded-md p-2.5 text-ink-2 hover:bg-sheet-sunk hover:text-ink lg:hidden"
           aria-label={t("Open navigation menu", "Buka menu navigasi")}
         >
           <Menu className="h-4 w-4" strokeWidth={1.6} />
         </button>
-        <span className="truncate whitespace-nowrap text-sm font-medium text-ink">{currentTitle}</span>
+        <span className="truncate whitespace-nowrap text-sm max-sm:hidden font-medium text-ink">{currentTitle}</span>
         <span
           className="hidden items-center gap-1.5 whitespace-nowrap text-xs text-ink-3 xl:flex"
           title={
@@ -112,7 +112,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <select
             value={selectedRole}
             onChange={(e) => onSelectRole(e.target.value as ManufacturingRole)}
-            className="h-8 max-w-36 sm:max-w-none cursor-pointer appearance-none truncate rounded-md border border-rule-strong bg-sheet pl-3 pr-8 text-xs font-medium text-ink hover:bg-sheet-sunk"
+            className="h-8 max-w-28 sm:max-w-none cursor-pointer appearance-none truncate rounded-md border border-rule-strong bg-sheet pl-3 pr-8 text-xs font-medium text-ink hover:bg-sheet-sunk"
             aria-label={t("Viewing as role", "Melihat sebagai peran")}
           >
             {ROLES.map((role) => (
@@ -130,7 +130,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         <button
           type="button"
           onClick={handleRefreshClick}
-          className={buttonClass("secondary", "sm")}
+          className={buttonClass("secondary", "sm", "max-sm:hidden")}
           title={t("Check the service and refresh data", "Periksa layanan dan muat ulang data")}
           aria-label={t("Refresh data", "Muat ulang data")}
         >

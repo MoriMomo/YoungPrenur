@@ -72,7 +72,7 @@ export function LangSwitch({ className = "" }: { className?: string }) {
           type="button"
           aria-pressed={lang === l}
           onClick={() => setLang(l)}
-          className={`h-7 min-w-8 cursor-pointer rounded-sm px-2 uppercase transition-colors ${
+          className={`h-8 min-w-9 sm:h-7 sm:min-w-8 cursor-pointer rounded-sm px-2 uppercase transition-colors ${
             lang === l ? "bg-ink text-sheet" : "text-ink-2 hover:text-ink"
           }`}
         >

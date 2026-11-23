@@ -21,7 +21,7 @@ const EN = (
         <li>Account details: your name, email address and, if you sign in with Google, your Google profile name.</li>
         <li>The role you work in, such as Operations Manager or Plant Manager.</li>
         <li>Files you upload: project schedules and SOP documents, and the drafts and clauses made from them.</li>
-        <li>Records you enter in IRoom streams, and the decisions you authorize or override, with notes.</li>
+        <li>Records you enter in plant records (IRoom), and the decisions you authorize or override, with notes.</li>
       </ul>
     </section>
 
@@ -83,7 +83,7 @@ const ID = (
         <li>Detail akun: nama, alamat email, dan jika Anda masuk dengan Google, nama profil Google Anda.</li>
         <li>Peran kerja Anda, misalnya Manajer Operasional atau Manajer Pabrik.</li>
         <li>File yang Anda unggah: jadwal proyek dan dokumen SOP, beserta draf dan klausul yang dibuat darinya.</li>
-        <li>Catatan yang Anda masukkan di aliran IRoom, serta keputusan yang Anda setujui atau batalkan, beserta catatannya.</li>
+        <li>Catatan yang Anda masukkan di catatan pabrik (IRoom), serta keputusan yang Anda setujui atau batalkan, beserta catatannya.</li>
       </ul>
     </section>
 

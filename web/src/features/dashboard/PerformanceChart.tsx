@@ -318,11 +318,11 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               type="button"
               onMouseEnter={() => setHoverIndex(idx)}
               onFocus={() => setHoverIndex(idx)}
-              className={`cursor-pointer py-1.5 truncate transition-colors ${
+              className={`cursor-pointer py-1.5 truncate transition-colors ${idx % 2 ? "max-sm:hidden" : ""} ${
                 hoverIndex === idx ? "text-stamp font-medium" : ""
               }`}
             >
-              {t.code}
+              {t.code.replace(/^WBS-/, "")}
             </button>
           ))}
         </div>
