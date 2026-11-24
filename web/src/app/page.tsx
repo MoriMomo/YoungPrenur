@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -29,6 +29,10 @@ import { Words } from "@/components/landing/Words";
 import { useT } from "@/lib/i18n";
 
 type Pair = [string, string];
+
+const CERTIFICATE_NO = "MDIP-DR-0001";
+const noopSubscribe = () => () => {};
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // shortcut: dummy sales inbox until a real one exists; replace before launch.
 const SALES_EMAIL = "sales@mdip.example";
@@ -173,6 +177,7 @@ export default function LandingPage() {
       : { tone: "neutral" as const, label: t("Overridden", "Dibatalkan") };
   };
   const role = ROLE_PRESETS[activeRole];
+  const issued = useSyncExternalStore(noopSubscribe, todayIso, () => "");
   const t = useT();
 
   const toggleRow = (code: string) => setOpenCode((c) => (c === code ? null : code));
@@ -591,7 +596,7 @@ export default function LandingPage() {
           </div>
           <div className="lg:col-span-7">
             <p data-hero-eyebrow className="font-mono text-xs uppercase tracking-[0.08em] text-ink-3">
-              {t("Schedule Delay-Risk Inspection · B2B Manufacturing SaaS", "Inspeksi Risiko Keterlambatan Jadwal · SaaS Manufaktur B2B")}
+              {t("Schedule Delay-Risk Inspection", "Inspeksi Risiko Keterlambatan Jadwal")}
             </p>
             <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] tracking-[-0.01em] text-ink sm:text-[56px] lg:text-[60px] xl:text-[72px]">
               <ShinyText
@@ -631,7 +636,7 @@ export default function LandingPage() {
               onReject={setNotice}
               className="border border-rule-strong bg-sheet p-5"
             >
-              {(open) => (
+              {(open, dragging) => (
                 <>
                   <h2 className="font-display text-xl font-bold text-ink">{t("Or check your own schedule", "Atau periksa jadwal Anda sendiri")}</h2>
                   <p className="mt-1 text-sm text-ink-2">
@@ -640,11 +645,24 @@ export default function LandingPage() {
                       "Letakkan file CSV, Excel, Primavera P6 (.xer), atau MS Project (.xml) di sini, atau pilih satu untuk memeriksa tugas, jalur kritis, dan risiko terlambat."
                     )}
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button size="lg" onClick={open} disabled={busy}>
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
-                      {busy ? t("Inspecting…", "Memeriksa…") : t("Choose schedule file", "Pilih file jadwal")}
-                    </Button>
+                  <div
+                    className={`mt-4 border border-dashed px-4 py-3 transition-colors ${
+                      dragging ? "border-stamp bg-stamp-wash" : "border-rule-strong bg-paper/70"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Button size="lg" onClick={open} disabled={busy}>
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />}
+                        {busy ? t("Inspecting…", "Memeriksa…") : t("Choose schedule file", "Pilih file jadwal")}
+                      </Button>
+                      <div className="flex flex-wrap items-center gap-1 font-mono text-[10px] uppercase tracking-[0.06em] text-ink-3">
+                        {[".CSV", ".XLSX", ".XER", ".XML"].map((ext) => (
+                          <span key={ext} className="border border-rule bg-sheet px-1.5 py-0.5 text-ink-2">
+                            {ext}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   {notice && (
                     <p role="alert" className="mt-3 border border-hold-line bg-hold-wash px-3 py-2 text-sm text-hold">
@@ -654,24 +672,77 @@ export default function LandingPage() {
                 </>
               )}
             </FileDrop>
+            <dl className="grid grid-cols-2 divide-x divide-rule border-x border-b border-rule-strong bg-paper/90 text-left">
+              <div className="px-4 py-2">
+                <dt className="text-[11px] text-ink-3">{t("Certificate no.", "No. sertifikat")}</dt>
+                <dd className="font-mono-numbers text-xs font-medium text-ink">{CERTIFICATE_NO}</dd>
+              </div>
+              <div className="px-4 py-2">
+                <dt className="text-[11px] text-ink-3">{t("Issued", "Terbit")}</dt>
+                <dd className="font-mono-numbers text-xs font-medium text-ink">{issued || "—"}</dd>
+              </div>
+            </dl>
           </div>
         </section>
 
-        {/* Compatibility & plant governance strip */}
+        {/* Proof metrics strip */}
         <section
-          aria-label={t("Supported exports and governance", "Ekspor yang didukung dan tata kelola")}
-          className="grid gap-3 border-b border-rule-strong bg-sheet-sunk px-5 py-3.5 text-xs text-ink-2 sm:px-8 lg:grid-cols-3 lg:items-baseline"
+          aria-label={t("Validation and schedule simulation metrics", "Metrik validasi dan simulasi jadwal")}
+          className="grid divide-y divide-rule-strong border-b border-rule-strong bg-sheet-sunk lg:grid-cols-3 lg:divide-x lg:divide-y-0"
         >
-          {[
-            { figure: "0.78", label: t("ROC-AUC on 51 held-out real projects, vs 0.53 for rule-based scoring", "ROC-AUC pada 51 proyek nyata yang tidak dipakai melatih, vs 0,53 untuk penilaian berbasis aturan") },
-            { figure: "2,000", label: t("Monte Carlo runs per schedule for P50 and P80 slip", "simulasi Monte Carlo per jadwal untuk kemunduran P50 dan P80") },
-            { figure: "4", label: t("schedule formats read: CSV, Excel, Primavera P6 .xer, MS Project XML", "format jadwal yang dibaca: CSV, Excel, Primavera P6 .xer, MS Project XML") },
-          ].map((fact) => (
-            <p key={fact.figure} className="flex items-baseline gap-2.5">
-              <span className="font-mono-numbers text-lg font-semibold text-ink">{fact.figure}</span>
-              <span>{fact.label}</span>
+          <div className="flex flex-col justify-between gap-3 px-5 py-5 sm:px-8">
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono-numbers text-4xl font-bold tracking-tight text-stamp sm:text-[42px]">0.78</span>
+              <span className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">
+                {t("vs 0.53 rule baseline", "vs 0,53 aturan dasar")}
+              </span>
+            </div>
+            <div className="space-y-1.5" aria-hidden="true">
+              <div className="flex items-center gap-2 font-mono-numbers text-[11px] text-ink-2">
+                <span className="w-12 shrink-0 text-stamp">MDIP</span>
+                <div className="h-1.5 flex-1 bg-sheet">
+                  <div className="h-full w-[78%] bg-stamp" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 font-mono-numbers text-[11px] text-ink-3">
+                <span className="w-12 shrink-0">{t("Rules", "Aturan")}</span>
+                <div className="h-1.5 flex-1 bg-sheet">
+                  <div className="h-full w-[53%] bg-rule-strong" />
+                </div>
+              </div>
+            </div>
+            <p className="text-sm leading-snug text-ink-2">
+              {t("Held-out ROC-AUC across 51 unseen real manufacturing projects.", "ROC-AUC pada 51 proyek manufaktur nyata di luar data latih.")}
             </p>
-          ))}
+          </div>
+
+          <div className="flex flex-col justify-between gap-3 px-5 py-5 sm:px-8">
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono-numbers text-4xl font-bold tracking-tight text-ink sm:text-[42px]">2,000</span>
+              <span className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">P50 / P80</span>
+            </div>
+            <p className="text-sm leading-snug text-ink-2">
+              {t(
+                "Correlated Monte Carlo simulations per schedule for P50 and P80 project slip.",
+                "Simulasi Monte Carlo berkorelasi per jadwal untuk prakiraan kemunduran P50 dan P80."
+              )}
+            </p>
+          </div>
+
+          <div className="flex flex-col justify-between gap-3 px-5 py-5 sm:px-8">
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono-numbers text-4xl font-bold tracking-tight text-ink sm:text-[42px]">4</span>
+              <span className="font-mono text-xs uppercase tracking-[0.06em] text-ink-3">
+                {t("Native exports", "Ekspor asli")}
+              </span>
+            </div>
+            <p className="text-sm leading-snug text-ink-2">
+              {t(
+                "Direct parsing for CSV, Excel (EN/ID), Primavera P6 (.xer), and MS Project XML.",
+                "Pembacaan langsung untuk CSV, Excel (EN/ID), Primavera P6 (.xer), dan MS Project XML."
+              )}
+            </p>
+          </div>
         </section>
 
         {/* Inspection table */}
